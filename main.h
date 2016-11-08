@@ -1,3 +1,9 @@
+#define MPI
+#ifdef MPI
+#include <mpi.h>
+#endif
+
+// Controllable parameters for the application
 #define GAM 1.4
 #define PAD 2
 #define MAX_DT 0.004
@@ -5,11 +11,17 @@
 #define C_T 0.5
 #define VISIT_STEP 10
 #define SIM_END 10.0
+#define LOAD_BALANCE 0
 
 #define max(a, b) (((a) > (b)) ? (a) : (b))
 #define min(a, b) (((a) < (b)) ? (a) : (b))
 
+#define MASTER 0 // Master MPI rank
+#define NUM_VARS_TO_COMM 4 // rho, e, rho_u, rho_v
+
 enum { NO_INVERT, INVERT_X, INVERT_Y };
+enum { EDGE=-1, NORTH=0, EAST=1, SOUTH=2, WEST=3 };
+enum { RHO_OFF, E_OFF, RHO_U_OFF, RHO_V_OFF };
 
 /// Problem state
 typedef struct
@@ -59,11 +71,36 @@ typedef struct
   double dt;
 } Mesh;
 
+typedef struct
+{
+  int rank;
+  int nranks;
+  int neighbours[4];
+
+  double* north_buffer_out;
+  double* east_buffer_out;
+  double* south_buffer_out;
+  double* west_buffer_out;
+  double* north_buffer_in;
+  double* east_buffer_in;
+  double* south_buffer_in;
+  double* west_buffer_in;
+
+} Comms;
+
+static inline void initialise_comms(
+    const int cells_x, const int cells_y, int argc, char** argv, 
+    int *nx, int *ny, Comms* comms);
+
 // Decomposes the ranks, potentially load balancing and minimising the
 // ratio of perimeter to area
 static inline void decompose_ranks(
     const int rank, const int nranks, const int mesh_x, const int mesh_y,
     int* nx, int* ny, int* neighbours);
+
+static inline void communicate_halos(
+    const int nx, const int ny, Comms* comms, double* rho, double* rho_u, 
+    double* rho_v, double* e);
 
 // Calculate the pressure from gamma law equation of state
 static inline void equation_of_state(

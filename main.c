@@ -7,15 +7,6 @@
 
 #define ind0 (ii*nx + jj)
 #define ind1 (ii*(nx+1) + jj)
-#define MASTER 0
-
-enum { NORTH, EAST, SOUTH, WEST };
-#define EDGE -1
-#define LOAD_BALANCE 0
-#define MPI
-#ifdef MPI
-#include <mpi.h>
-#endif
 
 int main(int argc, char** argv)
 {
@@ -28,33 +19,26 @@ int main(int argc, char** argv)
   int nranks = 1;
 
   // Store the dimensions of the mesh
-  const int mesh_x = atoi(argv[1]);
-  const int mesh_y = atoi(argv[2]);
+  const int cells_x = atoi(argv[1]);
+  const int cells_y = atoi(argv[2]);
   const int niters = atoi(argv[3]);
-
-#ifdef MPI
-  // Initialise MPI
-  MPI_Init(&argc, &argv);
-  MPI_Comm_size(MPI_COMM_WORLD, &nranks);
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
-  int nx = 0;
-  int ny = 0;
-  int neighbours[4];
-  decompose_ranks(rank, nranks, mesh_x, mesh_y, &nx, &ny, neighbours);
-  printf("local rank has %d x %d mesh size\n", nx, ny);
-#else
   int nx = atoi(argv[1]) + 2*PAD;
   int ny = atoi(argv[2]) + 2*PAD;
+
+#ifdef MPI
+  Comms comms;
+  // Initialise MPI
+  initialise_comms(cells_x, cells_y, argc, argv, &nx, &ny, &comms);
+  printf("local rank has %d x %d mesh size\n", nx, ny);
 #endif
 
-  if(rank == MASTER)
-    printf("Problem dimensions %dx%d for %d iterations.\n", mesh_x, mesh_y, niters);
+  if(comms.rank == MASTER)
+    printf("Problem dimensions %dx%d for %d iterations.\n", cells_x, cells_y, niters);
 
   State state;
   Mesh mesh;
   initialise_mesh(nx, ny, &mesh);
-  initialise_state(nx, ny,&state, &mesh);
+  initialise_state(nx, ny, &state, &mesh);
 
   double wallclock = 0.0;
   double elapsed_sim_time = 0.0;
@@ -68,10 +52,15 @@ int main(int argc, char** argv)
 
   int tt;
   for(tt = 0; tt < niters; ++tt) {
-    if(rank == MASTER) 
+
+    if(comms.rank == MASTER) 
       printf("Iteration %d\n", tt+1);
 
     const double s1 = omp_get_wtime();
+
+#ifdef MPI
+    communicate_halos(nx, ny, &comms, state.rho, state.rho_u, state.rho_v, state.e);
+#endif
 
     START_PROFILING(&p);
     equation_of_state(
@@ -96,7 +85,7 @@ int main(int argc, char** argv)
         &mesh, tt == 0, mesh.edgedx, mesh.edgedy, mesh.celldx, mesh.celldy);
     STOP_PROFILING(&p, "set_timestep");
 
-    if(rank == MASTER)
+    if(comms.rank == MASTER)
       printf("dt %.12e dt_h %.12e\n", mesh.dt, mesh.dt_h);
 
     START_PROFILING(&p);
@@ -134,18 +123,18 @@ int main(int argc, char** argv)
     elapsed_sim_time += mesh.dt;
 
     if(elapsed_sim_time >= SIM_END) {
-      if(rank == MASTER)
+      if(comms.rank == MASTER)
         printf("reached end of simulation time\n");
       break;
     }
 
-    if(rank == MASTER) {
+    if(comms.rank == MASTER) {
       print_conservation(nx, ny, &state);
       printf("simulation time: %.4lf(s)\n", elapsed_sim_time);
     }
   }
 
-  if(rank == MASTER) {
+  if(comms.rank == MASTER) {
     PRINT_PROFILING_RESULTS(&p);
 
     printf("Wallclock %.2fs, Elapsed Simulation Time %.4fs\n", 
@@ -161,10 +150,138 @@ int main(int argc, char** argv)
   return 0;
 }
 
+static inline void initialise_comms(
+    const int cells_x, const int cells_y, int argc, char** argv, 
+    int *nx, int *ny, Comms* comms)
+{
+  MPI_Init(&argc, &argv);
+  MPI_Comm_size(MPI_COMM_WORLD, &comms->nranks);
+  MPI_Comm_rank(MPI_COMM_WORLD, &comms->rank);
+
+  int local_nx = 0;
+  int local_ny = 0;
+  decompose_ranks(comms->rank, comms->nranks, cells_x, cells_y, &local_nx, &local_ny, comms->neighbours);
+  comms->north_buffer_out = (double*)malloc(sizeof(double)*local_nx*PAD*NUM_VARS_TO_COMM);
+  comms->east_buffer_out  = (double*)malloc(sizeof(double)*local_ny*PAD*NUM_VARS_TO_COMM);
+  comms->south_buffer_out = (double*)malloc(sizeof(double)*local_nx*PAD*NUM_VARS_TO_COMM);
+  comms->west_buffer_out  = (double*)malloc(sizeof(double)*local_ny*PAD*NUM_VARS_TO_COMM);
+  comms->north_buffer_in  = (double*)malloc(sizeof(double)*local_nx*PAD*NUM_VARS_TO_COMM);
+  comms->east_buffer_in   = (double*)malloc(sizeof(double)*local_ny*PAD*NUM_VARS_TO_COMM);
+  comms->south_buffer_in   = (double*)malloc(sizeof(double)*local_nx*PAD*NUM_VARS_TO_COMM);
+  comms->west_buffer_in   = (double*)malloc(sizeof(double)*local_ny*PAD*NUM_VARS_TO_COMM);
+
+  *nx = local_nx;
+  *ny = local_ny;
+}
+
+// Batches the halos up into buffers, communicates and then unwraps them
+static inline void communicate_halos(
+    const int nx, const int ny, Comms* comms, double* rho, double* rho_u, 
+    double* rho_v, double* e)
+{
+  int nrequests = 4;
+  MPI_Request out_req[nrequests];
+  MPI_Request in_req[nrequests];
+
+  for(int dd = 0; dd < PAD; ++dd) {
+    for(int ii = 0; ii < nx; ++ii) {
+      comms->south_buffer_out[ii + RHO_OFF] = rho[ii+(PAD+dd)*nx];
+      comms->south_buffer_out[ii + E_OFF] = e[ii+(PAD+dd)*nx];
+      comms->south_buffer_out[ii + RHO_U_OFF] = rho_u[ii+(PAD+dd)*nx];
+      comms->south_buffer_out[ii + RHO_V_OFF] = rho_v[ii+(PAD+dd)*nx];
+    }
+  }
+
+  MPI_Isend(comms->south_buffer_out, nx*PAD*NUM_VARS_TO_COMM, MPI_DOUBLE, 
+      comms->neighbours[SOUTH], 0, MPI_COMM_WORLD, &out_req[SOUTH]);
+  MPI_Irecv(comms->north_buffer_in, nx*PAD*NUM_VARS_TO_COMM, MPI_DOUBLE,
+      comms->neighbours[NORTH], 0, MPI_COMM_WORLD, &in_req[NORTH]);
+
+  for(int dd = 0; dd < PAD; ++dd) {
+    for(int ii = 0; ii < nx; ++ii) {
+      comms->north_buffer_out[ii + RHO_OFF] = rho[ii+(ny-2*PAD+dd)*nx];
+      comms->north_buffer_out[ii + E_OFF] = e[ii+(ny-2*PAD+dd)*nx];
+      comms->north_buffer_out[ii + RHO_U_OFF] = rho_u[ii+(ny-2*PAD+dd)*nx];
+      comms->north_buffer_out[ii + RHO_V_OFF] = rho_v[ii+(ny-2*PAD+dd)*nx];
+    }
+  }
+
+  MPI_Isend(comms->north_buffer_out, nx*PAD*NUM_VARS_TO_COMM, MPI_DOUBLE, 
+      comms->neighbours[NORTH], 1, MPI_COMM_WORLD, &out_req[NORTH]);
+  MPI_Irecv(comms->south_buffer_in, nx*PAD*NUM_VARS_TO_COMM, MPI_DOUBLE,
+      comms->neighbours[SOUTH], 1, MPI_COMM_WORLD, &in_req[SOUTH]);
+
+  for(int dd = 0; dd < PAD; ++dd) {
+    for(int ii = 0; ii < ny; ++ii) {
+      comms->east_buffer_out[ii + RHO_OFF] = rho[(nx-2*PAD+dd)+(ii*nx)];
+      comms->east_buffer_out[ii + E_OFF] = e[(nx-2*PAD+dd)+(ii*nx)];
+      comms->east_buffer_out[ii + RHO_U_OFF] = rho_u[(nx-2*PAD+dd)+(ii*nx)];
+      comms->east_buffer_out[ii + RHO_V_OFF] = rho_v[(nx-2*PAD+dd)+(ii*nx)];
+    }
+  }
+
+  MPI_Isend(comms->east_buffer_out, ny*PAD*NUM_VARS_TO_COMM, MPI_DOUBLE, 
+      comms->neighbours[EAST], 2, MPI_COMM_WORLD, &out_req[EAST]);
+  MPI_Irecv(comms->west_buffer_in, ny*PAD*NUM_VARS_TO_COMM, MPI_DOUBLE,
+      comms->neighbours[WEST], 2, MPI_COMM_WORLD, &in_req[WEST]);
+
+  for(int dd = 0; dd < PAD; ++dd) {
+    for(int ii = 0; ii < ny; ++ii) {
+      comms->west_buffer_out[ii + RHO_OFF] = rho[(PAD+dd)+(ii*nx)];
+      comms->west_buffer_out[ii + E_OFF] = e[(PAD+dd)+(ii*nx)];
+      comms->west_buffer_out[ii + RHO_U_OFF] = rho_u[(PAD+dd)+(ii*nx)];
+      comms->west_buffer_out[ii + RHO_V_OFF] = rho_v[(PAD+dd)+(ii*nx)];
+    }
+  }
+
+  MPI_Isend(comms->west_buffer_in, ny*PAD*NUM_VARS_TO_COMM, MPI_DOUBLE,
+      comms->neighbours[WEST], 3, MPI_COMM_WORLD, &out_req[WEST]);
+  MPI_Irecv(comms->east_buffer_out, ny*PAD*NUM_VARS_TO_COMM, MPI_DOUBLE, 
+      comms->neighbours[EAST], 3, MPI_COMM_WORLD, &in_req[EAST]);
+
+  MPI_Waitall(nrequests, in_req, MPI_STATUSES_IGNORE);
+
+  for(int dd = 0; dd < PAD; ++dd) {
+    for(int ii = 0; ii < nx; ++ii) {
+      rho[(ny - PAD + dd)*nx + ii] = comms->north_buffer_in[ii + RHO_OFF];
+      e[(ny - PAD + dd)*nx + ii] = comms->north_buffer_in[ii + E_OFF];
+      rho_u[(ny - PAD + dd)*nx + ii] = comms->north_buffer_in[ii + RHO_U_OFF];
+      rho_v[(ny - PAD + dd)*nx + ii] = comms->north_buffer_in[ii + RHO_V_OFF];
+    }
+  }
+
+  for(int dd = 0; dd < PAD; ++dd) {
+    for(int ii = 0; ii < nx; ++ii) {
+      rho[dd*nx + ii] = comms->south_buffer_in[ii + RHO_OFF];
+      e[dd*nx + ii] = comms->south_buffer_in[ii + E_OFF];
+      rho_u[dd*nx + ii] = comms->south_buffer_in[ii + RHO_U_OFF];
+      rho_v[dd*nx + ii] = comms->south_buffer_in[ii + RHO_V_OFF];
+    }
+  }
+
+  for(int dd = 0; dd < PAD; ++dd) {
+    for(int ii = 0; ii < ny; ++ii) {
+      rho[ii*nx + dd] = comms->west_buffer_out[ii + RHO_OFF];
+      e[ii*nx + dd] = comms->west_buffer_out[ii + E_OFF];
+      rho_u[ii*nx + dd] = comms->west_buffer_out[ii + RHO_U_OFF];
+      rho_v[ii*nx + dd] = comms->west_buffer_out[ii + RHO_V_OFF];
+    }
+  }
+
+  for(int dd = 0; dd < PAD; ++dd) {
+    for(int ii = 0; ii < ny; ++ii) {
+      rho[ii*nx + (nx-PAD+dd)] = comms->east_buffer_out[ii + RHO_OFF];
+      e[ii*nx + (nx-PAD+dd)] = comms->east_buffer_out[ii + E_OFF];
+      rho_u[ii*nx + (nx-PAD+dd)] = comms->east_buffer_out[ii + RHO_U_OFF];
+      rho_v[ii*nx + (nx-PAD+dd)] = comms->east_buffer_out[ii + RHO_V_OFF];
+    }
+  }
+}
+
 // Decomposes the ranks, potentially load balancing and minimising the
 // ratio of perimeter to area
 static inline void decompose_ranks(
-    const int rank, const int nranks, const int mesh_x, const int mesh_y, 
+    const int rank, const int nranks, const int cells_x, const int cells_y, 
     int* nx, int* ny, int* neighbours) 
 {
   int ranks_x = 0;
@@ -177,8 +294,8 @@ static inline void decompose_ranks(
     if(nranks % ff) continue;
     // If load balance is preferred then prioritise even split over ratio
     // Test if this split evenly decomposes into the mesh
-    const int even_split_ff_x = (mesh_x % ff == 0 && mesh_y % (nranks/ff) == 0);
-    const int even_split_ff_y = (mesh_x % (nranks/ff) == 0 && mesh_y % ff == 0);
+    const int even_split_ff_x = (cells_x % ff == 0 && cells_y % (nranks/ff) == 0);
+    const int even_split_ff_y = (cells_x % (nranks/ff) == 0 && cells_y % ff == 0);
     const int new_ranks_x = even_split_ff_x ? ff : nranks/ff;
     const int new_ranks_y = even_split_ff_x ? nranks/ff : ff;
     const int is_even = even_split_ff_x || even_split_ff_y;
@@ -201,16 +318,16 @@ static inline void decompose_ranks(
   int x_resolved = 0;
   int x_rank = (rank%ranks_x);
   for(int xx = 0; xx <= x_rank; ++xx) {
-    const int x_floor = mesh_x/ranks_x;
-    const int x_pad_req = (mesh_x != (x_resolved + (ranks_x-xx)*x_floor));
+    const int x_floor = cells_x/ranks_x;
+    const int x_pad_req = (cells_x != (x_resolved + (ranks_x-xx)*x_floor));
     *nx = x_pad_req ? x_floor+1 : x_floor;
     x_resolved += *nx;
   }
   int y_resolved = 0;
   int y_rank = (rank/ranks_x);
   for(int yy = 0; yy <= y_rank; ++yy) {
-    const int y_floor = mesh_y/ranks_y;
-    const int y_pad_req = (mesh_y != (y_resolved + (ranks_y-yy)*y_floor));
+    const int y_floor = cells_y/ranks_y;
+    const int y_pad_req = (cells_y != (y_resolved + (ranks_y-yy)*y_floor));
     *ny = y_pad_req ? y_floor+1 : y_floor;
     y_resolved += *ny;
   }
