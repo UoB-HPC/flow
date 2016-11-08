@@ -966,124 +966,124 @@ if((ii - m)*(ii - m) + (jj - m)*(jj - m) > o) {
 
 
 #if 0
-  /// TODO: What happens about the slopes defined on the halo regions, 
-  // is it OK that they are simply set to 0???
+/// TODO: What happens about the slopes defined on the halo regions, 
+// is it OK that they are simply set to 0???
 #pragma omp parallel for
-  for(int ii = PAD; ii < ny-PAD; ++ii) {
+for(int ii = PAD; ii < ny-PAD; ++ii) {
 #pragma omp simd
-    for(int jj = PAD; jj < nx-PAD; ++jj) {
-      // Calculate the maximum and minimum neighbouring density
-      const double rho_x_max = max(rho[ind0-1], max(rho[ind0], rho[ind0+1]));
-      const double rho_x_min = min(rho[ind0-1], min(rho[ind0], rho[ind0+1]));
-      const double rho_y_max = max(rho[ind0-nx], max(rho[ind0], rho[ind0+nx]));
-      const double rho_y_min = min(rho[ind0-nx], min(rho[ind0], rho[ind0+nx]));
+  for(int jj = PAD; jj < nx-PAD; ++jj) {
+    // Calculate the maximum and minimum neighbouring density
+    const double rho_x_max = max(rho[ind0-1], max(rho[ind0], rho[ind0+1]));
+    const double rho_x_min = min(rho[ind0-1], min(rho[ind0], rho[ind0+1]));
+    const double rho_y_max = max(rho[ind0-nx], max(rho[ind0], rho[ind0+nx]));
+    const double rho_y_min = min(rho[ind0-nx], min(rho[ind0], rho[ind0+nx]));
 
-      // Construct absolute value of slope S_L or S_R
-      const double s1_x = 
-        min(rho_x_max - rho[ind0], rho[ind0] - rho_x_min) / (celldx[jj] / 2.0);
-      const double s1_y = 
-        min(rho_y_max - rho[ind0], rho[ind0] - rho_y_min) / (celldy[ii] / 2.0);
+    // Construct absolute value of slope S_L or S_R
+    const double s1_x = 
+      min(rho_x_max - rho[ind0], rho[ind0] - rho_x_min) / (celldx[jj] / 2.0);
+    const double s1_y = 
+      min(rho_y_max - rho[ind0], rho[ind0] - rho_y_min) / (celldy[ii] / 2.0);
 
-      // Calculate the density interpolated from the zone center to zone boundary
-      const double rho_edge_l = 
-        (celldx[jj]*rho[ind0-1] + celldx[jj - 1]*rho[ind0])/(celldx[jj] + celldx[jj - 1]);
-      const double rho_edge_r = 
-        (celldx[jj + 1]*rho[ind0] + celldx[jj]*rho[ind0+1])/(celldx[jj + 1] + celldx[jj]);
-      const double rho_edge_d = 
-        (celldy[ii]*rho[ind0-nx] + celldy[ii - 1]*rho[ind0])/(celldy[ii] + celldy[ii - 1]);
-      const double rho_edge_u = 
-        (celldy[ii + 1]*rho[ind0] + celldy[ii]*rho[ind0+nx])/(celldy[ii + 1] + celldy[ii]);
+    // Calculate the density interpolated from the zone center to zone boundary
+    const double rho_edge_l = 
+      (celldx[jj]*rho[ind0-1] + celldx[jj - 1]*rho[ind0])/(celldx[jj] + celldx[jj - 1]);
+    const double rho_edge_r = 
+      (celldx[jj + 1]*rho[ind0] + celldx[jj]*rho[ind0+1])/(celldx[jj + 1] + celldx[jj]);
+    const double rho_edge_d = 
+      (celldy[ii]*rho[ind0-nx] + celldy[ii - 1]*rho[ind0])/(celldy[ii] + celldy[ii - 1]);
+    const double rho_edge_u = 
+      (celldy[ii + 1]*rho[ind0] + celldy[ii]*rho[ind0+nx])/(celldy[ii + 1] + celldy[ii]);
 
-      // Construct the slope
-      const double s2_x = (rho_edge_r - rho_edge_l) / celldx[jj];
-      const double s2_y = (rho_edge_u - rho_edge_d) / celldy[ii];
+    // Construct the slope
+    const double s2_x = (rho_edge_r - rho_edge_l) / celldx[jj];
+    const double s2_y = (rho_edge_u - rho_edge_d) / celldy[ii];
 
-      // Define the zone centered slope (culling 0's)
-      slope_x[ind0] = (s2_x != 0.0) ? (s2_x / fabs(s2_x))*min(fabs(s2_x), s1_x) : 0.0;
-      slope_y[ind0] = (s2_y != 0.0) ? (s2_y / fabs(s2_y))*min(fabs(s2_y), s1_y) : 0.0;
-    }
+    // Define the zone centered slope (culling 0's)
+    slope_x[ind0] = (s2_x != 0.0) ? (s2_x / fabs(s2_x))*min(fabs(s2_x), s1_x) : 0.0;
+    slope_y[ind0] = (s2_y != 0.0) ? (s2_y / fabs(s2_y))*min(fabs(s2_y), s1_y) : 0.0;
   }
+}
 
-  // Calculate the zone edge centered energies, and flux
+// Calculate the zone edge centered energies, and flux
 #pragma omp parallel for
-  for(int ii = PAD; ii < ny-PAD; ++ii) {
+for(int ii = PAD; ii < ny-PAD; ++ii) {
 #pragma omp simd
-    for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
-      // Calculate the interpolated densities
-      const double edge_rho_x = (u[ind1] >= 0.0)
-        ? rho[ind0-1] + 0.5*slope_x[ind0-1]*(celldx[jj-1] - u[ind1]*dt_h)
-        : rho[ind0] - 0.5*slope_x[ind0]*(celldx[jj] + u[ind1]*dt_h);
-      F_x[ind1] = edge_rho_x*u[ind1]; 
-    }
+  for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
+    // Calculate the interpolated densities
+    const double edge_rho_x = (u[ind1] >= 0.0)
+      ? rho[ind0-1] + 0.5*slope_x[ind0-1]*(celldx[jj-1] - u[ind1]*dt_h)
+      : rho[ind0] - 0.5*slope_x[ind0]*(celldx[jj] + u[ind1]*dt_h);
+    F_x[ind1] = edge_rho_x*u[ind1]; 
   }
+}
 
-  // Calculate the zone edge centered energies, and flux
+// Calculate the zone edge centered energies, and flux
 #pragma omp parallel for
-  for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
+for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
 #pragma omp simd
-    for(int jj = PAD; jj < nx-PAD; ++jj) {
-      // Calculate the interpolated densities
-      const double edge_rho_y = (v[ind0] >= 0.0)
-        ? rho[ind0-nx] + 0.5*slope_y[ind0-nx]*(celldy[ii-1] - v[ind0]*dt_h)
-        : rho[ind0] - 0.5*slope_y[ind0]*(celldy[ii] + v[ind0]*dt_h);
-      F_y[ind0] = edge_rho_y*v[ind0]; 
-    }
+  for(int jj = PAD; jj < nx-PAD; ++jj) {
+    // Calculate the interpolated densities
+    const double edge_rho_y = (v[ind0] >= 0.0)
+      ? rho[ind0-nx] + 0.5*slope_y[ind0-nx]*(celldy[ii-1] - v[ind0]*dt_h)
+      : rho[ind0] - 0.5*slope_y[ind0]*(celldy[ii] + v[ind0]*dt_h);
+    F_y[ind0] = edge_rho_y*v[ind0]; 
   }
+}
 #endif // if 0
 
 #if 0
 #pragma omp parallel for
-  for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
+for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
 #pragma omp simd
-    for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
-      const double S_L = (u[ind1] - u[ind1-1])/edgedx[jj];
-      const double S_R = (u[ind1+1] - u[ind1])/edgedx[jj+1];
-      const double S_D = (u[ind1] - u[ind1-(nx+1)])/edgedy[ii];
-      const double S_U = (u[ind1+(nx+1)] - u[ind1])/edgedy[ii+1];
-      slope_x[ind1] = 
-        ((S_L >= 0.0) ^ (S_R < 0.0)) ? (fabs(S_L) < fabs(S_R) ? S_L : S_R) : (0.0);
-      slope_y[ind0] =
-        ((S_D >= 0.0) ^ (S_U < 0.0)) ? (fabs(S_D) < fabs(S_U) ? S_D : S_U) : (0.0);
-    }
+  for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
+    const double S_L = (u[ind1] - u[ind1-1])/edgedx[jj];
+    const double S_R = (u[ind1+1] - u[ind1])/edgedx[jj+1];
+    const double S_D = (u[ind1] - u[ind1-(nx+1)])/edgedy[ii];
+    const double S_U = (u[ind1+(nx+1)] - u[ind1])/edgedy[ii+1];
+    slope_x[ind1] = 
+      ((S_L >= 0.0) ^ (S_R < 0.0)) ? (fabs(S_L) < fabs(S_R) ? S_L : S_R) : (0.0);
+    slope_y[ind0] =
+      ((S_D >= 0.0) ^ (S_U < 0.0)) ? (fabs(S_D) < fabs(S_U) ? S_D : S_U) : (0.0);
   }
+}
 #endif // if 0
 
 #if 0
-  // Calculate the cell centered monotonic slopes for u and v
+// Calculate the cell centered monotonic slopes for u and v
 #pragma omp parallel for
-  for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
+for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
 #pragma omp simd
-    for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
-      const double S_L = (v[ind0] - v[ind0-1])/edgedx[jj];
-      const double S_R = (v[ind0+1] - v[ind0])/edgedx[jj+1];
-      const double S_D = (v[ind0] - v[ind0-nx])/edgedy[ii];
-      const double S_U = (v[ind0+nx] - v[ind0])/edgedy[ii+1];
-      slope_x[ind1] = ((S_L >= 0.0) ^ (S_R < 0.0)) 
-        ? (fabs(S_L) < fabs(S_R) ? S_L : S_R) : (0.0);
-      slope_y[ind0] = ((S_D >= 0.0) ^ (S_U < 0.0)) 
-        ? (fabs(S_D) < fabs(S_U) ? S_D : S_U) : (0.0);
-    }
+  for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
+    const double S_L = (v[ind0] - v[ind0-1])/edgedx[jj];
+    const double S_R = (v[ind0+1] - v[ind0])/edgedx[jj+1];
+    const double S_D = (v[ind0] - v[ind0-nx])/edgedy[ii];
+    const double S_U = (v[ind0+nx] - v[ind0])/edgedy[ii+1];
+    slope_x[ind1] = ((S_L >= 0.0) ^ (S_R < 0.0)) 
+      ? (fabs(S_L) < fabs(S_R) ? S_L : S_R) : (0.0);
+    slope_y[ind0] = ((S_D >= 0.0) ^ (S_U < 0.0)) 
+      ? (fabs(S_D) < fabs(S_U) ? S_D : S_U) : (0.0);
   }
+}
 #endif // if 0
 
 #if 0
 #pragma omp parallel for
-  for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
+for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
 #pragma omp simd
-    for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
-      // Calculate the zone edge centered density
-      const double rho_edge_x = 
-        (rho[ind0]*celldx[jj]*celldy[ii] + rho[ind0-1]*celldx[jj - 1]*celldy[ii]) / 
-        (2.0*edgedx[jj]*celldy[ii]);
-      const double rho_edge_y = 
-        (rho[ind0]*celldy[ii]*celldx[jj] + rho[ind0-nx]*celldy[ii - 1]*celldx[jj]) / 
-        (2.0*edgedx[jj]*celldy[ii]);
-      u[ind1] = (rho_edge_x == 0.0) ? 0.0 : rho_u[ind1] / rho_edge_x;
-      v[ind0] = (rho_edge_y == 0.0) ? 0.0 : rho_v[ind0] / rho_edge_y;
-    }
+  for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
+    // Calculate the zone edge centered density
+    const double rho_edge_x = 
+      (rho[ind0]*celldx[jj]*celldy[ii] + rho[ind0-1]*celldx[jj - 1]*celldy[ii]) / 
+      (2.0*edgedx[jj]*celldy[ii]);
+    const double rho_edge_y = 
+      (rho[ind0]*celldy[ii]*celldx[jj] + rho[ind0-nx]*celldy[ii - 1]*celldx[jj]) / 
+      (2.0*edgedx[jj]*celldy[ii]);
+    u[ind1] = (rho_edge_x == 0.0) ? 0.0 : rho_u[ind1] / rho_edge_x;
+    v[ind0] = (rho_edge_y == 0.0) ? 0.0 : rho_v[ind0] / rho_edge_y;
   }
+}
 
-  reflective_boundary(nx+1, ny, 1, u, INVERT_X);
-  reflective_boundary(nx, ny+1, 1, v, INVERT_Y);
+reflective_boundary(nx+1, ny, 1, u, INVERT_X);
+reflective_boundary(nx, ny+1, 1, v, INVERT_Y);
 #endif // if 0
 
