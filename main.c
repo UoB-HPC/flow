@@ -41,7 +41,7 @@ int main(int argc, char** argv)
 
   int nx = 0;
   int ny = 0;
-  decompose_ranks(nranks, mesh_x, mesh_y, &nx, &ny);
+  decompose_ranks(rank, nranks, mesh_x, mesh_y, &nx, &ny);
   printf("local rank has %d x %d mesh size\n", nx, ny);
 
 #else
@@ -162,7 +162,8 @@ int main(int argc, char** argv)
 // Decomposes the ranks, potentially load balancing and minimising the
 // ratio of perimeter to area
 static inline void decompose_ranks(
-    const int nranks, const int mesh_x, const int mesh_y, int* nx, int* ny) 
+    const int rank, const int nranks, const int mesh_x, const int mesh_y, 
+    int* nx, int* ny) 
 {
   int ranks_x = 0;
   int ranks_y = 0;
@@ -194,25 +195,20 @@ static inline void decompose_ranks(
     }
   }
 
-  printf("best decomposition %d %d\n", ranks_x, ranks_y);
-
-  for(int rr = 0; rr < nranks; ++rr) {
-    // Calculate the offsets up until our rank, and then fetch rank dimensions
-    int x_resolved = 0;
-    for(int xx = 0; xx <= (rr%ranks_x); ++xx) {
-      const int x_floor = mesh_x/ranks_x;
-      const int x_pad_req = (mesh_x != (x_resolved + (ranks_x-xx)*x_floor));
-      *nx = x_pad_req ? x_floor+1 : x_floor;
-      x_resolved += *nx;
-    }
-    int y_resolved = 0;
-    for(int yy = 0; yy <= (rr/ranks_x); ++yy) {
-      const int y_floor = mesh_y/ranks_y;
-      const int y_pad_req = (mesh_y != (y_resolved + (ranks_y-yy)*y_floor));
-      *ny = y_pad_req ? y_floor+1 : y_floor;
-      y_resolved += *ny;
-    }
-    printf("rank %d has mesh %d x %d\n", rr, *nx, *ny);
+  // Calculate the offsets up until our rank, and then fetch rank dimensions
+  int x_resolved = 0;
+  for(int xx = 0; xx <= (rank%ranks_x); ++xx) {
+    const int x_floor = mesh_x/ranks_x;
+    const int x_pad_req = (mesh_x != (x_resolved + (ranks_x-xx)*x_floor));
+    *nx = x_pad_req ? x_floor+1 : x_floor;
+    x_resolved += *nx;
+  }
+  int y_resolved = 0;
+  for(int yy = 0; yy <= (rank/ranks_x); ++yy) {
+    const int y_floor = mesh_y/ranks_y;
+    const int y_pad_req = (mesh_y != (y_resolved + (ranks_y-yy)*y_floor));
+    *ny = y_pad_req ? y_floor+1 : y_floor;
+    y_resolved += *ny;
   }
 
   // Add the halo regions for the rank mesh
