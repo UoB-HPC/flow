@@ -2,11 +2,18 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <omp.h>
+#if 0
+#include <mpi.h>
+#endif // if 0
 #include "main.h"
 #include "profiler.h"
 
 #define ind0 (ii*nx + jj)
 #define ind1 (ii*(nx+1) + jj)
+#define MASTER 0
+
+#define LOAD_BALANCE 0
+#define MPI
 
 int main(int argc, char** argv)
 {
@@ -15,11 +22,37 @@ int main(int argc, char** argv)
     exit(1);
   }
 
+  int rank = MASTER;
+  int nranks = 1;
+
+#ifdef MPI
+#if 0
+  MPI_Init(&argc, &argv);
+  MPI_Comm_size(MPI_COMM_WORLD, &nranks);
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+#endif // if 0
+
+  nranks = 24;
+
+  // Store the dimensions of the mesh
+  const int mesh_x = atoi(argv[1]);
+  const int mesh_y = atoi(argv[2]);
+  printf("mesh x: %d mesh y: %d\n", mesh_x, mesh_y);
+
+  int nx = 0;
+  int ny = 0;
+  decompose_ranks(nranks, mesh_x, mesh_y, &nx, &ny);
+  printf("local rank has %d x %d mesh size\n", nx, ny);
+
+#else
   const int nx = atoi(argv[1]) + 2*PAD;
   const int ny = atoi(argv[2]) + 2*PAD;
+#endif
+
   const int niters = atoi(argv[3]);
 
-  printf("Problem dimensions %dx%d for %d iterations.\n", nx-2*PAD, ny-2*PAD, niters);
+  if(rank == MASTER)
+    printf("Problem dimensions %dx%d for %d iterations.\n", mesh_x, mesh_y, niters);
 
   State state;
   Mesh mesh;
@@ -109,6 +142,7 @@ int main(int argc, char** argv)
     }
 
     print_conservation(nx, ny, &state);
+    printf("simulation time: %.4lf(s)\n", elapsed_sim_time);
   }
 
   PRINT_PROFILING_RESULTS(&p);
@@ -123,6 +157,67 @@ int main(int argc, char** argv)
   finalise_mesh(&mesh);
 
   return 0;
+}
+
+// Decomposes the ranks, potentially load balancing and minimising the
+// ratio of perimeter to area
+static inline void decompose_ranks(
+    const int nranks, const int mesh_x, const int mesh_y, int* nx, int* ny) 
+{
+  int ranks_x = 0;
+  int ranks_y = 0;
+  int found_even = 0;
+  float min_ratio = 0.0f;
+
+  // Determine decomposition that minimises perimeter to area ratio
+  for(int ff = 1; ff <= sqrt(nranks); ++ff) {
+    if(nranks % ff) continue;
+    // If load balance is preferred then prioritise even split over ratio
+    // Test if this split evenly decomposes into the mesh
+    const int even_split_ff_x = (mesh_x % ff == 0 && mesh_y % (nranks/ff) == 0);
+    const int even_split_ff_y = (mesh_x % (nranks/ff) == 0 && mesh_y % ff == 0);
+    const int new_ranks_x = even_split_ff_x ? ff : nranks/ff;
+    const int new_ranks_y = even_split_ff_x ? nranks/ff : ff;
+    const int is_even = even_split_ff_x || even_split_ff_y;
+    found_even |= (LOAD_BALANCE && is_even);
+
+    const float potential_ratio = 
+      (2*(new_ranks_x+new_ranks_y))/(float)(new_ranks_x*new_ranks_y);
+
+    // Update if we minimise the ratio further, only if we don't care about load
+    // balancing or have found an even split
+    if((found_even <= is_even) && (min_ratio == 0.0f || potential_ratio < min_ratio)) {
+      min_ratio = potential_ratio;
+      // If we didn't find even split, prefer longer mesh edge on x dimension
+      ranks_x = (!found_even && new_ranks_x > new_ranks_y) ? new_ranks_y : new_ranks_x;
+      ranks_y = (!found_even && new_ranks_x > new_ranks_y) ? new_ranks_x : new_ranks_y;
+    }
+  }
+
+  printf("best decomposition %d %d\n", ranks_x, ranks_y);
+
+  for(int rr = 0; rr < nranks; ++rr) {
+    // Calculate the offsets up until our rank, and then fetch rank dimensions
+    int x_resolved = 0;
+    for(int xx = 0; xx <= (rr%ranks_x); ++xx) {
+      const int x_floor = mesh_x/ranks_x;
+      const int x_pad_req = (mesh_x != (x_resolved + (ranks_x-xx)*x_floor));
+      *nx = x_pad_req ? x_floor+1 : x_floor;
+      x_resolved += *nx;
+    }
+    int y_resolved = 0;
+    for(int yy = 0; yy <= (rr/ranks_x); ++yy) {
+      const int y_floor = mesh_y/ranks_y;
+      const int y_pad_req = (mesh_y != (y_resolved + (ranks_y-yy)*y_floor));
+      *ny = y_pad_req ? y_floor+1 : y_floor;
+      y_resolved += *ny;
+    }
+    printf("rank %d has mesh %d x %d\n", rr, *nx, *ny);
+  }
+
+  // Add the halo regions for the rank mesh
+  *nx += 2*PAD;
+  *ny += 2*PAD;
 }
 
 // Calculate the pressure from GAMma law equation of state

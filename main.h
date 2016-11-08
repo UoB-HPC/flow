@@ -59,6 +59,11 @@ typedef struct
   double dt;
 } Mesh;
 
+// Decomposes the ranks, potentially load balancing and minimising the
+// ratio of perimeter to area
+static inline void decompose_ranks(
+    const int nranks, const int mesh_x, const int mesh_y, int* nx, int* ny);
+
 // Calculate the pressure from gamma law equation of state
 static inline void equation_of_state(
     const int nx, const int ny, double* P, const double* rho, const double* e);
