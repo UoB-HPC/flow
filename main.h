@@ -17,7 +17,8 @@
 #define min(a, b) (((a) < (b)) ? (a) : (b))
 
 #define MASTER 0 // Master MPI rank
-#define NUM_VARS_TO_COMM 4 // rho, e, rho_u, rho_v
+#define NVARS_TO_COMM 4 // rho, e, rho_u, rho_v
+#define NREQUESTS 4
 
 enum { NO_INVERT, INVERT_X, INVERT_Y };
 enum { EDGE=-1, NORTH=0, EAST=1, SOUTH=2, WEST=3 };
@@ -69,13 +70,17 @@ typedef struct
 
   double dt_h;
   double dt;
-} Mesh;
 
-typedef struct
-{
   int rank;
   int nranks;
   int neighbours[4];
+  int x_off;
+  int y_off;
+
+  int local_nx;
+  int local_ny;
+  int global_nx;
+  int global_ny;
 
   double* north_buffer_out;
   double* east_buffer_out;
@@ -86,20 +91,17 @@ typedef struct
   double* south_buffer_in;
   double* west_buffer_in;
 
-} Comms;
+} Mesh;
 
 static inline void initialise_comms(
-    const int cells_x, const int cells_y, int argc, char** argv, 
-    int *nx, int *ny, Comms* comms);
+    int argc, char** argv, Mesh* mesh);
 
 // Decomposes the ranks, potentially load balancing and minimising the
 // ratio of perimeter to area
-static inline void decompose_ranks(
-    const int rank, const int nranks, const int mesh_x, const int mesh_y,
-    int* nx, int* ny, int* neighbours);
+static inline void decompose_ranks(Mesh* mesh);
 
 static inline void communicate_halos(
-    const int nx, const int ny, Comms* comms, double* rho, double* rho_u, 
+    const int nx, const int ny, Mesh* mesh, double* rho, double* rho_u, 
     double* rho_v, double* e);
 
 // Calculate the pressure from gamma law equation of state
@@ -156,11 +158,11 @@ static inline void reflective_boundary(
 
 // Initialise the state for the problem
 static inline void initialise_state(
-    const int nx, const int ny, State* state, Mesh* mesh);
+    State* state, Mesh* mesh);
 
 // Initialise the mesh describing variables
 static inline void initialise_mesh(
-    const int nx, const int ny, Mesh* mesh);
+    Mesh* mesh);
 
 // Deallocate all of the state memory
 static inline void finalise_state(
