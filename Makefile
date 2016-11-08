@@ -1,4 +1,4 @@
-CC = icc
+CC = mpiicc
 CFLAGS  = -O3 -std=gnu99 -xhost -qopenmp
 LDFLAGS = #-lrt
 OPTIONS = -g -DENABLE_PROFILING -qopt-report=5

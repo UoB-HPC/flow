@@ -63,7 +63,7 @@ typedef struct
 // ratio of perimeter to area
 static inline void decompose_ranks(
     const int rank, const int nranks, const int mesh_x, const int mesh_y,
-    int* nx, int* ny);
+    int* nx, int* ny, int* neighbours);
 
 // Calculate the pressure from gamma law equation of state
 static inline void equation_of_state(

@@ -2,9 +2,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <omp.h>
-#if 0
-#include <mpi.h>
-#endif // if 0
 #include "main.h"
 #include "profiler.h"
 
@@ -12,8 +9,13 @@
 #define ind1 (ii*(nx+1) + jj)
 #define MASTER 0
 
+enum { NORTH, EAST, SOUTH, WEST };
+#define EDGE -1
 #define LOAD_BALANCE 0
 #define MPI
+#ifdef MPI
+#include <mpi.h>
+#endif
 
 int main(int argc, char** argv)
 {
@@ -25,31 +27,26 @@ int main(int argc, char** argv)
   int rank = MASTER;
   int nranks = 1;
 
-#ifdef MPI
-#if 0
-  MPI_Init(&argc, &argv);
-  MPI_Comm_size(MPI_COMM_WORLD, &nranks);
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-#endif // if 0
-
-  nranks = 24;
-
   // Store the dimensions of the mesh
   const int mesh_x = atoi(argv[1]);
   const int mesh_y = atoi(argv[2]);
-  printf("mesh x: %d mesh y: %d\n", mesh_x, mesh_y);
+  const int niters = atoi(argv[3]);
+
+#ifdef MPI
+  // Initialise MPI
+  MPI_Init(&argc, &argv);
+  MPI_Comm_size(MPI_COMM_WORLD, &nranks);
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
   int nx = 0;
   int ny = 0;
-  decompose_ranks(rank, nranks, mesh_x, mesh_y, &nx, &ny);
+  int neighbours[4];
+  decompose_ranks(rank, nranks, mesh_x, mesh_y, &nx, &ny, neighbours);
   printf("local rank has %d x %d mesh size\n", nx, ny);
-
 #else
-  const int nx = atoi(argv[1]) + 2*PAD;
-  const int ny = atoi(argv[2]) + 2*PAD;
+  int nx = atoi(argv[1]) + 2*PAD;
+  int ny = atoi(argv[2]) + 2*PAD;
 #endif
-
-  const int niters = atoi(argv[3]);
 
   if(rank == MASTER)
     printf("Problem dimensions %dx%d for %d iterations.\n", mesh_x, mesh_y, niters);
@@ -71,13 +68,10 @@ int main(int argc, char** argv)
 
   int tt;
   for(tt = 0; tt < niters; ++tt) {
-    printf("Iteration %d\n", tt+1);
+    if(rank == MASTER) 
+      printf("Iteration %d\n", tt+1);
 
     const double s1 = omp_get_wtime();
-
-    if(tt % VISIT_STEP == 0) {
-      write_to_visit(nx, ny, state.rho, "density", tt, elapsed_sim_time);
-    }
 
     START_PROFILING(&p);
     equation_of_state(
@@ -101,6 +95,9 @@ int main(int argc, char** argv)
         nx, ny, state.Qxx, state.Qyy, state.rho, state.u, state.v, state.e, 
         &mesh, tt == 0, mesh.edgedx, mesh.edgedy, mesh.celldx, mesh.celldy);
     STOP_PROFILING(&p, "set_timestep");
+
+    if(rank == MASTER)
+      printf("dt %.12e dt_h %.12e\n", mesh.dt, mesh.dt_h);
 
     START_PROFILING(&p);
     shock_heating_and_work(
@@ -137,21 +134,26 @@ int main(int argc, char** argv)
     elapsed_sim_time += mesh.dt;
 
     if(elapsed_sim_time >= SIM_END) {
-      printf("reached end of simulation time\n");
+      if(rank == MASTER)
+        printf("reached end of simulation time\n");
       break;
     }
 
-    print_conservation(nx, ny, &state);
-    printf("simulation time: %.4lf(s)\n", elapsed_sim_time);
+    if(rank == MASTER) {
+      print_conservation(nx, ny, &state);
+      printf("simulation time: %.4lf(s)\n", elapsed_sim_time);
+    }
   }
 
-  PRINT_PROFILING_RESULTS(&p);
+  if(rank == MASTER) {
+    PRINT_PROFILING_RESULTS(&p);
 
-  printf("Wallclock %.2fs, Elapsed Simulation Time %.4fs\n", 
-      wallclock, elapsed_sim_time);
+    printf("Wallclock %.2fs, Elapsed Simulation Time %.4fs\n", 
+        wallclock, elapsed_sim_time);
 
-  write_to_visit(nx+1, ny, state.u, "u", tt, elapsed_sim_time);
-  write_to_visit(nx, ny, state.rho, "density", tt, elapsed_sim_time);
+    write_to_visit(nx+1, ny, state.u, "u", tt, elapsed_sim_time);
+    write_to_visit(nx, ny, state.rho, "density", tt, elapsed_sim_time);
+  }
 
   finalise_state(&state);
   finalise_mesh(&mesh);
@@ -163,7 +165,7 @@ int main(int argc, char** argv)
 // ratio of perimeter to area
 static inline void decompose_ranks(
     const int rank, const int nranks, const int mesh_x, const int mesh_y, 
-    int* nx, int* ny) 
+    int* nx, int* ny, int* neighbours) 
 {
   int ranks_x = 0;
   int ranks_y = 0;
@@ -197,19 +199,27 @@ static inline void decompose_ranks(
 
   // Calculate the offsets up until our rank, and then fetch rank dimensions
   int x_resolved = 0;
-  for(int xx = 0; xx <= (rank%ranks_x); ++xx) {
+  int x_rank = (rank%ranks_x);
+  for(int xx = 0; xx <= x_rank; ++xx) {
     const int x_floor = mesh_x/ranks_x;
     const int x_pad_req = (mesh_x != (x_resolved + (ranks_x-xx)*x_floor));
     *nx = x_pad_req ? x_floor+1 : x_floor;
     x_resolved += *nx;
   }
   int y_resolved = 0;
-  for(int yy = 0; yy <= (rank/ranks_x); ++yy) {
+  int y_rank = (rank/ranks_x);
+  for(int yy = 0; yy <= y_rank; ++yy) {
     const int y_floor = mesh_y/ranks_y;
     const int y_pad_req = (mesh_y != (y_resolved + (ranks_y-yy)*y_floor));
     *ny = y_pad_req ? y_floor+1 : y_floor;
     y_resolved += *ny;
   }
+
+  // Calculate the surrounding ranks
+  neighbours[NORTH] = (y_rank < ranks_y-1) ? rank+ranks_x : EDGE;
+  neighbours[EAST] = (x_rank < ranks_x-1) ? rank+1 : EDGE;
+  neighbours[SOUTH] = (y_rank > 0) ? rank-ranks_x : EDGE;
+  neighbours[WEST] = (x_rank > 0) ? rank-1 : EDGE;
 
   // Add the halo regions for the rank mesh
   *nx += 2*PAD;
@@ -258,8 +268,6 @@ static inline void set_timestep(
 
   mesh->dt = 0.5*(C_T*min_dt + mesh->dt_h);
   mesh->dt_h = (first_step) ? mesh->dt : C_T*min_dt;
-
-  printf("dt %.12e dt_h %.12e\n", mesh->dt, mesh->dt_h);
 }
 
 // Calculate change in momentum caused by pressure gradients, and then extract
