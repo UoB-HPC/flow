@@ -71,13 +71,13 @@ int main(int argc, char** argv)
     START_PROFILING(&p);
     lagrangian_step(
         mesh.local_nx, mesh.local_ny, mesh.dt, state.rho_u, state.rho_v, state.u, state.v, 
-        state.P, state.rho, mesh.edgedx, mesh.edgedy, mesh.celldx, mesh.celldy);
+        state.P, state.rho, mesh.neighbours, mesh.edgedx, mesh.edgedy, mesh.celldx, mesh.celldy);
     STOP_PROFILING(&p, "lagrangian_step");
 
     START_PROFILING(&p);
     artificial_viscosity(
         mesh.local_nx, mesh.local_ny, mesh.dt, state.Qxx, state.Qyy, state.u, 
-        state.v, state.rho_u, state.rho_v, state.rho, 
+        state.v, state.rho_u, state.rho_v, state.rho, mesh.neighbours,
         mesh.edgedx, mesh.edgedy, mesh.celldx, mesh.celldy);
     STOP_PROFILING(&p, "artificial_viscosity");
 
@@ -94,22 +94,22 @@ int main(int argc, char** argv)
     START_PROFILING(&p);
     shock_heating_and_work(
         mesh.local_nx, mesh.local_ny, mesh.dt, state.e, state.P, state.u, state.v, state.rho, 
-        state.Qxx, state.Qyy, mesh.edgedx, mesh.edgedy, mesh.celldx, mesh.celldy);
+        state.Qxx, state.Qyy, mesh.neighbours, mesh.edgedx, mesh.edgedy, mesh.celldx, mesh.celldy);
     STOP_PROFILING(&p, "shock_heating_and_work");
 
     // Perform advection
     START_PROFILING(&p);
     advect_mass(
         mesh.local_nx, mesh.local_ny, mesh.dt_h, state.rho, state.rho_old, state.slope_x0, 
-        state.slope_y0, state.F_x, state.F_y,
-        state.u, state.v, mesh.edgedx, mesh.edgedy, mesh.celldx, mesh.celldy);
+        state.slope_y0, state.F_x, state.F_y, state.u, state.v, mesh.neighbours,
+        mesh.edgedx, mesh.edgedy, mesh.celldx, mesh.celldy);
     STOP_PROFILING(&p, "advect_mass");
 
     START_PROFILING(&p);
     advect_momentum(
         mesh.local_nx, mesh.local_ny, mesh.dt_h, mesh.dt, state.u, state.v, state.slope_x1, 
         state.slope_y1, state.mF_x, state.mF_y, state.rho_u, state.rho_v, 
-        state.rho, state.F_x, state.F_y,
+        state.rho, state.F_x, state.F_y, mesh.neighbours,
         mesh.edgedx, mesh.edgedy, mesh.celldx, mesh.celldy);
     STOP_PROFILING(&p, "advect_momentum");
 
@@ -117,7 +117,7 @@ int main(int argc, char** argv)
     advect_energy(
         mesh.local_nx, mesh.local_ny, mesh.dt_h, mesh.dt, state.e, state.slope_x0, 
         state.slope_y0, state.F_x, state.F_y, state.u, state.v, state.rho_old, state.rho,
-        mesh.edgedx, mesh.edgedy, mesh.celldx, mesh.celldy);
+        mesh.neighbours, mesh.edgedx, mesh.edgedy, mesh.celldx, mesh.celldy);
     STOP_PROFILING(&p, "advect_energy");
 
     STOP_PROFILING(&w, "wallclock");
@@ -141,10 +141,11 @@ int main(int argc, char** argv)
     struct ProfileEntry pe = profiler_get_profile_entry(&w, "wallclock");
     printf("Wallclock %.2fs, Elapsed Simulation Time %.4fs\n", 
         pe.time, elapsed_sim_time);
-
-    write_to_visit(mesh.local_nx+1, mesh.local_ny, state.u, "u", tt, elapsed_sim_time);
-    write_to_visit(mesh.local_nx, mesh.local_ny, state.rho, "density", tt, elapsed_sim_time);
   }
+
+  char visit_name[256];
+  sprintf(visit_name, "density_%d", mesh.rank);
+  write_to_visit(&mesh, state.rho, visit_name, tt, elapsed_sim_time);
 
   finalise_state(&state);
   finalise_mesh(&mesh);
@@ -152,6 +153,7 @@ int main(int argc, char** argv)
   return 0;
 }
 
+#ifdef MPI
 static inline void initialise_comms(
     int argc, char** argv, Mesh* mesh)
 {
@@ -182,107 +184,125 @@ static inline void communicate_halos(
     const int nx, const int ny, Mesh* mesh, double* rho, double* rho_u, 
     double* rho_v, double* e)
 {
+  int nmessages = 0;
   MPI_Request out_req[NREQUESTS];
   MPI_Request in_req[NREQUESTS];
 
-  for(int dd = 0; dd < PAD; ++dd) {
-    for(int jj = 0; jj < nx; ++jj) {
-      mesh->south_buffer_out[RHO_OFF*nx*PAD+jj]   = rho[(PAD+dd)*nx+jj];
-      mesh->south_buffer_out[E_OFF*nx*PAD+jj]     = e[(PAD+dd)*nx+jj];
-      mesh->south_buffer_out[RHO_U_OFF*nx*PAD+jj] = rho_u[(PAD+dd)*nx+jj];
-      mesh->south_buffer_out[RHO_V_OFF*nx*PAD+jj] = rho_v[(PAD+dd)*nx+jj];
+  if(mesh->neighbours[SOUTH] != EDGE) {
+    for(int dd = 0; dd < PAD; ++dd) {
+      for(int jj = 0; jj < nx; ++jj) {
+        mesh->south_buffer_out[RHO_OFF*nx*PAD+jj]   = rho[(PAD+dd)*nx+jj];
+        mesh->south_buffer_out[E_OFF*nx*PAD+jj]     = e[(PAD+dd)*nx+jj];
+        mesh->south_buffer_out[RHO_U_OFF*nx*PAD+jj] = rho_u[(PAD+dd)*nx+jj];
+        mesh->south_buffer_out[RHO_V_OFF*nx*PAD+jj] = rho_v[(PAD+dd)*nx+jj];
+      }
     }
+
+    MPI_Isend(mesh->south_buffer_out, nx*PAD*NVARS_TO_COMM, MPI_DOUBLE, 
+        mesh->neighbours[SOUTH], 0, MPI_COMM_WORLD, &out_req[SOUTH]);
+    MPI_Irecv(mesh->north_buffer_in, nx*PAD*NVARS_TO_COMM, MPI_DOUBLE,
+        mesh->neighbours[NORTH], 0, MPI_COMM_WORLD, &in_req[nmessages++]);
   }
 
-  MPI_Isend(mesh->south_buffer_out, nx*PAD*NVARS_TO_COMM, MPI_DOUBLE, 
-      mesh->neighbours[SOUTH], 0, MPI_COMM_WORLD, &out_req[SOUTH]);
-  MPI_Irecv(mesh->north_buffer_in, nx*PAD*NVARS_TO_COMM, MPI_DOUBLE,
-      mesh->neighbours[NORTH], 0, MPI_COMM_WORLD, &in_req[NORTH]);
-
-  for(int dd = 0; dd < PAD; ++dd) {
-    for(int jj = 0; jj < nx; ++jj) {
-      mesh->north_buffer_out[RHO_OFF*nx*PAD+jj]   = rho[(ny-2*PAD+dd)*nx+jj];
-      mesh->north_buffer_out[E_OFF*nx*PAD+jj]     = e[(ny-2*PAD+dd)*nx+jj];
-      mesh->north_buffer_out[RHO_U_OFF*nx*PAD+jj] = rho_u[(ny-2*PAD+dd)*nx+jj];
-      mesh->north_buffer_out[RHO_V_OFF*nx*PAD+jj] = rho_v[(ny-2*PAD+dd)*nx+jj];
+  if(mesh->neighbours[NORTH] != EDGE) {
+    for(int dd = 0; dd < PAD; ++dd) {
+      for(int jj = 0; jj < nx; ++jj) {
+        mesh->north_buffer_out[RHO_OFF*nx*PAD+jj]   = rho[(ny-2*PAD+dd)*nx+jj];
+        mesh->north_buffer_out[E_OFF*nx*PAD+jj]     = e[(ny-2*PAD+dd)*nx+jj];
+        mesh->north_buffer_out[RHO_U_OFF*nx*PAD+jj] = rho_u[(ny-2*PAD+dd)*nx+jj];
+        mesh->north_buffer_out[RHO_V_OFF*nx*PAD+jj] = rho_v[(ny-2*PAD+dd)*nx+jj];
+      }
     }
+
+    MPI_Isend(mesh->north_buffer_out, nx*PAD*NVARS_TO_COMM, MPI_DOUBLE, 
+        mesh->neighbours[NORTH], 1, MPI_COMM_WORLD, &out_req[NORTH]);
+    MPI_Irecv(mesh->south_buffer_in, nx*PAD*NVARS_TO_COMM, MPI_DOUBLE,
+        mesh->neighbours[SOUTH], 1, MPI_COMM_WORLD, &in_req[nmessages++]);
   }
 
-  MPI_Isend(mesh->north_buffer_out, nx*PAD*NVARS_TO_COMM, MPI_DOUBLE, 
-      mesh->neighbours[NORTH], 1, MPI_COMM_WORLD, &out_req[NORTH]);
-  MPI_Irecv(mesh->south_buffer_in, nx*PAD*NVARS_TO_COMM, MPI_DOUBLE,
-      mesh->neighbours[SOUTH], 1, MPI_COMM_WORLD, &in_req[SOUTH]);
-
-  for(int dd = 0; dd < PAD; ++dd) {
-    for(int ii = 0; ii < ny; ++ii) {
-      mesh->east_buffer_out[ii + RHO_OFF*nx*PAD] = rho[(ii*nx)+(nx-2*PAD+dd)];
-      mesh->east_buffer_out[ii + E_OFF*nx*PAD] = e[(ii*nx)+(nx-2*PAD+dd)];
-      mesh->east_buffer_out[ii + RHO_U_OFF*nx*PAD] = rho_u[(ii*nx)+(nx-2*PAD+dd)];
-      mesh->east_buffer_out[ii + RHO_V_OFF*nx*PAD] = rho_v[(ii*nx)+(nx-2*PAD+dd)];
+  if(mesh->neighbours[EAST] != EDGE) {
+    for(int dd = 0; dd < PAD; ++dd) {
+      for(int ii = 0; ii < ny; ++ii) {
+        mesh->east_buffer_out[ii + RHO_OFF*nx*PAD] = rho[(ii*nx)+(nx-2*PAD+dd)];
+        mesh->east_buffer_out[ii + E_OFF*nx*PAD] = e[(ii*nx)+(nx-2*PAD+dd)];
+        mesh->east_buffer_out[ii + RHO_U_OFF*nx*PAD] = rho_u[(ii*nx)+(nx-2*PAD+dd)];
+        mesh->east_buffer_out[ii + RHO_V_OFF*nx*PAD] = rho_v[(ii*nx)+(nx-2*PAD+dd)];
+      }
     }
+
+    MPI_Isend(mesh->east_buffer_out, ny*PAD*NVARS_TO_COMM, MPI_DOUBLE, 
+        mesh->neighbours[EAST], 2, MPI_COMM_WORLD, &out_req[EAST]);
+    MPI_Irecv(mesh->west_buffer_in, ny*PAD*NVARS_TO_COMM, MPI_DOUBLE,
+        mesh->neighbours[WEST], 2, MPI_COMM_WORLD, &in_req[nmessages++]);
   }
 
-  MPI_Isend(mesh->east_buffer_out, ny*PAD*NVARS_TO_COMM, MPI_DOUBLE, 
-      mesh->neighbours[EAST], 2, MPI_COMM_WORLD, &out_req[EAST]);
-  MPI_Irecv(mesh->west_buffer_in, ny*PAD*NVARS_TO_COMM, MPI_DOUBLE,
-      mesh->neighbours[WEST], 2, MPI_COMM_WORLD, &in_req[WEST]);
-
-  for(int dd = 0; dd < PAD; ++dd) {
-    for(int ii = 0; ii < ny; ++ii) {
-      mesh->west_buffer_out[ii + RHO_OFF*ny*PAD] = rho[(ii*nx)+(PAD+dd)];
-      mesh->west_buffer_out[ii + E_OFF*ny*PAD] = e[(ii*nx)+(PAD+dd)];
-      mesh->west_buffer_out[ii + RHO_U_OFF*ny*PAD] = rho_u[(ii*nx)+(PAD+dd)];
-      mesh->west_buffer_out[ii + RHO_V_OFF*ny*PAD] = rho_v[(ii*nx)+(PAD+dd)];
+  if(mesh->neighbours[WEST] != EDGE) {
+    for(int dd = 0; dd < PAD; ++dd) {
+      for(int ii = 0; ii < ny; ++ii) {
+        mesh->west_buffer_out[ii + RHO_OFF*ny*PAD] = rho[(ii*nx)+(PAD+dd)];
+        mesh->west_buffer_out[ii + E_OFF*ny*PAD] = e[(ii*nx)+(PAD+dd)];
+        mesh->west_buffer_out[ii + RHO_U_OFF*ny*PAD] = rho_u[(ii*nx)+(PAD+dd)];
+        mesh->west_buffer_out[ii + RHO_V_OFF*ny*PAD] = rho_v[(ii*nx)+(PAD+dd)];
+      }
     }
+
+    MPI_Isend(mesh->west_buffer_in, ny*PAD*NVARS_TO_COMM, MPI_DOUBLE,
+        mesh->neighbours[WEST], 3, MPI_COMM_WORLD, &out_req[WEST]);
+    MPI_Irecv(mesh->east_buffer_out, ny*PAD*NVARS_TO_COMM, MPI_DOUBLE, 
+        mesh->neighbours[EAST], 3, MPI_COMM_WORLD, &in_req[nmessages++]);
   }
 
-  MPI_Isend(mesh->west_buffer_in, ny*PAD*NVARS_TO_COMM, MPI_DOUBLE,
-      mesh->neighbours[WEST], 3, MPI_COMM_WORLD, &out_req[WEST]);
-  MPI_Irecv(mesh->east_buffer_out, ny*PAD*NVARS_TO_COMM, MPI_DOUBLE, 
-      mesh->neighbours[EAST], 3, MPI_COMM_WORLD, &in_req[EAST]);
+  MPI_Waitall(nmessages, in_req, MPI_STATUSES_IGNORE);
 
-  MPI_Waitall(NREQUESTS, in_req, MPI_STATUSES_IGNORE);
-
+  if(mesh->neighbours[NORTH] != EDGE) {
 #pragma omp parallel for collapse(2)
-  for(int dd = 0; dd < PAD; ++dd) {
-    for(int jj = 0; jj < nx; ++jj) {
-      rho[(ny - PAD + dd)*nx + jj]   = mesh->north_buffer_in[RHO_OFF*nx*PAD + jj];
-      e[(ny - PAD + dd)*nx + jj]     = mesh->north_buffer_in[E_OFF*nx*PAD + jj];
-      rho_u[(ny - PAD + dd)*nx + jj] = mesh->north_buffer_in[RHO_U_OFF*nx*PAD + jj];
-      rho_v[(ny - PAD + dd)*nx + jj] = mesh->north_buffer_in[RHO_V_OFF*nx*PAD + jj];
+    for(int dd = 0; dd < PAD; ++dd) {
+      for(int jj = 0; jj < nx; ++jj) {
+        rho[(ny - PAD + dd)*nx + jj]   = mesh->north_buffer_in[RHO_OFF*nx*PAD + jj];
+        e[(ny - PAD + dd)*nx + jj]     = mesh->north_buffer_in[E_OFF*nx*PAD + jj];
+        rho_u[(ny - PAD + dd)*nx + jj] = mesh->north_buffer_in[RHO_U_OFF*nx*PAD + jj];
+        rho_v[(ny - PAD + dd)*nx + jj] = mesh->north_buffer_in[RHO_V_OFF*nx*PAD + jj];
+      }
     }
   }
 
+  if(mesh->neighbours[SOUTH] != EDGE) {
 #pragma omp parallel for collapse(2)
-  for(int dd = 0; dd < PAD; ++dd) {
-    for(int jj = 0; jj < nx; ++jj) {
-      rho[dd*nx + jj] = mesh->south_buffer_in[RHO_OFF*nx*PAD+jj];
-      e[dd*nx + jj] = mesh->south_buffer_in[E_OFF*nx*PAD+jj];
-      rho_u[dd*nx + jj] = mesh->south_buffer_in[RHO_U_OFF*nx*PAD+jj];
-      rho_v[dd*nx + jj] = mesh->south_buffer_in[RHO_V_OFF*nx*PAD+jj];
+    for(int dd = 0; dd < PAD; ++dd) {
+      for(int jj = 0; jj < nx; ++jj) {
+        rho[dd*nx + jj] = mesh->south_buffer_in[RHO_OFF*nx*PAD+jj];
+        e[dd*nx + jj] = mesh->south_buffer_in[E_OFF*nx*PAD+jj];
+        rho_u[dd*nx + jj] = mesh->south_buffer_in[RHO_U_OFF*nx*PAD+jj];
+        rho_v[dd*nx + jj] = mesh->south_buffer_in[RHO_V_OFF*nx*PAD+jj];
+      }
     }
   }
 
+  if(mesh->neighbours[WEST] != EDGE) {
 #pragma omp parallel for collapse(2)
-  for(int dd = 0; dd < PAD; ++dd) {
-    for(int ii = 0; ii < ny; ++ii) {
-      rho[ii*nx + dd] = mesh->west_buffer_out[ii + RHO_OFF*ny*PAD];
-      e[ii*nx + dd] = mesh->west_buffer_out[ii + E_OFF*ny*PAD];
-      rho_u[ii*nx + dd] = mesh->west_buffer_out[ii + RHO_U_OFF*ny*PAD];
-      rho_v[ii*nx + dd] = mesh->west_buffer_out[ii + RHO_V_OFF*ny*PAD];
+    for(int dd = 0; dd < PAD; ++dd) {
+      for(int ii = 0; ii < ny; ++ii) {
+        rho[ii*nx + dd] = mesh->west_buffer_out[ii + RHO_OFF*ny*PAD];
+        e[ii*nx + dd] = mesh->west_buffer_out[ii + E_OFF*ny*PAD];
+        rho_u[ii*nx + dd] = mesh->west_buffer_out[ii + RHO_U_OFF*ny*PAD];
+        rho_v[ii*nx + dd] = mesh->west_buffer_out[ii + RHO_V_OFF*ny*PAD];
+      }
     }
   }
 
+  if(mesh->neighbours[EAST] != EDGE) {
 #pragma omp parallel for collapse(2)
-  for(int dd = 0; dd < PAD; ++dd) {
-    for(int ii = 0; ii < ny; ++ii) {
-      rho[ii*nx + (nx-PAD+dd)] = mesh->east_buffer_out[ii + RHO_OFF*ny*PAD];
-      e[ii*nx + (nx-PAD+dd)] = mesh->east_buffer_out[ii + E_OFF*ny*PAD];
-      rho_u[ii*nx + (nx-PAD+dd)] = mesh->east_buffer_out[ii + RHO_U_OFF*ny*PAD];
-      rho_v[ii*nx + (nx-PAD+dd)] = mesh->east_buffer_out[ii + RHO_V_OFF*ny*PAD];
+    for(int dd = 0; dd < PAD; ++dd) {
+      for(int ii = 0; ii < ny; ++ii) {
+        rho[ii*nx + (nx-PAD+dd)] = mesh->east_buffer_out[ii + RHO_OFF*ny*PAD];
+        e[ii*nx + (nx-PAD+dd)] = mesh->east_buffer_out[ii + E_OFF*ny*PAD];
+        rho_u[ii*nx + (nx-PAD+dd)] = mesh->east_buffer_out[ii + RHO_U_OFF*ny*PAD];
+        rho_v[ii*nx + (nx-PAD+dd)] = mesh->east_buffer_out[ii + RHO_V_OFF*ny*PAD];
+      }
     }
   }
 }
+#endif
 
 // Decomposes the ranks, potentially load balancing and minimising the
 // ratio of perimeter to area
@@ -321,19 +341,23 @@ static inline void decompose_ranks(Mesh* mesh)
   }
 
   // Calculate the offsets up until our rank, and then fetch rank dimensions
+  int x_off = 0;
   const int x_rank = (mesh->rank%ranks_x);
   for(int xx = 0; xx <= x_rank; ++xx) {
+    mesh->x_off = x_off;
     const int x_floor = mesh->global_nx/ranks_x;
     const int x_pad_req = (mesh->global_nx != (mesh->x_off + (ranks_x-xx)*x_floor));
     mesh->local_nx = x_pad_req ? x_floor+1 : x_floor;
-    mesh->y_off += mesh->local_nx;
+    x_off += mesh->local_nx;
   }
+  int y_off = 0;
   const int y_rank = (mesh->rank/ranks_x);
   for(int yy = 0; yy <= y_rank; ++yy) {
+    mesh->y_off = y_off;
     const int y_floor = mesh->global_ny/ranks_y;
     const int y_pad_req = (mesh->global_ny != (mesh->y_off + (ranks_y-yy)*y_floor));
     mesh->local_ny = y_pad_req ? y_floor+1 : y_floor;
-    mesh->y_off += mesh->local_ny;
+    y_off += mesh->local_ny;
   }
 
   // Calculate the surrounding ranks
@@ -384,7 +408,10 @@ static inline void set_timestep(
   }
 
   double global_min_dt = local_min_dt;
+
+#ifdef MPI
   MPI_Allreduce(&local_min_dt, &global_min_dt, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
+#endif
 
   mesh->dt = 0.5*(C_T*global_min_dt + mesh->dt_h);
   mesh->dt_h = (first_step) ? mesh->dt : C_T*global_min_dt;
@@ -394,7 +421,7 @@ static inline void set_timestep(
 // the velocities using edge centered density approximations
 static inline void lagrangian_step(
     const int nx, const int ny, const double dt, double* rho_u, double* rho_v, 
-    double* u, double* v, const double* P, const double* rho, 
+    double* u, double* v, const double* P, const double* rho, const int* neighbours,
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
 #pragma omp parallel for
@@ -421,13 +448,13 @@ static inline void lagrangian_step(
     }
   }
 
-  reflective_boundary(nx+1, ny, 1, u, INVERT_X);
-  reflective_boundary(nx, ny+1, 1, v, INVERT_Y);
+  reflective_boundary(nx+1, ny, 1, neighbours, u, INVERT_X);
+  reflective_boundary(nx, ny+1, 1, neighbours, v, INVERT_Y);
 }
 
 static inline void artificial_viscosity(
     const int nx, const int ny, const double dt, double* Qxx, double* Qyy, double* u, double* v, 
-    double* rho_u, double* rho_v, const double* rho, 
+    double* rho_u, double* rho_v, const double* rho, const int* neighbours,
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
   // Calculate the artificial viscous stresses
@@ -442,8 +469,8 @@ static inline void artificial_viscosity(
     }
   }
 
-  reflective_boundary(nx, ny, 1, Qxx, NO_INVERT);
-  reflective_boundary(nx, ny, 1, Qyy, NO_INVERT);
+  reflective_boundary(nx, ny, 1, neighbours, Qxx, NO_INVERT);
+  reflective_boundary(nx, ny, 1, neighbours, Qyy, NO_INVERT);
 
   // Update the momenta by the artificial viscous stresses
 #pragma omp parallel for
@@ -469,14 +496,14 @@ static inline void artificial_viscosity(
     }
   }
 
-  reflective_boundary(nx+1, ny, 1, u, INVERT_X);
-  reflective_boundary(nx, ny+1, 1, v, INVERT_Y);
+  reflective_boundary(nx+1, ny, 1, neighbours, u, INVERT_X);
+  reflective_boundary(nx, ny+1, 1, neighbours, v, INVERT_Y);
 }
 
 // Calculates the work done due to forces within the element
 static inline void shock_heating_and_work(
-    const int nx, const int ny, const double dt, double* e, const double* P, 
-    const double* u, const double* v, const double* rho, const double* Qxx, const double* Qyy,
+    const int nx, const int ny, const double dt, double* e, const double* P, const double* u, 
+    const double* v, const double* rho, const double* Qxx, const double* Qyy, const int* neighbours,
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
 #pragma omp parallel for
@@ -508,14 +535,14 @@ static inline void shock_heating_and_work(
     }
   }
 
-  reflective_boundary(nx, ny, 1, e, NO_INVERT);
+  reflective_boundary(nx, ny, 1, neighbours, e, NO_INVERT);
 }
 
 // Perform advection with monotonicity improvement
 static inline void advect_mass(
     const int nx, const int ny, const double dt_h, double* rho, double* rho_old, 
     double* slope_x, double* slope_y, double* F_x, double* F_y, const double* u, 
-    const double* v, 
+    const double* v, const int* neighbours,
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
   // Store the current value of rho
@@ -572,8 +599,8 @@ static inline void advect_mass(
     }
   }
 
-  reflective_boundary(nx+1, ny, 1, F_x, INVERT_X);
-  reflective_boundary(nx, ny+1, 1, F_y, INVERT_Y);
+  reflective_boundary(nx+1, ny, 1, neighbours, F_x, INVERT_X);
+  reflective_boundary(nx, ny+1, 1, neighbours, F_y, INVERT_Y);
 
   // Calculate the new density values
 #pragma omp parallel for
@@ -587,14 +614,14 @@ static inline void advect_mass(
     }
   }
 
-  reflective_boundary(nx, ny, 2, rho, NO_INVERT);
+  reflective_boundary(nx, ny, 2, neighbours, rho, NO_INVERT);
 }
 
 // Advect momentum according to the velocity
 static inline void advect_momentum(
     const int nx, const int ny, const double dt_h, const double dt, double* u, 
-    double* v, double* slope_x, double* slope_y, double* mF_x, double* mF_y, 
-    double* rho_u, double* rho_v, const double* rho, const double* F_x, const double* F_y,
+    double* v, double* slope_x, double* slope_y, double* mF_x, double* mF_y, double* rho_u, 
+    double* rho_v, const double* rho, const double* F_x, const double* F_y, const int* neighbours,
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
   /// nx DIMENSION ADVECTION
@@ -651,8 +678,8 @@ static inline void advect_momentum(
     }
   }
 
-  reflective_boundary(nx, ny, 1, mF_x, NO_INVERT);
-  reflective_boundary(nx+1, ny+1, 1, mF_y, NO_INVERT);
+  reflective_boundary(nx, ny, 1, neighbours, mF_x, NO_INVERT);
+  reflective_boundary(nx+1, ny+1, 1, neighbours, mF_y, NO_INVERT);
 
   // Calculate the axial momentum
 #pragma omp parallel for
@@ -722,8 +749,8 @@ static inline void advect_momentum(
     }
   }
 
-  reflective_boundary(nx+1, ny+1, 1, mF_x, NO_INVERT);
-  reflective_boundary(nx, ny, 1, mF_y, NO_INVERT);
+  reflective_boundary(nx+1, ny+1, 1, neighbours, mF_x, NO_INVERT);
+  reflective_boundary(nx, ny, 1, neighbours, mF_y, NO_INVERT);
 
 #pragma omp parallel for
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
@@ -740,7 +767,7 @@ static inline void advect_momentum(
 static inline void advect_energy(
     const int nx, const int ny, const double dt_h, const double dt, double* e, 
     double* slope_x, double* slope_y, double* F_x, double* F_y, const double* u, 
-    const double* v, const double* rho_old, const double* rho, 
+    const double* v, const double* rho_old, const double* rho, const int* neighbours,
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
   /// TODO: What happens about the slopes defined on the halo regions, 
@@ -809,46 +836,54 @@ static inline void advect_energy(
     }
   }
 
-  reflective_boundary(nx, ny, 1, e, NO_INVERT);
+  reflective_boundary(nx, ny, 1, neighbours, e, NO_INVERT);
 }
 
 // Enforce reflective boundary conditions on the problem state
 static inline void reflective_boundary(
-    const int nx, const int ny, const int depth, double* arr, int invert)
+    const int nx, const int ny, const int depth, const int* neighbours, double* arr, int invert)
 {
   double x_inversion_coeff = (invert == INVERT_X) ? -1.0 : 1.0;
 
-  // reflect at the left
-  //#pragma omp parallel for collapse(2)
-  for(int ii = 0; ii < ny; ++ii) {
-    for(int dd = 0; dd < depth; ++dd) {
-      arr[ii*nx + (PAD - 1 - dd)] = x_inversion_coeff*arr[ii*nx + (PAD + dd)];
+  // reflect at the west
+  if(neighbours[WEST] == EDGE) {
+#pragma omp parallel for collapse(2)
+    for(int ii = 0; ii < ny; ++ii) {
+      for(int dd = 0; dd < depth; ++dd) {
+        arr[ii*nx + (PAD - 1 - dd)] = x_inversion_coeff*arr[ii*nx + (PAD + dd)];
+      }
     }
   }
 
-  // Reflect at the right
-  //#pragma omp parallel for collapse(2)
-  for(int ii = 0; ii < ny; ++ii) {
-    for(int dd = 0; dd < depth; ++dd) {
-      arr[ii*nx + (nx - PAD + dd)] = x_inversion_coeff*arr[ii*nx + (nx - 1 - PAD - dd)];
+  // Reflect at the east
+  if(neighbours[EAST] == EDGE) {
+#pragma omp parallel for collapse(2)
+    for(int ii = 0; ii < ny; ++ii) {
+      for(int dd = 0; dd < depth; ++dd) {
+        arr[ii*nx + (nx - PAD + dd)] = x_inversion_coeff*arr[ii*nx + (nx - 1 - PAD - dd)];
+      }
     }
   }
 
   double y_inversion_coeff = (invert == INVERT_Y) ? -1.0 : 1.0;
 
-  // Reflect at the top
-  //#pragma omp parallel for collapse(2)
-  for(int dd = 0; dd < depth; ++dd) {
-    for(int jj = 0; jj < nx; ++jj) {
-      arr[(ny - PAD + dd)*nx + jj] = y_inversion_coeff*arr[(ny - 1 - PAD - dd)*nx + jj];
+  // Reflect at the north
+  if(neighbours[NORTH] == EDGE) {
+#pragma omp parallel for collapse(2)
+    for(int dd = 0; dd < depth; ++dd) {
+      for(int jj = 0; jj < nx; ++jj) {
+        arr[(ny - PAD + dd)*nx + jj] = y_inversion_coeff*arr[(ny - 1 - PAD - dd)*nx + jj];
+      }
     }
   }
 
-  // reflect at the bottom
-  //#pragma omp parallel for collapse(2)
-  for(int dd = 0; dd < depth; ++dd) {
-    for(int jj = 0; jj < nx; ++jj) {
-      arr[(PAD - 1 - dd)*nx + jj] = y_inversion_coeff*arr[(PAD + dd)*nx + jj];
+  // reflect at the south
+  if(neighbours[SOUTH] == EDGE) {
+#pragma omp parallel for collapse(2)
+    for(int dd = 0; dd < depth; ++dd) {
+      for(int jj = 0; jj < nx; ++jj) {
+        arr[(PAD - 1 - dd)*nx + jj] = y_inversion_coeff*arr[(PAD + dd)*nx + jj];
+      }
     }
   }
 }
@@ -904,20 +939,25 @@ static inline void initialise_state(
     state->rho_v[ii] = 0.0;
   }
 
-  // TODO: Check that the padding here is correct
+  // Initialise the entire local mesh
+  for(int ii = 0; ii < mesh->local_ny; ++ii) {
+    for(int jj = 0; jj < mesh->local_nx; ++jj) {
+      state->rho[ii*mesh->local_nx+jj] = 0.125;
+      state->e[ii*mesh->local_nx+jj] = 2.0;
+    }
+  }
+
+  printf("%d %d %d %d %d %d\n", mesh->global_nx, mesh->global_ny, mesh->local_nx, mesh->local_ny, mesh->x_off, mesh->y_off);
+  // Introduce a problem
   for(int ii = PAD; ii < mesh->local_ny-PAD; ++ii) {
     for(int jj = PAD; jj < mesh->local_nx-PAD; ++jj) {
-      const int dist = 40;
+      const int dist = 20;
       if(jj+mesh->x_off-PAD >= mesh->global_nx/2-dist && 
           jj+mesh->x_off-PAD < mesh->global_nx/2+dist && 
           ii+mesh->y_off-PAD >= mesh->global_ny/2-dist && 
           ii+mesh->y_off-PAD < mesh->global_ny/2+dist) {
         state->rho[ii*mesh->local_nx+jj] = 1.0;
         state->e[ii*mesh->local_nx+jj] = 2.5;
-      }
-      else {
-        state->rho[ii*mesh->local_nx+jj] = 0.125;
-        state->e[ii*mesh->local_nx+jj] = 2.0;
       }
     }
   }
@@ -967,6 +1007,68 @@ static inline void initialise_mesh(
   }
 }
 
+// Write out data for visualisation in visit
+static inline void write_to_visit(
+    Mesh* mesh, const double* data, const char* name, const int step, const double time)
+{
+  char bovname[256];
+  char datname[256];
+  sprintf(bovname, "%s%d.bov", name, step);
+  sprintf(datname, "%s%d.dat", name, step);
+
+  FILE* bovfp = fopen(bovname, "w");
+
+  if(!bovfp) {
+    printf("Could not open file %s\n", bovname);
+    exit(1);
+  }
+
+  fprintf(bovfp, "TIME: %.4f\n", time);
+  fprintf(bovfp, "DATA_FILE: %s\n", datname);
+  fprintf(bovfp, "DATA_SIZE: %d %d 1\n", mesh->global_nx, mesh->global_ny);
+  fprintf(bovfp, "DATA_FORMAT: DOUBLE\n");
+  fprintf(bovfp, "VARIABLE: %s\n", name);
+  fprintf(bovfp, "DATA_ENDIAN: LITTLE\n");
+  fprintf(bovfp, "CENTERING: zone\n");
+
+#ifdef MPI
+  fprintf(bovfp, "BRICK_ORIGIN: %f %f 0.\n", (float)mesh->x_off, (float)mesh->y_off);
+#else
+  fprintf(bovfp, "BRICK_ORIGIN: 0. 0. 0.\n");
+#endif
+
+  fprintf(bovfp, "BRICK_SIZE: %d %d 1\n", mesh->local_nx, mesh->local_nx);
+
+  fclose(bovfp);
+
+  FILE* datfp = fopen(datname, "wb");
+  if(!datfp) {
+    printf("Could not open file %s\n", datname);
+    exit(1);
+  }
+
+  fwrite(data, mesh->local_nx*mesh->local_nx, sizeof(data), datfp);
+  fclose(datfp);
+}
+
+static inline void print_conservation(
+    const int nx, const int ny, State* state) {
+  double mass_tot = 0.0;
+  double energy_tot = 0.0;
+  double S_tot = 0.0;
+  double T_tot = 0.0;
+  for(int ii = PAD; ii < ny-PAD; ++ii) {
+    for(int jj = PAD; jj < nx-PAD; ++jj) {
+      mass_tot += state->rho[ind0];
+      energy_tot += state->rho[ind0]*state->e[ind0];
+      S_tot += state->rho_u[ind1];
+      T_tot += state->rho_v[ind0];
+    }
+  }
+  printf("total mass: %.12e\n", mass_tot);
+  printf("total energy: %.12e\n", energy_tot);
+}
+
 // Deallocate all of the state memory
 static inline void finalise_state(State* state)
 {
@@ -991,62 +1093,6 @@ static inline void finalise_mesh(Mesh* mesh)
   free(mesh->celldy);
   free(mesh->edgedx);
   free(mesh->celldx);
-}
-
-// Write out data for visualisation in visit
-static inline void write_to_visit(
-    const int nx, const int ny, const double* data, 
-    const char* name, const int step, const double time)
-{
-  char bovname[256];
-  char datname[256];
-  sprintf(bovname, "%s%d.bov", name, step);
-  sprintf(datname, "%s%d.dat", name, step);
-
-  FILE* bovfp = fopen(bovname, "w");
-
-  if(!bovfp) {
-    printf("Could not open file %s\n", bovname);
-    exit(1);
-  }
-
-  fprintf(bovfp, "TIME: %.4f\n", time);
-  fprintf(bovfp, "DATA_FILE: %s\n", datname);
-  fprintf(bovfp, "DATA_SIZE: %d %d 1\n", nx, ny);
-  fprintf(bovfp, "DATA_FORMAT: DOUBLE\n");
-  fprintf(bovfp, "VARIABLE: %s\n", name);
-  fprintf(bovfp, "DATA_ENDIAN: LITTLE\n");
-  fprintf(bovfp, "CENTERING: zone\n");
-  fprintf(bovfp, "BRICK_ORIGIN: 0. 0. 0.\n");
-  fprintf(bovfp, "BRICK_SIZE: %d %d 1\n", nx, ny);
-  fclose(bovfp);
-
-  FILE* datfp = fopen(datname, "wb");
-  if(!datfp) {
-    printf("Could not open file %s\n", datname);
-    exit(1);
-  }
-
-  fwrite(data, nx*ny, sizeof(data), datfp);
-  fclose(datfp);
-}
-
-static inline void print_conservation(
-    const int nx, const int ny, State* state) {
-  double mass_tot = 0.0;
-  double energy_tot = 0.0;
-  double S_tot = 0.0;
-  double T_tot = 0.0;
-  for(int ii = PAD; ii < ny-PAD; ++ii) {
-    for(int jj = PAD; jj < nx-PAD; ++jj) {
-      mass_tot += state->rho[ind0];
-      energy_tot += state->rho[ind0]*state->e[ind0];
-      S_tot += state->rho_u[ind1];
-      T_tot += state->rho_v[ind0];
-    }
-  }
-  printf("total mass: %.12e\n", mass_tot);
-  printf("total energy: %.12e\n", energy_tot);
 }
 
 #if 0
@@ -1206,7 +1252,7 @@ for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
   }
 }
 
-reflective_boundary(nx+1, ny, 1, u, INVERT_X);
-reflective_boundary(nx, ny+1, 1, v, INVERT_Y);
+reflective_boundary(nx+1, ny, 1, neighbours, u, INVERT_X);
+reflective_boundary(nx, ny+1, 1, neighbours, v, INVERT_Y);
 #endif // if 0
 
