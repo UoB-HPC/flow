@@ -947,10 +947,48 @@ static inline void initialise_state(
     }
   }
 
-  printf("%d %d %d %d %d %d\n", mesh->global_nx, mesh->global_ny, mesh->local_nx, mesh->local_ny, mesh->x_off, mesh->y_off);
   // Introduce a problem
   for(int ii = PAD; ii < mesh->local_ny-PAD; ++ii) {
     for(int jj = PAD; jj < mesh->local_nx-PAD; ++jj) {
+
+      if(jj < mesh->local_nx/2) { //LEFT SOD
+        state->rho[ind0] = 1.0;
+        state->e[ind0] = 2.5;
+      }
+
+#if 0
+      if(jj >= nx/2) { //RIGHT SOD
+        state->rho[ind0] = 1.0;
+        state->e[ind0] = 2.5;
+      }
+#endif // if 0
+
+#if 0
+      if(ii < ny/2) { //UP SOD
+        state->rho[ind0] = 1.0;
+        state->e[ind0] = 2.5;
+      }
+#endif // if 0
+
+#if 0
+      if(ii >= ny/2) { //DOWN SOD
+        state->rho[ind0] = 1.0;
+        state->e[ind0] = 2.5;
+      }
+#endif // if 0
+
+#if 0
+      // BLUE HOLE TEST 
+      const int m = 258;
+      const int o = 10400;
+      if((ii - m)*(ii - m) + (jj - m)*(jj - m) > o) {
+        state->rho[ind0] = 1.0;
+        state->e[ind0] = 2.5;
+      }
+#endif // if 0
+
+#if 0
+      // CENTER SQUARE TEST
       const int dist = 20;
       if(jj+mesh->x_off-PAD >= mesh->global_nx/2-dist && 
           jj+mesh->x_off-PAD < mesh->global_nx/2+dist && 
@@ -959,6 +997,7 @@ static inline void initialise_state(
         state->rho[ii*mesh->local_nx+jj] = 1.0;
         state->e[ii*mesh->local_nx+jj] = 2.5;
       }
+#endif // if 0
     }
   }
 
@@ -1094,44 +1133,6 @@ static inline void finalise_mesh(Mesh* mesh)
   free(mesh->edgedx);
   free(mesh->celldx);
 }
-
-#if 0
-if(jj < nx/2) { //LEFT SOD
-  state->rho[ind0] = 1.0;
-  state->e[ind0] = 2.5;
-}
-#endif // if 0
-
-#if 0
-if(jj >= nx/2) { //RIGHT SOD
-  state->rho[ind0] = 1.0;
-  state->e[ind0] = 2.5;
-}
-#endif // if 0
-
-#if 0
-if(ii < ny/2) { //UP SOD
-  state->rho[ind0] = 1.0;
-  state->e[ind0] = 2.5;
-}
-#endif // if 0
-
-#if 0
-if(ii >= ny/2) { //DOWN SOD
-  state->rho[ind0] = 1.0;
-  state->e[ind0] = 2.5;
-}
-#endif // if 0
-
-#if 0
-// BLUE HOLE TEST 
-const int m = 258;
-const int o = 10400;
-if((ii - m)*(ii - m) + (jj - m)*(jj - m) > o) {
-  state->rho[ind0] = 1.0;
-  state->e[ind0] = 2.5;
-}
-#endif // if 0
 
 
 #if 0
