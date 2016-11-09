@@ -5,10 +5,10 @@ CFLAGS  = -O3 -std=gnu99 -xhost -qopenmp
 LDFLAGS = #-lrt
 
 ifeq ($(MPI), yes)
-	CC = icc#mpiicc
+	CC = mpiicc
 	OPTIONS += -DMPI
 else
-	CC = mpiicc
+	CC = icc#mpiicc
 endif
 
 all:

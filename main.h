@@ -18,10 +18,10 @@
 
 #define MASTER 0 // Master MPI rank
 #define NVARS_TO_COMM 4 // rho, e, rho_u, rho_v
-#define NREQUESTS 4
+#define NNEIGHBOURS 4
 
 enum { NO_INVERT, INVERT_X, INVERT_Y };
-enum { EDGE=0, NORTH=1, EAST=2, SOUTH=3, WEST=4 };
+enum { EDGE=-1, NORTH=0, EAST=1, SOUTH=2, WEST=3 };
 enum { RHO_OFF, E_OFF, RHO_U_OFF, RHO_V_OFF };
 
 /// Problem state
@@ -68,6 +68,7 @@ typedef struct
   double* celldx;
   double* celldy;
 
+  int niters;
   double dt_h;
   double dt;
 
@@ -171,7 +172,8 @@ static inline void initialise_mesh(
 
 // Write out data for visualisation in visit
 static inline void write_to_visit(
-    const int nx, const int ny, const double* data, const char* name, const int step, const double time);;
+    const int nx, const int ny, const int x_off, const int y_off, 
+    const double* data, const char* name, const int step, const double time);
 
 static inline void print_conservation(
     const int nx, const int ny, State* state) ;
