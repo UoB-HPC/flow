@@ -21,7 +21,7 @@
 #define NREQUESTS 4
 
 enum { NO_INVERT, INVERT_X, INVERT_Y };
-enum { EDGE=-1, NORTH=0, EAST=1, SOUTH=2, WEST=3 };
+enum { EDGE=0, NORTH=1, EAST=2, SOUTH=3, WEST=4 };
 enum { RHO_OFF, E_OFF, RHO_U_OFF, RHO_V_OFF };
 
 /// Problem state
@@ -101,11 +101,12 @@ static inline void initialise_comms(
 static inline void communicate_halos(
     const int nx, const int ny, Mesh* mesh, double* rho, double* rho_u, 
     double* rho_v, double* e);
-#endif
 
 // Decomposes the ranks, potentially load balancing and minimising the
 // ratio of perimeter to area
 static inline void decompose_ranks(Mesh* mesh);
+
+#endif
 
 // Calculate the pressure from GAMma law equation of state
 static inline void equation_of_state(
@@ -170,7 +171,7 @@ static inline void initialise_mesh(
 
 // Write out data for visualisation in visit
 static inline void write_to_visit(
-    Mesh* mesh, const double* data, const char* name, const int step, const double time);;
+    const int nx, const int ny, const double* data, const char* name, const int step, const double time);;
 
 static inline void print_conservation(
     const int nx, const int ny, State* state) ;

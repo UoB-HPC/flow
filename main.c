@@ -133,6 +133,9 @@ int main(int argc, char** argv)
       print_conservation(mesh.local_nx, mesh.local_ny, &state);
       printf("simulation time: %.4lf(s)\n", elapsed_sim_time);
     }
+
+    if(tt%VISIT_STEP == 0) 
+      write_to_visit(mesh.local_nx, mesh.local_ny, state.rho, "wet_density", tt, elapsed_sim_time);
   }
 
   if(mesh.rank == MASTER) {
@@ -143,9 +146,15 @@ int main(int argc, char** argv)
         pe.time, elapsed_sim_time);
   }
 
+#if 0
   char visit_name[256];
   sprintf(visit_name, "density_%d", mesh.rank);
-  write_to_visit(&mesh, state.rho, visit_name, tt, elapsed_sim_time);
+  write_to_visit(mesh.local_nx, mesh.local_ny, state.rho, "wet_density", tt, elapsed_sim_time);
+  write_to_visit(mesh.local_nx, mesh.local_ny, state.e, "wet_energy", tt, elapsed_sim_time);
+  write_to_visit(mesh.local_nx, mesh.local_ny, state.P, "wet_pressure", tt, elapsed_sim_time);
+  write_to_visit(mesh.local_nx+1, mesh.local_ny, state.u, "wet_u", tt, elapsed_sim_time);
+  write_to_visit(mesh.local_nx, mesh.local_ny+1, state.v, "wet_v", tt, elapsed_sim_time);
+#endif // if 0
 
   finalise_state(&state);
   finalise_mesh(&mesh);
@@ -302,7 +311,6 @@ static inline void communicate_halos(
     }
   }
 }
-#endif
 
 // Decomposes the ranks, potentially load balancing and minimising the
 // ratio of perimeter to area
@@ -366,6 +374,7 @@ static inline void decompose_ranks(Mesh* mesh)
   mesh->neighbours[SOUTH] = (y_rank > 0) ? mesh->rank-ranks_x : EDGE;
   mesh->neighbours[WEST] = (x_rank > 0) ? mesh->rank-1 : EDGE;
 }
+#endif
 
 // Calculate the pressure from GAMma law equation of state
 static inline void equation_of_state(
@@ -847,7 +856,7 @@ static inline void reflective_boundary(
 
   // reflect at the west
   if(neighbours[WEST] == EDGE) {
-#pragma omp parallel for collapse(2)
+//#pragma omp parallel for collapse(2)
     for(int ii = 0; ii < ny; ++ii) {
       for(int dd = 0; dd < depth; ++dd) {
         arr[ii*nx + (PAD - 1 - dd)] = x_inversion_coeff*arr[ii*nx + (PAD + dd)];
@@ -857,7 +866,7 @@ static inline void reflective_boundary(
 
   // Reflect at the east
   if(neighbours[EAST] == EDGE) {
-#pragma omp parallel for collapse(2)
+//#pragma omp parallel for collapse(2)
     for(int ii = 0; ii < ny; ++ii) {
       for(int dd = 0; dd < depth; ++dd) {
         arr[ii*nx + (nx - PAD + dd)] = x_inversion_coeff*arr[ii*nx + (nx - 1 - PAD - dd)];
@@ -869,7 +878,7 @@ static inline void reflective_boundary(
 
   // Reflect at the north
   if(neighbours[NORTH] == EDGE) {
-#pragma omp parallel for collapse(2)
+//#pragma omp parallel for collapse(2)
     for(int dd = 0; dd < depth; ++dd) {
       for(int jj = 0; jj < nx; ++jj) {
         arr[(ny - PAD + dd)*nx + jj] = y_inversion_coeff*arr[(ny - 1 - PAD - dd)*nx + jj];
@@ -879,7 +888,7 @@ static inline void reflective_boundary(
 
   // reflect at the south
   if(neighbours[SOUTH] == EDGE) {
-#pragma omp parallel for collapse(2)
+//#pragma omp parallel for collapse(2)
     for(int dd = 0; dd < depth; ++dd) {
       for(int jj = 0; jj < nx; ++jj) {
         arr[(PAD - 1 - dd)*nx + jj] = y_inversion_coeff*arr[(PAD + dd)*nx + jj];
@@ -948,13 +957,15 @@ static inline void initialise_state(
   }
 
   // Introduce a problem
-  for(int ii = PAD; ii < mesh->local_ny-PAD; ++ii) {
-    for(int jj = PAD; jj < mesh->local_nx-PAD; ++jj) {
+  for(int ii = 0; ii < mesh->local_ny; ++ii) {
+    for(int jj = 0; jj < mesh->local_nx; ++jj) {
 
+#if 0
       if(jj < mesh->local_nx/2) { //LEFT SOD
-        state->rho[ind0] = 1.0;
-        state->e[ind0] = 2.5;
+        state->rho[ii*mesh->local_nx+jj] = 1.0;
+        state->e[ii*mesh->local_nx+jj] = 2.5;
       }
+#endif // if 0
 
 #if 0
       if(jj >= nx/2) { //RIGHT SOD
@@ -977,15 +988,13 @@ static inline void initialise_state(
       }
 #endif // if 0
 
-#if 0
       // BLUE HOLE TEST 
       const int m = 258;
       const int o = 10400;
       if((ii - m)*(ii - m) + (jj - m)*(jj - m) > o) {
-        state->rho[ind0] = 1.0;
-        state->e[ind0] = 2.5;
+        state->rho[ii*mesh->local_nx+jj] = 1.0;
+        state->e[ii*mesh->local_nx+jj] = 2.5;
       }
-#endif // if 0
 
 #if 0
       // CENTER SQUARE TEST
@@ -1048,7 +1057,7 @@ static inline void initialise_mesh(
 
 // Write out data for visualisation in visit
 static inline void write_to_visit(
-    Mesh* mesh, const double* data, const char* name, const int step, const double time)
+    const int nx, const int ny, const double* data, const char* name, const int step, const double time)
 {
   char bovname[256];
   char datname[256];
@@ -1064,7 +1073,7 @@ static inline void write_to_visit(
 
   fprintf(bovfp, "TIME: %.4f\n", time);
   fprintf(bovfp, "DATA_FILE: %s\n", datname);
-  fprintf(bovfp, "DATA_SIZE: %d %d 1\n", mesh->local_nx, mesh->local_ny);
+  fprintf(bovfp, "DATA_SIZE: %d %d 1\n", nx, ny);
   fprintf(bovfp, "DATA_FORMAT: DOUBLE\n");
   fprintf(bovfp, "VARIABLE: %s\n", name);
   fprintf(bovfp, "DATA_ENDIAN: LITTLE\n");
@@ -1076,7 +1085,7 @@ static inline void write_to_visit(
   fprintf(bovfp, "BRICK_ORIGIN: 0. 0. 0.\n");
 #endif
 
-  fprintf(bovfp, "BRICK_SIZE: %d %d 1\n", mesh->local_nx, mesh->local_nx);
+  fprintf(bovfp, "BRICK_SIZE: %d %d 1\n", nx, nx);
 
   fclose(bovfp);
 
@@ -1086,7 +1095,7 @@ static inline void write_to_visit(
     exit(1);
   }
 
-  fwrite(data, mesh->local_nx*mesh->local_nx, sizeof(data), datfp);
+  fwrite(data, nx*nx, sizeof(data), datfp);
   fclose(datfp);
 }
 
