@@ -947,7 +947,6 @@ static inline void initialise_state(
     }
   }
 
-  printf("%d %d %d %d %d %d\n", mesh->global_nx, mesh->global_ny, mesh->local_nx, mesh->local_ny, mesh->x_off, mesh->y_off);
   // Introduce a problem
   for(int ii = PAD; ii < mesh->local_ny-PAD; ++ii) {
     for(int jj = PAD; jj < mesh->local_nx-PAD; ++jj) {
@@ -1025,7 +1024,7 @@ static inline void write_to_visit(
 
   fprintf(bovfp, "TIME: %.4f\n", time);
   fprintf(bovfp, "DATA_FILE: %s\n", datname);
-  fprintf(bovfp, "DATA_SIZE: %d %d 1\n", mesh->global_nx, mesh->global_ny);
+  fprintf(bovfp, "DATA_SIZE: %d %d 1\n", mesh->local_nx, mesh->local_ny);
   fprintf(bovfp, "DATA_FORMAT: DOUBLE\n");
   fprintf(bovfp, "VARIABLE: %s\n", name);
   fprintf(bovfp, "DATA_ENDIAN: LITTLE\n");
