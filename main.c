@@ -100,7 +100,7 @@ int main(int argc, char** argv)
     // Perform advection
     START_PROFILING(&p);
     advect_mass(
-        mesh.local_nx, mesh.local_ny, mesh.dt_h, state.rho, state.rho_old, state.slope_x0, 
+        mesh.local_nx, mesh.local_ny, tt, mesh.dt_h, state.rho, state.rho_old, state.slope_x0, 
         state.slope_y0, state.F_x, state.F_y, state.u, state.v, mesh.neighbours,
         mesh.edgedx, mesh.edgedy, mesh.celldx, mesh.celldy);
     STOP_PROFILING(&p, "advect_mass");
@@ -543,9 +543,9 @@ static inline void shock_heating_and_work(
 
 // Perform advection with monotonicity improvement
 static inline void advect_mass(
-    const int nx, const int ny, const double dt_h, double* rho, double* rho_old, 
-    double* slope_x, double* slope_y, double* F_x, double* F_y, const double* u, 
-    const double* v, const int* neighbours,
+    const int nx, const int ny, const int tt, const double dt_h, double* rho, 
+    double* rho_old, double* slope_x, double* slope_y, double* F_x, double* F_y, 
+    const double* u, const double* v, const int* neighbours,
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
   // Store the current value of rho
@@ -554,6 +554,26 @@ static inline void advect_mass(
     rho_old[ii] = rho[ii];
   }
 
+  // Perform the dimensional splitting on the mass flux, with a the alternating
+  // fix for asymmetries
+  if(tt % 2 == 0) {
+    x_mass_flux(nx, ny, dt_h, rho, u, F_x, celldx, edgedx, celldy, edgedy, neighbours);
+    y_mass_flux(nx, ny, dt_h, rho, v, F_y, celldx, edgedx, celldy, edgedy, neighbours);
+  }
+  else {
+    y_mass_flux(nx, ny, dt_h, rho, v, F_y, celldx, edgedx, celldy, edgedy, neighbours);
+    x_mass_flux(nx, ny, dt_h, rho, u, F_x, celldx, edgedx, celldy, edgedy, neighbours);
+  }
+
+  reflective_boundary(nx, ny, 2, neighbours, rho, NO_INVERT);
+}
+
+// Calculate the flux in the x direction
+static inline void x_mass_flux(
+    const int nx, const int ny, const double dt_h, double* rho, 
+    const double* u, double* F_x, const double* celldx, const double* edgedx, 
+    const double* celldy, const double* edgedy, const int* neighbours)
+{
   // Compute the mass fluxes along the x edges
   // In the ghost cells flux is left as 0.0
 #pragma omp parallel for
@@ -578,6 +598,26 @@ static inline void advect_mass(
     }
   }
 
+  reflective_boundary(nx+1, ny, 1, neighbours, F_x, INVERT_X);
+
+  // Calculate the new density values
+#pragma omp parallel for
+  for(int ii = PAD; ii < ny-PAD; ++ii) {
+#pragma omp simd
+    for(int jj = PAD; jj < nx-PAD; ++jj) {
+      rho[ind0] -= dt_h*
+        (edgedx[jj+1]*F_x[ind1+1] - edgedx[jj]*F_x[ind1])/ 
+        (celldx[jj]*celldy[ii]);
+    }
+  }
+}
+
+// Calculate the flux in the y direction
+static inline void y_mass_flux(
+    const int nx, const int ny, const double dt_h, double* rho, 
+    const double* v, double* F_y, const double* celldx, const double* edgedx, 
+    const double* celldy, const double* edgedy, const int* neighbours)
+{
   // Compute the mass flux along the y edges
   // In the ghost cells flux is left as 0.0
 #pragma omp parallel for
@@ -602,7 +642,6 @@ static inline void advect_mass(
     }
   }
 
-  reflective_boundary(nx+1, ny, 1, neighbours, F_x, INVERT_X);
   reflective_boundary(nx, ny+1, 1, neighbours, F_y, INVERT_Y);
 
   // Calculate the new density values
@@ -611,13 +650,10 @@ static inline void advect_mass(
 #pragma omp simd
     for(int jj = PAD; jj < nx-PAD; ++jj) {
       rho[ind0] -= dt_h*
-        (edgedx[jj+1]*F_x[ind1+1] - edgedx[jj]*F_x[ind1] +
-         edgedy[ii+1]*F_y[ind0+nx] - edgedy[ii]*F_y[ind0])/
+         (edgedy[ii+1]*F_y[ind0+nx] - edgedy[ii]*F_y[ind0])/
         (celldx[jj]*celldy[ii]);
     }
   }
-
-  reflective_boundary(nx, ny, 2, neighbours, rho, NO_INVERT);
 }
 
 // Advect momentum according to the velocity
@@ -953,6 +989,23 @@ static inline void initialise_state(
   // Introduce a problem
   for(int ii = 0; ii < mesh->local_ny; ++ii) {
     for(int jj = 0; jj < mesh->local_nx; ++jj) {
+
+      if(jj < mesh->local_nx/2) { //LEFT SOD
+        state->rho[ii*mesh->local_nx+jj] = 1.0;
+        state->e[ii*mesh->local_nx+jj] = 2.5;
+      }
+
+#if 0
+      // BLUE HOLE TEST 
+      const int m = 258;
+      const int o = 10400;
+      if((ii - m)*(ii - m) + (jj - m)*(jj - m) > o) {
+        state->rho[ii*mesh->local_nx+jj] = 1.0;
+        state->e[ii*mesh->local_nx+jj] = 2.5;
+      }
+#endif // if 0
+
+#if 0
       // CENTER SQUARE TEST
       const int dist = 20;
       if(jj+mesh->x_off-PAD >= mesh->global_nx/2-dist && 
@@ -962,6 +1015,7 @@ static inline void initialise_state(
         state->rho[ii*mesh->local_nx+jj] = 1.0;
         state->e[ii*mesh->local_nx+jj] = 2.5;
       }
+#endif // if 0
     }
   }
 
@@ -1222,12 +1276,6 @@ reflective_boundary(nx, ny+1, 1, neighbours, v, INVERT_Y);
 #endif // if 0
 
 
-#if 0
-      if(jj < mesh->local_nx/2) { //LEFT SOD
-        state->rho[ii*mesh->local_nx+jj] = 1.0;
-        state->e[ii*mesh->local_nx+jj] = 2.5;
-      }
-#endif // if 0
 
 #if 0
       if(jj >= nx/2) { //RIGHT SOD
@@ -1247,16 +1295,6 @@ reflective_boundary(nx, ny+1, 1, neighbours, v, INVERT_Y);
       if(ii >= ny/2) { //DOWN SOD
         state->rho[ind0] = 1.0;
         state->e[ind0] = 2.5;
-      }
-#endif // if 0
-
-#if 0
-      // BLUE HOLE TEST 
-      const int m = 258;
-      const int o = 10400;
-      if((ii - m)*(ii - m) + (jj - m)*(jj - m) > o) {
-        state->rho[ii*mesh->local_nx+jj] = 1.0;
-        state->e[ii*mesh->local_nx+jj] = 2.5;
       }
 #endif // if 0
 

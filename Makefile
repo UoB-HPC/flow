@@ -1,14 +1,14 @@
 
-MPI     = yes
+MPI     = no
 OPTIONS = -g -DENABLE_PROFILING -qopt-report=5
 CFLAGS  = -O3 -std=gnu99 -xhost -qopenmp
 LDFLAGS = #-lrt
 
 ifeq ($(MPI), yes)
-	CC = icc#mpiicc
+	CC = mpiicc
 	OPTIONS += -DMPI
 else
-	CC = mpiicc
+	CC = icc
 endif
 
 all:

@@ -138,10 +138,22 @@ static inline void shock_heating_and_work(
 
 // Perform advection with monotonicity improvement
 static inline void advect_mass(
-    const int nx, const int ny, const double dt_h, double* rho, double* rho_old, 
-    double* slope_x, double* slope_y, double* F_x, double* F_y, const double* u, 
-    const double* v, const int* neighbours,
+    const int nx, const int ny, const int tt, const double dt_h, double* rho, 
+    double* rho_old, double* slope_x, double* slope_y, double* F_x, double* F_y, 
+    const double* u, const double* v, const int* neighbours,
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy);
+
+// Calculate the flux in the x direction
+static inline void x_mass_flux(
+    const int nx, const int ny, const double dt_h, double* rho, 
+    const double* u, double* F_x, const double* celldx, const double* edgedx, 
+    const double* celldy, const double* edgedy, const int* neighbours);
+
+// Calculate the flux in the y direction
+static inline void y_mass_flux(
+    const int nx, const int ny, const double dt_h, double* rho, 
+    const double* v, double* F_y, const double* celldx, const double* edgedx, 
+    const double* celldy, const double* edgedy, const int* neighbours);
 
 // Advect momentum according to the velocity
 static inline void advect_momentum(
