@@ -16,27 +16,17 @@ int main(int argc, char** argv)
 
   // Store the dimensions of the mesh
   Mesh mesh = {0};
+  State state = {0};
   mesh.global_nx = atoi(argv[1]);
   mesh.global_ny = atoi(argv[2]);
   mesh.local_nx = atoi(argv[1]) + 2*PAD;
   mesh.local_ny = atoi(argv[2]) + 2*PAD;
   mesh.rank = MASTER;
   mesh.nranks = 1;
+  mesh.niters = atoi(argv[3]);
 
-#ifdef MPI
-  // Initialise MPI
   initialise_comms(argc, argv, &mesh);
-#endif
-
   initialise_mesh(&mesh);
-
-  const int niters = atoi(argv[3]);
-
-  if(mesh.rank == MASTER)
-    printf("Problem dimensions %dx%d for %d iterations.\n", 
-        mesh.global_nx, mesh.global_ny, niters);
-
-  State state = {0};
   initialise_state(&state, &mesh);
 
   set_timestep(
@@ -51,7 +41,7 @@ int main(int argc, char** argv)
 
   // Main timestep loop
   int tt;
-  for(tt = 0; tt < niters; ++tt) {
+  for(tt = 0; tt < mesh.niters; ++tt) {
 
     if(mesh.rank == MASTER) 
       printf("Iteration %d\n", tt+1);
@@ -134,8 +124,11 @@ int main(int argc, char** argv)
       printf("simulation time: %.4lf(s)\n", elapsed_sim_time);
     }
 
+#if 0
     if(tt%VISIT_STEP == 0) 
-      write_to_visit(mesh.local_nx, mesh.local_ny, state.rho, "wet_density", tt, elapsed_sim_time);
+      write_to_visit(mesh.local_nx, mesh.local_ny, mesh.x_off, 
+          mesh.y_off, state.rho, "wet_density", tt, elapsed_sim_time);
+#endif // if 0
   }
 
   if(mesh.rank == MASTER) {
@@ -148,7 +141,8 @@ int main(int argc, char** argv)
 
   char visit_name[256];
   sprintf(visit_name, "density_%d", mesh.rank);
-  write_to_visit(mesh.local_nx, mesh.local_ny, state.rho, "wet_density", tt, elapsed_sim_time);
+  write_to_visit(mesh.local_nx, mesh.local_ny, mesh.x_off, 
+      mesh.y_off, state.rho, "wet_density", tt, elapsed_sim_time);
 
   finalise_state(&state);
   finalise_mesh(&mesh);
@@ -160,6 +154,11 @@ int main(int argc, char** argv)
 static inline void initialise_comms(
     int argc, char** argv, Mesh* mesh)
 {
+  for(int ii = 0; ii < NNEIGHBOURS; ++ii) {
+    mesh->neighbours[ii] = EDGE;
+  }
+
+#ifdef MPI
   MPI_Init(&argc, &argv);
   MPI_Comm_rank(MPI_COMM_WORLD, &mesh->rank);
   MPI_Comm_size(MPI_COMM_WORLD, &mesh->nranks);
@@ -180,6 +179,11 @@ static inline void initialise_comms(
   // Add on the halo padding to the local mesh
   mesh->local_nx += 2*PAD;
   mesh->local_ny += 2*PAD;
+#endif 
+
+  if(mesh->rank == MASTER)
+    printf("Problem dimensions %dx%d for %d iterations.\n", 
+        mesh->global_nx, mesh->global_ny, mesh->niters);
 }
 
 // Batches the halos up into buffers, communicates and then unwraps them
@@ -188,8 +192,8 @@ static inline void communicate_halos(
     double* rho_v, double* e)
 {
   int nmessages = 0;
-  MPI_Request out_req[NREQUESTS];
-  MPI_Request in_req[NREQUESTS];
+  MPI_Request out_req[NNEIGHBOURS];
+  MPI_Request in_req[NNEIGHBOURS];
 
   if(mesh->neighbours[SOUTH] != EDGE) {
     for(int dd = 0; dd < PAD; ++dd) {
@@ -1066,7 +1070,8 @@ static inline void initialise_mesh(
 
 // Write out data for visualisation in visit
 static inline void write_to_visit(
-    const int nx, const int ny, const double* data, const char* name, const int step, const double time)
+    const int nx, const int ny, const int x_off, const int y_off, 
+    const double* data, const char* name, const int step, const double time)
 {
   char bovname[256];
   char datname[256];
@@ -1089,7 +1094,7 @@ static inline void write_to_visit(
   fprintf(bovfp, "CENTERING: zone\n");
 
 #ifdef MPI
-  fprintf(bovfp, "BRICK_ORIGIN: %f %f 0.\n", (float)mesh->x_off, (float)mesh->y_off);
+  fprintf(bovfp, "BRICK_ORIGIN: %f %f 0.\n", (float)x_off, (float)y_off);
 #else
   fprintf(bovfp, "BRICK_ORIGIN: 0. 0. 0.\n");
 #endif
