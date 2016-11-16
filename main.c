@@ -1099,7 +1099,7 @@ static inline void write_to_visit(
   fprintf(bovfp, "BRICK_ORIGIN: 0. 0. 0.\n");
 #endif
 
-  fprintf(bovfp, "BRICK_SIZE: %d %d 1\n", nx, nx);
+  fprintf(bovfp, "BRICK_SIZE: %d %d 1\n", nx, ny);
 
   fclose(bovfp);
 
