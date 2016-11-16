@@ -207,8 +207,8 @@ static inline void communicate_halos(
 
     MPI_Isend(mesh->south_buffer_out, nx*PAD*NVARS_TO_COMM, MPI_DOUBLE, 
         mesh->neighbours[SOUTH], 0, MPI_COMM_WORLD, &out_req[SOUTH]);
-    MPI_Irecv(mesh->north_buffer_in, nx*PAD*NVARS_TO_COMM, MPI_DOUBLE,
-        mesh->neighbours[NORTH], 0, MPI_COMM_WORLD, &in_req[nmessages++]);
+    MPI_Irecv(mesh->south_buffer_in, nx*PAD*NVARS_TO_COMM, MPI_DOUBLE,
+        mesh->neighbours[SOUTH], 0, MPI_COMM_WORLD, &in_req[nmessages++]);
   }
 
   if(mesh->neighbours[NORTH] != EDGE) {
@@ -223,8 +223,8 @@ static inline void communicate_halos(
 
     MPI_Isend(mesh->north_buffer_out, nx*PAD*NVARS_TO_COMM, MPI_DOUBLE, 
         mesh->neighbours[NORTH], 1, MPI_COMM_WORLD, &out_req[NORTH]);
-    MPI_Irecv(mesh->south_buffer_in, nx*PAD*NVARS_TO_COMM, MPI_DOUBLE,
-        mesh->neighbours[SOUTH], 1, MPI_COMM_WORLD, &in_req[nmessages++]);
+    MPI_Irecv(mesh->north_buffer_in, nx*PAD*NVARS_TO_COMM, MPI_DOUBLE,
+        mesh->neighbours[NORTH], 1, MPI_COMM_WORLD, &in_req[nmessages++]);
   }
 
   if(mesh->neighbours[EAST] != EDGE) {
@@ -239,8 +239,8 @@ static inline void communicate_halos(
 
     MPI_Isend(mesh->east_buffer_out, ny*PAD*NVARS_TO_COMM, MPI_DOUBLE, 
         mesh->neighbours[EAST], 2, MPI_COMM_WORLD, &out_req[EAST]);
-    MPI_Irecv(mesh->west_buffer_in, ny*PAD*NVARS_TO_COMM, MPI_DOUBLE,
-        mesh->neighbours[WEST], 2, MPI_COMM_WORLD, &in_req[nmessages++]);
+    MPI_Irecv(mesh->east_buffer_in, ny*PAD*NVARS_TO_COMM, MPI_DOUBLE,
+        mesh->neighbours[EAST], 2, MPI_COMM_WORLD, &in_req[nmessages++]);
   }
 
   if(mesh->neighbours[WEST] != EDGE) {
@@ -255,8 +255,8 @@ static inline void communicate_halos(
 
     MPI_Isend(mesh->west_buffer_in, ny*PAD*NVARS_TO_COMM, MPI_DOUBLE,
         mesh->neighbours[WEST], 3, MPI_COMM_WORLD, &out_req[WEST]);
-    MPI_Irecv(mesh->east_buffer_out, ny*PAD*NVARS_TO_COMM, MPI_DOUBLE, 
-        mesh->neighbours[EAST], 3, MPI_COMM_WORLD, &in_req[nmessages++]);
+    MPI_Irecv(mesh->west_buffer_out, ny*PAD*NVARS_TO_COMM, MPI_DOUBLE, 
+        mesh->neighbours[WEST], 3, MPI_COMM_WORLD, &in_req[nmessages++]);
   }
 
   MPI_Waitall(nmessages, in_req, MPI_STATUSES_IGNORE);
@@ -813,8 +813,6 @@ static inline void advect_energy(
     const double* v, const double* rho_old, const double* rho, const int* neighbours,
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
-  /// TODO: What happens about the slopes defined on the halo regions, 
-  // is it OK that they are simply set to 0???
 #pragma omp parallel for
   for(int ii = PAD; ii < ny-PAD; ++ii) {
 #pragma omp simd
@@ -890,7 +888,7 @@ static inline void reflective_boundary(
 
   // reflect at the west
   if(neighbours[WEST] == EDGE) {
-//#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2)
     for(int ii = 0; ii < ny; ++ii) {
       for(int dd = 0; dd < depth; ++dd) {
         arr[ii*nx + (PAD - 1 - dd)] = x_inversion_coeff*arr[ii*nx + (PAD + dd)];
@@ -900,7 +898,7 @@ static inline void reflective_boundary(
 
   // Reflect at the east
   if(neighbours[EAST] == EDGE) {
-//#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2)
     for(int ii = 0; ii < ny; ++ii) {
       for(int dd = 0; dd < depth; ++dd) {
         arr[ii*nx + (nx - PAD + dd)] = x_inversion_coeff*arr[ii*nx + (nx - 1 - PAD - dd)];
@@ -912,7 +910,7 @@ static inline void reflective_boundary(
 
   // Reflect at the north
   if(neighbours[NORTH] == EDGE) {
-//#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2)
     for(int dd = 0; dd < depth; ++dd) {
       for(int jj = 0; jj < nx; ++jj) {
         arr[(ny - PAD + dd)*nx + jj] = y_inversion_coeff*arr[(ny - 1 - PAD - dd)*nx + jj];
@@ -922,7 +920,7 @@ static inline void reflective_boundary(
 
   // reflect at the south
   if(neighbours[SOUTH] == EDGE) {
-//#pragma omp parallel for collapse(2)
+#pragma omp parallel for collapse(2)
     for(int dd = 0; dd < depth; ++dd) {
       for(int jj = 0; jj < nx; ++jj) {
         arr[(PAD - 1 - dd)*nx + jj] = y_inversion_coeff*arr[(PAD + dd)*nx + jj];
