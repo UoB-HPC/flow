@@ -188,7 +188,7 @@ static inline void write_to_visit(
     const double* data, const char* name, const int step, const double time);
 
 static inline void print_conservation(
-    const int nx, const int ny, State* state) ;
+    const int nx, const int ny, State* state, Mesh* mesh);
 
 // Deallocate all of the state memory
 static inline void finalise_state(State* state);

@@ -119,8 +119,9 @@ int main(int argc, char** argv)
       break;
     }
 
+    print_conservation(mesh.local_nx, mesh.local_ny, &state, &mesh);
+
     if(mesh.rank == MASTER) {
-      print_conservation(mesh.local_nx, mesh.local_ny, &state);
       printf("simulation time: %.4lf(s)\n", elapsed_sim_time);
     }
 
@@ -131,12 +132,19 @@ int main(int argc, char** argv)
 #endif // if 0
   }
 
+  struct ProfileEntry pe = profiler_get_profile_entry(&w, "wallclock");
+
+  double global_wallclock = pe.time;
+
+#ifdef MPI
+  MPI_Allreduce(&pe.time, &global_wallclock, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+
   if(mesh.rank == MASTER) {
     PRINT_PROFILING_RESULTS(&p);
 
-    struct ProfileEntry pe = profiler_get_profile_entry(&w, "wallclock");
     printf("Wallclock %.2fs, Elapsed Simulation Time %.4fs\n", 
-        pe.time, elapsed_sim_time);
+        global_wallclock, elapsed_sim_time);
   }
 
   char visit_name[256];
@@ -208,7 +216,7 @@ static inline void communicate_halos(
     MPI_Isend(mesh->south_buffer_out, nx*PAD*NVARS_TO_COMM, MPI_DOUBLE, 
         mesh->neighbours[SOUTH], 0, MPI_COMM_WORLD, &out_req[SOUTH]);
     MPI_Irecv(mesh->south_buffer_in, nx*PAD*NVARS_TO_COMM, MPI_DOUBLE,
-        mesh->neighbours[SOUTH], 0, MPI_COMM_WORLD, &in_req[nmessages++]);
+        mesh->neighbours[SOUTH], 1, MPI_COMM_WORLD, &in_req[nmessages++]);
   }
 
   if(mesh->neighbours[NORTH] != EDGE) {
@@ -224,7 +232,7 @@ static inline void communicate_halos(
     MPI_Isend(mesh->north_buffer_out, nx*PAD*NVARS_TO_COMM, MPI_DOUBLE, 
         mesh->neighbours[NORTH], 1, MPI_COMM_WORLD, &out_req[NORTH]);
     MPI_Irecv(mesh->north_buffer_in, nx*PAD*NVARS_TO_COMM, MPI_DOUBLE,
-        mesh->neighbours[NORTH], 1, MPI_COMM_WORLD, &in_req[nmessages++]);
+        mesh->neighbours[NORTH], 0, MPI_COMM_WORLD, &in_req[nmessages++]);
   }
 
   if(mesh->neighbours[EAST] != EDGE) {
@@ -240,7 +248,7 @@ static inline void communicate_halos(
     MPI_Isend(mesh->east_buffer_out, ny*PAD*NVARS_TO_COMM, MPI_DOUBLE, 
         mesh->neighbours[EAST], 2, MPI_COMM_WORLD, &out_req[EAST]);
     MPI_Irecv(mesh->east_buffer_in, ny*PAD*NVARS_TO_COMM, MPI_DOUBLE,
-        mesh->neighbours[EAST], 2, MPI_COMM_WORLD, &in_req[nmessages++]);
+        mesh->neighbours[EAST], 3, MPI_COMM_WORLD, &in_req[nmessages++]);
   }
 
   if(mesh->neighbours[WEST] != EDGE) {
@@ -256,7 +264,7 @@ static inline void communicate_halos(
     MPI_Isend(mesh->west_buffer_in, ny*PAD*NVARS_TO_COMM, MPI_DOUBLE,
         mesh->neighbours[WEST], 3, MPI_COMM_WORLD, &out_req[WEST]);
     MPI_Irecv(mesh->west_buffer_out, ny*PAD*NVARS_TO_COMM, MPI_DOUBLE, 
-        mesh->neighbours[WEST], 3, MPI_COMM_WORLD, &in_req[nmessages++]);
+        mesh->neighbours[WEST], 2, MPI_COMM_WORLD, &in_req[nmessages++]);
   }
 
   MPI_Waitall(nmessages, in_req, MPI_STATUSES_IGNORE);
@@ -265,7 +273,7 @@ static inline void communicate_halos(
 #pragma omp parallel for collapse(2)
     for(int dd = 0; dd < PAD; ++dd) {
       for(int jj = 0; jj < nx; ++jj) {
-        rho[(ny - PAD + dd)*nx + jj]   = mesh->north_buffer_in[RHO_OFF*nx*PAD + jj];
+        rho[(ny - PAD + dd)*nx + jj]   = mesh->north_buffer_in[(RHO_OFF+dd)*nx*PAD + jj];
         e[(ny - PAD + dd)*nx + jj]     = mesh->north_buffer_in[E_OFF*nx*PAD + jj];
         rho_u[(ny - PAD + dd)*nx + jj] = mesh->north_buffer_in[RHO_U_OFF*nx*PAD + jj];
         rho_v[(ny - PAD + dd)*nx + jj] = mesh->north_buffer_in[RHO_V_OFF*nx*PAD + jj];
@@ -365,6 +373,8 @@ static inline void decompose_ranks(Mesh* mesh)
     mesh->local_ny = y_pad_req ? y_floor+1 : y_floor;
     y_off += mesh->local_ny;
   }
+
+  printf("rank %d nx %d ny %d\n", mesh->rank, mesh->local_nx, mesh->local_ny);
 
   // Calculate the surrounding ranks
   mesh->neighbours[NORTH] = (y_rank < ranks_y-1) ? mesh->rank+ranks_x : EDGE;
@@ -654,7 +664,7 @@ static inline void y_mass_flux(
 #pragma omp simd
     for(int jj = PAD; jj < nx-PAD; ++jj) {
       rho[ind0] -= dt_h*
-         (edgedy[ii+1]*F_y[ind0+nx] - edgedy[ii]*F_y[ind0])/
+        (edgedy[ii+1]*F_y[ind0+nx] - edgedy[ii]*F_y[ind0])/
         (celldx[jj]*celldy[ii]);
     }
   }
@@ -992,7 +1002,7 @@ static inline void initialise_state(
   for(int ii = 0; ii < mesh->local_ny; ++ii) {
     for(int jj = 0; jj < mesh->local_nx; ++jj) {
 
-      if(jj < mesh->local_nx/2) { //LEFT SOD
+      if(jj < mesh->global_nx/2) { //LEFT SOD
         state->rho[ii*mesh->local_nx+jj] = 1.0;
         state->e[ii*mesh->local_nx+jj] = 2.5;
       }
@@ -1112,21 +1122,29 @@ static inline void write_to_visit(
 }
 
 static inline void print_conservation(
-    const int nx, const int ny, State* state) {
+    const int nx, const int ny, State* state, Mesh* mesh) {
   double mass_tot = 0.0;
   double energy_tot = 0.0;
-  double S_tot = 0.0;
-  double T_tot = 0.0;
+#pragma omp parallel for reduction(+:mass_tot, energy_tot)
   for(int ii = PAD; ii < ny-PAD; ++ii) {
     for(int jj = PAD; jj < nx-PAD; ++jj) {
       mass_tot += state->rho[ind0];
       energy_tot += state->rho[ind0]*state->e[ind0];
-      S_tot += state->rho_u[ind1];
-      T_tot += state->rho_v[ind0];
     }
   }
-  printf("total mass: %.12e\n", mass_tot);
-  printf("total energy: %.12e\n", energy_tot);
+
+  double global_mass_tot = mass_tot;
+  double global_energy_tot = energy_tot;
+
+#ifdef MPI
+  MPI_Allreduce(&mass_tot, &global_mass_tot, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Allreduce(&energy_tot, &global_energy_tot, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+
+  if(mesh->rank == MASTER) {
+    printf("total mass: %.12e\n", global_mass_tot);
+    printf("total energy: %.12e\n", global_energy_tot);
+  }
 }
 
 // Deallocate all of the state memory
@@ -1281,23 +1299,23 @@ reflective_boundary(nx, ny+1, 1, neighbours, v, INVERT_Y);
 
 
 #if 0
-      if(jj >= nx/2) { //RIGHT SOD
-        state->rho[ind0] = 1.0;
-        state->e[ind0] = 2.5;
-      }
+if(jj >= nx/2) { //RIGHT SOD
+  state->rho[ind0] = 1.0;
+  state->e[ind0] = 2.5;
+}
 #endif // if 0
 
 #if 0
-      if(ii < ny/2) { //UP SOD
-        state->rho[ind0] = 1.0;
-        state->e[ind0] = 2.5;
-      }
+if(ii < ny/2) { //UP SOD
+  state->rho[ind0] = 1.0;
+  state->e[ind0] = 2.5;
+}
 #endif // if 0
 
 #if 0
-      if(ii >= ny/2) { //DOWN SOD
-        state->rho[ind0] = 1.0;
-        state->e[ind0] = 2.5;
-      }
+if(ii >= ny/2) { //DOWN SOD
+  state->rho[ind0] = 1.0;
+  state->e[ind0] = 2.5;
+}
 #endif // if 0
 
