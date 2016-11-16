@@ -273,10 +273,10 @@ static inline void communicate_halos(
 #pragma omp parallel for collapse(2)
     for(int dd = 0; dd < PAD; ++dd) {
       for(int jj = 0; jj < nx; ++jj) {
-        rho[(ny - PAD + dd)*nx + jj]   = mesh->north_buffer_in[(RHO_OFF+dd)*nx*PAD + jj];
-        e[(ny - PAD + dd)*nx + jj]     = mesh->north_buffer_in[E_OFF*nx*PAD + jj];
-        rho_u[(ny - PAD + dd)*nx + jj] = mesh->north_buffer_in[RHO_U_OFF*nx*PAD + jj];
-        rho_v[(ny - PAD + dd)*nx + jj] = mesh->north_buffer_in[RHO_V_OFF*nx*PAD + jj];
+        rho[(ny - PAD + dd)*nx + jj]   = mesh->north_buffer_in[RHO_OFF*nx*PAD + dd*nx + jj];
+        e[(ny - PAD + dd)*nx + jj]     = mesh->north_buffer_in[E_OFF*nx*PAD + dd*nx + jj];
+        rho_u[(ny - PAD + dd)*nx + jj] = mesh->north_buffer_in[RHO_U_OFF*nx*PAD + dd*nx + jj];
+        rho_v[(ny - PAD + dd)*nx + jj] = mesh->north_buffer_in[RHO_V_OFF*nx*PAD + dd*nx + jj];
       }
     }
   }
@@ -285,22 +285,22 @@ static inline void communicate_halos(
 #pragma omp parallel for collapse(2)
     for(int dd = 0; dd < PAD; ++dd) {
       for(int jj = 0; jj < nx; ++jj) {
-        rho[dd*nx + jj] = mesh->south_buffer_in[RHO_OFF*nx*PAD+jj];
-        e[dd*nx + jj] = mesh->south_buffer_in[E_OFF*nx*PAD+jj];
-        rho_u[dd*nx + jj] = mesh->south_buffer_in[RHO_U_OFF*nx*PAD+jj];
-        rho_v[dd*nx + jj] = mesh->south_buffer_in[RHO_V_OFF*nx*PAD+jj];
+        rho[dd*nx + jj] = mesh->south_buffer_in[RHO_OFF*nx*PAD + dd*nx +jj];
+        e[dd*nx + jj] = mesh->south_buffer_in[E_OFF*nx*PAD+dd*nx+jj];
+        rho_u[dd*nx + jj] = mesh->south_buffer_in[RHO_U_OFF*nx*PAD+dd*nx+jj];
+        rho_v[dd*nx + jj] = mesh->south_buffer_in[RHO_V_OFF*nx*PAD+dd*nx+jj];
       }
     }
   }
 
   if(mesh->neighbours[WEST] != EDGE) {
 #pragma omp parallel for collapse(2)
-    for(int dd = 0; dd < PAD; ++dd) {
-      for(int ii = 0; ii < ny; ++ii) {
-        rho[ii*nx + dd] = mesh->west_buffer_out[ii + RHO_OFF*ny*PAD];
-        e[ii*nx + dd] = mesh->west_buffer_out[ii + E_OFF*ny*PAD];
-        rho_u[ii*nx + dd] = mesh->west_buffer_out[ii + RHO_U_OFF*ny*PAD];
-        rho_v[ii*nx + dd] = mesh->west_buffer_out[ii + RHO_V_OFF*ny*PAD];
+    for(int ii = 0; ii < ny; ++ii) {
+      for(int dd = 0; dd < PAD; ++dd) {
+        rho[ii*nx + dd] = mesh->west_buffer_out[RHO_OFF*ny*PAD + ii*PAD + dd];
+        e[ii*nx + dd] = mesh->west_buffer_out[E_OFF*ny*PAD + ii*PAD + dd];
+        rho_u[ii*nx + dd] = mesh->west_buffer_out[RHO_U_OFF*ny*PAD + ii*PAD + dd];
+        rho_v[ii*nx + dd] = mesh->west_buffer_out[RHO_V_OFF*ny*PAD + ii*PAD + dd];
       }
     }
   }
@@ -309,10 +309,10 @@ static inline void communicate_halos(
 #pragma omp parallel for collapse(2)
     for(int dd = 0; dd < PAD; ++dd) {
       for(int ii = 0; ii < ny; ++ii) {
-        rho[ii*nx + (nx-PAD+dd)] = mesh->east_buffer_out[ii + RHO_OFF*ny*PAD];
-        e[ii*nx + (nx-PAD+dd)] = mesh->east_buffer_out[ii + E_OFF*ny*PAD];
-        rho_u[ii*nx + (nx-PAD+dd)] = mesh->east_buffer_out[ii + RHO_U_OFF*ny*PAD];
-        rho_v[ii*nx + (nx-PAD+dd)] = mesh->east_buffer_out[ii + RHO_V_OFF*ny*PAD];
+        rho[ii*nx + (nx-PAD+dd)] = mesh->east_buffer_out[RHO_OFF*ny*PAD + ii*PAD + dd];
+        e[ii*nx + (nx-PAD+dd)] = mesh->east_buffer_out[E_OFF*ny*PAD + ii*PAD + dd];
+        rho_u[ii*nx + (nx-PAD+dd)] = mesh->east_buffer_out[RHO_U_OFF*ny*PAD + ii*PAD + dd];
+        rho_v[ii*nx + (nx-PAD+dd)] = mesh->east_buffer_out[RHO_V_OFF*ny*PAD + ii*PAD + dd];
       }
     }
   }
