@@ -94,9 +94,10 @@ typedef struct
 
 } Mesh;
 
-#ifdef MPI
 static inline void initialise_comms(
     int argc, char** argv, Mesh* mesh);
+
+#ifdef MPI
 
 // Batches the halos up into buffers, communicates and then unwraps them
 static inline void communicate_halos(

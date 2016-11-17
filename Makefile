@@ -5,7 +5,7 @@ CFLAGS  = -O3 -std=gnu99 -xhost -qopenmp
 LDFLAGS = #-lrt
 
 ifeq ($(MPI), yes)
-	CC = mpiicc
+	CC = mpicc
 	OPTIONS += -DMPI
 else
 	CC = icc
