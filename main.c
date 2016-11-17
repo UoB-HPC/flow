@@ -17,8 +17,8 @@ int main(int argc, char** argv)
   // Store the dimensions of the mesh
   Mesh mesh = {0};
   State state = {0};
-  mesh.global_nx = atoi(argv[1]);
-  mesh.global_ny = atoi(argv[2]);
+  mesh.global_nx = atoi(argv[1]) + 2*PAD;
+  mesh.global_ny = atoi(argv[2]) + 2*PAD;
   mesh.local_nx = atoi(argv[1]) + 2*PAD;
   mesh.local_ny = atoi(argv[2]) + 2*PAD;
   mesh.rank = MASTER;
@@ -150,7 +150,7 @@ int main(int argc, char** argv)
   char visit_name[256];
   sprintf(visit_name, "density_%d", mesh.rank);
   write_to_visit(mesh.local_nx, mesh.local_ny, mesh.x_off, 
-      mesh.y_off, state.rho, "wet_density", tt, elapsed_sim_time);
+      mesh.y_off, state.rho, visit_name, tt, elapsed_sim_time);
 
   finalise_state(&state);
   finalise_mesh(&mesh);
@@ -175,18 +175,19 @@ static inline void initialise_comms(
   mesh->local_ny = 0;
   decompose_ranks(mesh);
 
-  mesh->north_buffer_out = (double*)malloc(sizeof(double)*mesh->local_nx*PAD*NVARS_TO_COMM);
-  mesh->east_buffer_out  = (double*)malloc(sizeof(double)*mesh->local_ny*PAD*NVARS_TO_COMM);
-  mesh->south_buffer_out = (double*)malloc(sizeof(double)*mesh->local_nx*PAD*NVARS_TO_COMM);
-  mesh->west_buffer_out  = (double*)malloc(sizeof(double)*mesh->local_ny*PAD*NVARS_TO_COMM);
-  mesh->north_buffer_in  = (double*)malloc(sizeof(double)*mesh->local_nx*PAD*NVARS_TO_COMM);
-  mesh->east_buffer_in   = (double*)malloc(sizeof(double)*mesh->local_ny*PAD*NVARS_TO_COMM);
-  mesh->south_buffer_in  = (double*)malloc(sizeof(double)*mesh->local_nx*PAD*NVARS_TO_COMM);
-  mesh->west_buffer_in   = (double*)malloc(sizeof(double)*mesh->local_ny*PAD*NVARS_TO_COMM);
-
   // Add on the halo padding to the local mesh
   mesh->local_nx += 2*PAD;
   mesh->local_ny += 2*PAD;
+
+  mesh->north_buffer_out = (double*)malloc(sizeof(double)*(mesh->local_nx+1)*PAD*NVARS_TO_COMM);
+  mesh->east_buffer_out  = (double*)malloc(sizeof(double)*(mesh->local_ny+1)*PAD*NVARS_TO_COMM);
+  mesh->south_buffer_out = (double*)malloc(sizeof(double)*(mesh->local_nx+1)*PAD*NVARS_TO_COMM);
+  mesh->west_buffer_out  = (double*)malloc(sizeof(double)*(mesh->local_ny+1)*PAD*NVARS_TO_COMM);
+  mesh->north_buffer_in  = (double*)malloc(sizeof(double)*(mesh->local_nx+1)*PAD*NVARS_TO_COMM);
+  mesh->east_buffer_in   = (double*)malloc(sizeof(double)*(mesh->local_ny+1)*PAD*NVARS_TO_COMM);
+  mesh->south_buffer_in  = (double*)malloc(sizeof(double)*(mesh->local_nx+1)*PAD*NVARS_TO_COMM);
+  mesh->west_buffer_in   = (double*)malloc(sizeof(double)*(mesh->local_ny+1)*PAD*NVARS_TO_COMM);
+
 #endif 
 
   if(mesh->rank == MASTER)
@@ -203,67 +204,101 @@ static inline void communicate_halos(
   MPI_Request out_req[NNEIGHBOURS];
   MPI_Request in_req[NNEIGHBOURS];
 
+  const int message_length_x = NVARS_TO_COMM*(nx+1)*PAD;
+  const int message_length_y = NVARS_TO_COMM*(ny+1)*PAD;
+
   if(mesh->neighbours[SOUTH] != EDGE) {
+#pragma omp parallel for collapse(2)
     for(int dd = 0; dd < PAD; ++dd) {
       for(int jj = 0; jj < nx; ++jj) {
-        mesh->south_buffer_out[RHO_OFF*nx*PAD+jj]   = rho[(PAD+dd)*nx+jj];
-        mesh->south_buffer_out[E_OFF*nx*PAD+jj]     = e[(PAD+dd)*nx+jj];
-        mesh->south_buffer_out[RHO_U_OFF*nx*PAD+jj] = rho_u[(PAD+dd)*nx+jj];
-        mesh->south_buffer_out[RHO_V_OFF*nx*PAD+jj] = rho_v[(PAD+dd)*nx+jj];
+        const int out_index = dd*nx+jj;
+        mesh->south_buffer_out[(RHO_OFF*nx*PAD)+out_index]       = rho  [(PAD+dd)*nx+jj];
+        mesh->south_buffer_out[(E_OFF*nx*PAD)+out_index]         = e    [(PAD+dd)*nx+jj];
+        mesh->south_buffer_out[(RHO_V_OFF*(nx+1)*PAD)+out_index] = rho_v[(PAD+dd)*nx+jj];
       }
     }
 
-    MPI_Isend(mesh->south_buffer_out, nx*PAD*NVARS_TO_COMM, MPI_DOUBLE, 
+#pragma omp parallel for collapse(2)
+    for(int dd = 0; dd < PAD; ++dd) {
+      for(int jj = 0; jj < (nx+1); ++jj) {
+        const int out_index = dd*(nx+1)+jj;
+        mesh->south_buffer_out[(RHO_U_OFF*(nx+1)*PAD)+out_index] = rho_u[(PAD+dd)*(nx+1)+jj];
+      }
+    }
+
+    MPI_Isend(mesh->south_buffer_out, message_length_x, MPI_DOUBLE, 
         mesh->neighbours[SOUTH], 0, MPI_COMM_WORLD, &out_req[SOUTH]);
-    MPI_Irecv(mesh->south_buffer_in, nx*PAD*NVARS_TO_COMM, MPI_DOUBLE,
+    MPI_Irecv(mesh->south_buffer_in, message_length_x, MPI_DOUBLE,
         mesh->neighbours[SOUTH], 1, MPI_COMM_WORLD, &in_req[nmessages++]);
   }
 
   if(mesh->neighbours[NORTH] != EDGE) {
+#pragma omp parallel for collapse(2)
     for(int dd = 0; dd < PAD; ++dd) {
       for(int jj = 0; jj < nx; ++jj) {
-        mesh->north_buffer_out[RHO_OFF*nx*PAD+jj]   = rho[(ny-2*PAD+dd)*nx+jj];
-        mesh->north_buffer_out[E_OFF*nx*PAD+jj]     = e[(ny-2*PAD+dd)*nx+jj];
-        mesh->north_buffer_out[RHO_U_OFF*nx*PAD+jj] = rho_u[(ny-2*PAD+dd)*nx+jj];
-        mesh->north_buffer_out[RHO_V_OFF*nx*PAD+jj] = rho_v[(ny-2*PAD+dd)*nx+jj];
+        const int out_index = dd*nx+jj;
+        mesh->north_buffer_out[(RHO_OFF*nx*PAD)+out_index]   = rho  [(ny-2*PAD+dd)*nx+jj];
+        mesh->north_buffer_out[(E_OFF*nx*PAD)+out_index]     = e    [(ny-2*PAD+dd)*nx+jj];
+        mesh->north_buffer_out[(RHO_U_OFF*(nx+1)*PAD)+out_index] = rho_u[(ny-2*PAD+dd)*nx+jj];
+      }
+    }
+#pragma omp parallel for collapse(2)
+    for(int dd = 0; dd < PAD; ++dd) {
+      for(int jj = 0; jj < (nx+1); ++jj) {
+        const int out_index = dd*(nx+1)+jj;
+        mesh->north_buffer_out[(RHO_V_OFF*(nx+1)*PAD)+out_index] = 
+          rho_v[(ny-2*PAD+dd)*(nx+1)+jj];
       }
     }
 
-    MPI_Isend(mesh->north_buffer_out, nx*PAD*NVARS_TO_COMM, MPI_DOUBLE, 
+    MPI_Isend(mesh->north_buffer_out, message_length_x, MPI_DOUBLE, 
         mesh->neighbours[NORTH], 1, MPI_COMM_WORLD, &out_req[NORTH]);
-    MPI_Irecv(mesh->north_buffer_in, nx*PAD*NVARS_TO_COMM, MPI_DOUBLE,
+    MPI_Irecv(mesh->north_buffer_in, message_length_x, MPI_DOUBLE,
         mesh->neighbours[NORTH], 0, MPI_COMM_WORLD, &in_req[nmessages++]);
   }
 
   if(mesh->neighbours[EAST] != EDGE) {
-    for(int dd = 0; dd < PAD; ++dd) {
-      for(int ii = 0; ii < ny; ++ii) {
-        mesh->east_buffer_out[ii + RHO_OFF*nx*PAD] = rho[(ii*nx)+(nx-2*PAD+dd)];
-        mesh->east_buffer_out[ii + E_OFF*nx*PAD] = e[(ii*nx)+(nx-2*PAD+dd)];
-        mesh->east_buffer_out[ii + RHO_U_OFF*nx*PAD] = rho_u[(ii*nx)+(nx-2*PAD+dd)];
-        mesh->east_buffer_out[ii + RHO_V_OFF*nx*PAD] = rho_v[(ii*nx)+(nx-2*PAD+dd)];
+#pragma omp parallel for collapse(2)
+    for(int ii = 0; ii < ny; ++ii) {
+      for(int dd = 0; dd < PAD; ++dd) {
+        const int out_index = ii*PAD+dd;
+        mesh->east_buffer_out[out_index+(RHO_OFF*ny*PAD)]   = rho  [(ii*nx)+(nx-2*PAD+dd)];
+        mesh->east_buffer_out[out_index+(E_OFF*ny*PAD)]     = e    [(ii*nx)+(nx-2*PAD+dd)];
+        mesh->east_buffer_out[out_index+(RHO_V_OFF*(ny+1)*PAD)] = rho_v[(ii*nx)+(nx-2*PAD+dd)];
+      }
+    }
+    for(int ii = 0; ii < (ny+1); ++ii) {
+      for(int dd = 0; dd < PAD; ++dd) {
+        const int out_index = ii*PAD+dd;
+        mesh->east_buffer_out[out_index+(RHO_U_OFF*(ny+1)*PAD)] = rho_u[(ii*nx)+(nx-2*PAD+dd)];
       }
     }
 
-    MPI_Isend(mesh->east_buffer_out, ny*PAD*NVARS_TO_COMM, MPI_DOUBLE, 
+    MPI_Isend(mesh->east_buffer_out, message_length_y, MPI_DOUBLE, 
         mesh->neighbours[EAST], 2, MPI_COMM_WORLD, &out_req[EAST]);
-    MPI_Irecv(mesh->east_buffer_in, ny*PAD*NVARS_TO_COMM, MPI_DOUBLE,
+    MPI_Irecv(mesh->east_buffer_in, message_length_y, MPI_DOUBLE,
         mesh->neighbours[EAST], 3, MPI_COMM_WORLD, &in_req[nmessages++]);
   }
 
   if(mesh->neighbours[WEST] != EDGE) {
-    for(int dd = 0; dd < PAD; ++dd) {
-      for(int ii = 0; ii < ny; ++ii) {
-        mesh->west_buffer_out[ii + RHO_OFF*ny*PAD] = rho[(ii*nx)+(PAD+dd)];
-        mesh->west_buffer_out[ii + E_OFF*ny*PAD] = e[(ii*nx)+(PAD+dd)];
-        mesh->west_buffer_out[ii + RHO_U_OFF*ny*PAD] = rho_u[(ii*nx)+(PAD+dd)];
-        mesh->west_buffer_out[ii + RHO_V_OFF*ny*PAD] = rho_v[(ii*nx)+(PAD+dd)];
+    for(int ii = 0; ii < ny; ++ii) {
+      for(int dd = 0; dd < PAD; ++dd) {
+        const int out_index = ii*PAD+dd;
+        mesh->west_buffer_out[out_index+(RHO_OFF*ny*PAD)]   = rho  [(ii*nx)+(PAD+dd)];
+        mesh->west_buffer_out[out_index+(E_OFF*ny*PAD)]     = e    [(ii*nx)+(PAD+dd)];
+        mesh->west_buffer_out[out_index+(RHO_V_OFF*(ny+1)*PAD)] = rho_v[(ii*nx)+(PAD+dd)];
+      }
+    }
+    for(int ii = 0; ii < (ny+1); ++ii) {
+      for(int dd = 0; dd < PAD; ++dd) {
+        const int out_index = ii*PAD+dd;
+        mesh->west_buffer_out[out_index+(RHO_U_OFF*(ny+1)*PAD)] = rho_u[(ii*nx)+(PAD+dd)];
       }
     }
 
-    MPI_Isend(mesh->west_buffer_in, ny*PAD*NVARS_TO_COMM, MPI_DOUBLE,
+    MPI_Isend(mesh->west_buffer_out, message_length_y, MPI_DOUBLE,
         mesh->neighbours[WEST], 3, MPI_COMM_WORLD, &out_req[WEST]);
-    MPI_Irecv(mesh->west_buffer_out, ny*PAD*NVARS_TO_COMM, MPI_DOUBLE, 
+    MPI_Irecv(mesh->west_buffer_in, message_length_y, MPI_DOUBLE, 
         mesh->neighbours[WEST], 2, MPI_COMM_WORLD, &in_req[nmessages++]);
   }
 
@@ -273,10 +308,17 @@ static inline void communicate_halos(
 #pragma omp parallel for collapse(2)
     for(int dd = 0; dd < PAD; ++dd) {
       for(int jj = 0; jj < nx; ++jj) {
-        rho[(ny - PAD + dd)*nx + jj]   = mesh->north_buffer_in[RHO_OFF*nx*PAD + dd*nx + jj];
-        e[(ny - PAD + dd)*nx + jj]     = mesh->north_buffer_in[E_OFF*nx*PAD + dd*nx + jj];
-        rho_u[(ny - PAD + dd)*nx + jj] = mesh->north_buffer_in[RHO_U_OFF*nx*PAD + dd*nx + jj];
-        rho_v[(ny - PAD + dd)*nx + jj] = mesh->north_buffer_in[RHO_V_OFF*nx*PAD + dd*nx + jj];
+        const int in_index = dd*nx+jj;
+        rho  [(ny-PAD+dd)*nx+jj] = mesh->north_buffer_in[(RHO_OFF*nx*PAD)+in_index];
+        e    [(ny-PAD+dd)*nx+jj] = mesh->north_buffer_in[(E_OFF*nx*PAD)+in_index];
+        rho_u[(ny-PAD+dd)*nx+jj] = mesh->north_buffer_in[(RHO_U_OFF*(nx+1)*PAD)+in_index];
+      }
+    }
+#pragma omp parallel for collapse(2)
+    for(int dd = 0; dd < PAD; ++dd) {
+      for(int jj = 0; jj < (nx+1); ++jj) {
+        const int in_index = dd*(nx+1)+jj;
+        rho_v[(ny-PAD+dd)*(nx+1)+jj] = mesh->north_buffer_in[(RHO_V_OFF*(nx+1)*PAD)+in_index];
       }
     }
   }
@@ -285,10 +327,17 @@ static inline void communicate_halos(
 #pragma omp parallel for collapse(2)
     for(int dd = 0; dd < PAD; ++dd) {
       for(int jj = 0; jj < nx; ++jj) {
-        rho[dd*nx + jj] = mesh->south_buffer_in[RHO_OFF*nx*PAD + dd*nx +jj];
-        e[dd*nx + jj] = mesh->south_buffer_in[E_OFF*nx*PAD+dd*nx+jj];
-        rho_u[dd*nx + jj] = mesh->south_buffer_in[RHO_U_OFF*nx*PAD+dd*nx+jj];
-        rho_v[dd*nx + jj] = mesh->south_buffer_in[RHO_V_OFF*nx*PAD+dd*nx+jj];
+        const int in_index = dd*nx+jj;
+        rho  [dd*nx + jj] = mesh->south_buffer_in[(RHO_OFF*nx*PAD)+in_index];
+        e    [dd*nx + jj] = mesh->south_buffer_in[(E_OFF*nx*PAD)+in_index];
+        rho_u[dd*nx + jj] = mesh->south_buffer_in[(RHO_U_OFF*(nx+1)*PAD)+in_index];
+      }
+    }
+#pragma omp parallel for collapse(2)
+    for(int dd = 0; dd < PAD; ++dd) {
+      for(int jj = 0; jj < (nx+1); ++jj) {
+        const int in_index = dd*(nx+1)+jj;
+        rho_v[dd*(nx+1) + jj] = mesh->south_buffer_in[(RHO_V_OFF*(nx+1)*PAD)+in_index];
       }
     }
   }
@@ -297,22 +346,37 @@ static inline void communicate_halos(
 #pragma omp parallel for collapse(2)
     for(int ii = 0; ii < ny; ++ii) {
       for(int dd = 0; dd < PAD; ++dd) {
-        rho[ii*nx + dd] = mesh->west_buffer_out[RHO_OFF*ny*PAD + ii*PAD + dd];
-        e[ii*nx + dd] = mesh->west_buffer_out[E_OFF*ny*PAD + ii*PAD + dd];
-        rho_u[ii*nx + dd] = mesh->west_buffer_out[RHO_U_OFF*ny*PAD + ii*PAD + dd];
-        rho_v[ii*nx + dd] = mesh->west_buffer_out[RHO_V_OFF*ny*PAD + ii*PAD + dd];
+        const int in_index = ii*PAD+dd;
+        rho  [ii*nx + dd] = mesh->west_buffer_in[(RHO_OFF*ny*PAD) + in_index];
+        e    [ii*nx + dd] = mesh->west_buffer_in[(E_OFF*ny*PAD) + in_index];
+        rho_v[ii*nx + dd] = mesh->west_buffer_in[(RHO_V_OFF*(ny+1)*PAD) + in_index];
+      }
+    }
+#pragma omp parallel for collapse(2)
+    for(int ii = 0; ii < (ny+1); ++ii) {
+      for(int dd = 0; dd < PAD; ++dd) {
+        const int in_index = ii*PAD+dd;
+        rho_u[ii*nx + dd] = mesh->west_buffer_in[(RHO_U_OFF*(ny+1)*PAD) + in_index];
       }
     }
   }
 
   if(mesh->neighbours[EAST] != EDGE) {
 #pragma omp parallel for collapse(2)
-    for(int dd = 0; dd < PAD; ++dd) {
-      for(int ii = 0; ii < ny; ++ii) {
-        rho[ii*nx + (nx-PAD+dd)] = mesh->east_buffer_out[RHO_OFF*ny*PAD + ii*PAD + dd];
-        e[ii*nx + (nx-PAD+dd)] = mesh->east_buffer_out[E_OFF*ny*PAD + ii*PAD + dd];
-        rho_u[ii*nx + (nx-PAD+dd)] = mesh->east_buffer_out[RHO_U_OFF*ny*PAD + ii*PAD + dd];
-        rho_v[ii*nx + (nx-PAD+dd)] = mesh->east_buffer_out[RHO_V_OFF*ny*PAD + ii*PAD + dd];
+    for(int ii = 0; ii < ny; ++ii) {
+      for(int dd = 0; dd < PAD; ++dd) {
+        const int in_index = ii*PAD+dd;
+        rho  [ii*nx + (nx-PAD+dd)] = mesh->east_buffer_in[(RHO_OFF*ny*PAD)+in_index];
+        e    [ii*nx + (nx-PAD+dd)] = mesh->east_buffer_in[(E_OFF*ny*PAD)+in_index];
+        rho_v[ii*nx + (nx-PAD+dd)] = mesh->east_buffer_in[(RHO_V_OFF*(ny+1)*PAD)+in_index];
+      }
+    }
+
+#pragma omp parallel for collapse(2)
+    for(int ii = 0; ii < (ny+1); ++ii) {
+      for(int dd = 0; dd < PAD; ++dd) {
+        const int in_index = ii*PAD+dd;
+        rho_u[ii*nx + (nx-PAD+dd)] = mesh->east_buffer_in[(RHO_U_OFF*(ny+1)*PAD)+in_index];
       }
     }
   }
@@ -465,8 +529,8 @@ static inline void lagrangian_step(
     }
   }
 
-  reflective_boundary(nx+1, ny, 1, neighbours, u, INVERT_X);
-  reflective_boundary(nx, ny+1, 1, neighbours, v, INVERT_Y);
+  reflective_boundary(nx+1, ny, 2, neighbours, u, INVERT_X);
+  reflective_boundary(nx, ny+1, 2, neighbours, v, INVERT_Y);
 }
 
 static inline void artificial_viscosity(
@@ -486,8 +550,8 @@ static inline void artificial_viscosity(
     }
   }
 
-  reflective_boundary(nx, ny, 1, neighbours, Qxx, NO_INVERT);
-  reflective_boundary(nx, ny, 1, neighbours, Qyy, NO_INVERT);
+  reflective_boundary(nx, ny, 2, neighbours, Qxx, NO_INVERT);
+  reflective_boundary(nx, ny, 2, neighbours, Qyy, NO_INVERT);
 
   // Update the momenta by the artificial viscous stresses
 #pragma omp parallel for
@@ -513,8 +577,8 @@ static inline void artificial_viscosity(
     }
   }
 
-  reflective_boundary(nx+1, ny, 1, neighbours, u, INVERT_X);
-  reflective_boundary(nx, ny+1, 1, neighbours, v, INVERT_Y);
+  reflective_boundary(nx+1, ny, 2, neighbours, u, INVERT_X);
+  reflective_boundary(nx, ny+1, 2, neighbours, v, INVERT_Y);
 }
 
 // Calculates the work done due to forces within the element
@@ -552,7 +616,7 @@ static inline void shock_heating_and_work(
     }
   }
 
-  reflective_boundary(nx, ny, 1, neighbours, e, NO_INVERT);
+  reflective_boundary(nx, ny, 2, neighbours, e, NO_INVERT);
 }
 
 // Perform advection with monotonicity improvement
@@ -612,7 +676,7 @@ static inline void x_mass_flux(
     }
   }
 
-  reflective_boundary(nx+1, ny, 1, neighbours, F_x, INVERT_X);
+  reflective_boundary(nx+1, ny, 2, neighbours, F_x, INVERT_X);
 
   // Calculate the new density values
 #pragma omp parallel for
@@ -656,7 +720,7 @@ static inline void y_mass_flux(
     }
   }
 
-  reflective_boundary(nx, ny+1, 1, neighbours, F_y, INVERT_Y);
+  reflective_boundary(nx, ny+1, 2, neighbours, F_y, INVERT_Y);
 
   // Calculate the new density values
 #pragma omp parallel for
@@ -731,8 +795,8 @@ static inline void advect_momentum(
     }
   }
 
-  reflective_boundary(nx, ny, 1, neighbours, mF_x, NO_INVERT);
-  reflective_boundary(nx+1, ny+1, 1, neighbours, mF_y, NO_INVERT);
+  reflective_boundary(nx, ny, 2, neighbours, mF_x, NO_INVERT);
+  reflective_boundary(nx+1, ny+1, 2, neighbours, mF_y, NO_INVERT);
 
   // Calculate the axial momentum
 #pragma omp parallel for
@@ -802,8 +866,8 @@ static inline void advect_momentum(
     }
   }
 
-  reflective_boundary(nx+1, ny+1, 1, neighbours, mF_x, NO_INVERT);
-  reflective_boundary(nx, ny, 1, neighbours, mF_y, NO_INVERT);
+  reflective_boundary(nx+1, ny+1, 2, neighbours, mF_x, NO_INVERT);
+  reflective_boundary(nx, ny, 2, neighbours, mF_y, NO_INVERT);
 
 #pragma omp parallel for
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
@@ -887,7 +951,7 @@ static inline void advect_energy(
     }
   }
 
-  reflective_boundary(nx, ny, 1, neighbours, e, NO_INVERT);
+  reflective_boundary(nx, ny, 2, neighbours, e, NO_INVERT);
 }
 
 // Enforce reflective boundary conditions on the problem state
@@ -1063,16 +1127,16 @@ static inline void initialise_mesh(
 
   // Simple uniform rectilinear initialisation
   for(int ii = 0; ii < mesh->local_ny+1; ++ii) {
-    mesh->edgedy[ii] = 10.0 / (mesh->local_ny-2*PAD);
+    mesh->edgedy[ii] = 10.0 / (mesh->global_ny-2*PAD);
   }
   for(int ii = 0; ii < mesh->local_ny; ++ii) {
-    mesh->celldy[ii] = 10.0 / (mesh->local_ny-2*PAD);
+    mesh->celldy[ii] = 10.0 / (mesh->global_ny-2*PAD);
   }
   for(int ii = 0; ii < mesh->local_nx+1; ++ii) {
-    mesh->edgedx[ii] = 10.0 / (mesh->local_nx-2*PAD);
+    mesh->edgedx[ii] = 10.0 / (mesh->global_nx-2*PAD);
   }
   for(int ii = 0; ii < mesh->local_nx; ++ii) {
-    mesh->celldx[ii] = 10.0 / (mesh->local_nx-2*PAD);
+    mesh->celldx[ii] = 10.0 / (mesh->global_nx-2*PAD);
   }
 }
 
@@ -1097,7 +1161,7 @@ static inline void write_to_visit(
   fprintf(bovfp, "DATA_FILE: %s\n", datname);
   fprintf(bovfp, "DATA_SIZE: %d %d 1\n", nx, ny);
   fprintf(bovfp, "DATA_FORMAT: DOUBLE\n");
-  fprintf(bovfp, "VARIABLE: %s\n", name);
+  fprintf(bovfp, "VARIABLE: density");
   fprintf(bovfp, "DATA_ENDIAN: LITTLE\n");
   fprintf(bovfp, "CENTERING: zone\n");
 
