@@ -361,9 +361,9 @@ static inline void artificial_viscosity(
 {
   // Calculate the artificial viscous stresses
 #pragma omp parallel for 
-  for(int ii = PAD; ii < ny-PAD; ++ii) {
+  for(int ii = PAD-1; ii < ny-PAD+1; ++ii) {
 #pragma omp simd
-    for(int jj = PAD; jj < nx-PAD; ++jj) {
+    for(int jj = PAD-1; jj < nx-PAD+1; ++jj) {
       const double u_diff = (u[ind1+1] - u[ind1]);
       const double v_diff = (v[ind0+nx] - v[ind0]);
       Qxx[ind0] = (u_diff >= 0.0) ? 0.0 : C_Q*rho[ind0]*u_diff*u_diff;
@@ -567,9 +567,9 @@ static inline void advect_momentum(
   /// nx DIMENSION ADVECTION
 
 #pragma omp parallel for
-  for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
+  for(int ii = PAD-1; ii < (ny+1)-PAD+1; ++ii) {
 #pragma omp simd
-    for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
+    for(int jj = PAD-1; jj < (nx+1)-PAD+1; ++jj) {
       const double u_x_max = max(u[ind1-1], max(u[ind1], u[ind1+1]));
       const double u_x_min = min(u[ind1-1], min(u[ind1], u[ind1+1]));
       const double u_y_max = max(u[ind1-(nx+1)], max(u[ind1], u[ind1+(nx+1)]));
@@ -804,8 +804,7 @@ static inline void handle_boundary(
 #pragma omp parallel for collapse(2)
     for(int ii = 0; ii < ny; ++ii) {
       for(int dd = 0; dd < PAD; ++dd) {
-        const int out_index = ii*PAD+dd;
-        mesh->west_buffer_out[out_index] = arr[(ii*nx)+(PAD+dd)];
+        mesh->west_buffer_out[ii*PAD+dd] = arr[(ii*nx)+(PAD+dd)];
       }
     }
 
@@ -830,8 +829,7 @@ static inline void handle_boundary(
 #pragma omp parallel for collapse(2)
     for(int ii = 0; ii < ny; ++ii) {
       for(int dd = 0; dd < PAD; ++dd) {
-        const int out_index = ii*PAD+dd;
-        mesh->east_buffer_out[out_index] = arr[(ii*nx)+(nx-2*PAD+dd)];
+        mesh->east_buffer_out[ii*PAD+dd] = arr[(ii*nx)+(nx-2*PAD+dd)];
       }
     }
 
@@ -858,8 +856,7 @@ static inline void handle_boundary(
 #pragma omp parallel for collapse(2)
     for(int dd = 0; dd < PAD; ++dd) {
       for(int jj = 0; jj < nx; ++jj) {
-        const int out_index = dd*nx+jj;
-        mesh->north_buffer_out[out_index] = arr[(ny-2*PAD+dd)*nx+jj];
+        mesh->north_buffer_out[dd*nx+jj] = arr[(ny-2*PAD+dd)*nx+jj];
       }
     }
 
@@ -884,8 +881,7 @@ static inline void handle_boundary(
 #pragma omp parallel for collapse(2)
     for(int dd = 0; dd < PAD; ++dd) {
       for(int jj = 0; jj < nx; ++jj) {
-        const int out_index = dd*nx+jj;
-        mesh->south_buffer_out[out_index] = arr[(PAD+dd)*nx+jj];
+        mesh->south_buffer_out[dd*nx+jj] = arr[(PAD+dd)*nx+jj];
       }
     }
 

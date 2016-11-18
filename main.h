@@ -21,7 +21,7 @@
 #define NNEIGHBOURS 4
 
 enum { NO_INVERT, INVERT_X, INVERT_Y };
-enum { PACK, NO_PACK };
+enum { NO_PACK, PACK };
 enum { EDGE=-1, NORTH=0, EAST=1, SOUTH=2, WEST=3 };
 
 /// Problem state
