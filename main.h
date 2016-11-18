@@ -21,8 +21,8 @@
 #define NNEIGHBOURS 4
 
 enum { NO_INVERT, INVERT_X, INVERT_Y };
+enum { PACK, NO_PACK };
 enum { EDGE=-1, NORTH=0, EAST=1, SOUTH=2, WEST=3 };
-enum { RHO_OFF, E_OFF, RHO_U_OFF, RHO_V_OFF };
 
 /// Problem state
 typedef struct
@@ -99,81 +99,75 @@ static inline void initialise_comms(
 
 #ifdef MPI
 
-// Batches the halos up into buffers, communicates and then unwraps them
-static inline void communicate_halos(
-    const int nx, const int ny, Mesh* mesh, double* rho, double* rho_u, 
-    double* rho_v, double* e);
-
 // Decomposes the ranks, potentially load balancing and minimising the
 // ratio of perimeter to area
 static inline void decompose_ranks(Mesh* mesh);
 
 #endif
 
-// Calculate the pressure from GAMma law equation of state
 static inline void equation_of_state(
     const int nx, const int ny, double* P, const double* rho, const double* e);
 
-// Calculates the timestep from the cuyyent state
 static inline void set_timestep(
     const int nx, const int ny, double* Qxx, double* Qyy, const double* rho, 
     const double* u, const double* v, const double* e, Mesh* mesh, const int first_step,
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy);
 
-// Calculate change in momentum caused by pressure gradients, and then extract
-// the velocities using edge centered density approximations
 static inline void lagrangian_step(
-    const int nx, const int ny, const double dt, double* rho_u, double* rho_v, 
-    double* u, double* v, const double* P, const double* rho, const int* neighbours,
+    const int nx, const int ny, Mesh* mesh, const double dt, double* rho_u, 
+    double* rho_v, double* u, double* v, const double* P, const double* rho,
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy);
 
 static inline void artificial_viscosity(
-    const int nx, const int ny, const double dt, double* Qxx, double* Qyy, double* u, double* v, 
-    double* rho_u, double* rho_v, const double* rho, const int* neighbours,
+    const int nx, const int ny, Mesh* mesh, const double dt, double* Qxx, 
+    double* Qyy, double* u, double* v, double* rho_u, double* rho_v, const double* rho, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy);
 
 // Calculates the work done due to forces within the element
 static inline void shock_heating_and_work(
-    const int nx, const int ny, const double dt, double* e, const double* P, const double* u, 
-    const double* v, const double* rho, const double* Qxx, const double* Qyy, const int* neighbours,
+    const int nx, const int ny, Mesh* mesh, const double dt, double* e, 
+    const double* P, const double* u, const double* v, const double* rho, 
+    const double* Qxx, const double* Qyy, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy);
 
 // Perform advection with monotonicity improvement
 static inline void advect_mass(
-    const int nx, const int ny, const int tt, const double dt_h, double* rho, 
-    double* rho_old, double* slope_x, double* slope_y, double* F_x, double* F_y, 
-    const double* u, const double* v, const int* neighbours,
+    const int nx, const int ny, Mesh* mesh, const int tt, const double dt_h, 
+    double* rho, double* rho_old, double* F_x, double* F_y, const double* u, 
+    const double* v, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy);
 
 // Calculate the flux in the x direction
 static inline void x_mass_flux(
-    const int nx, const int ny, const double dt_h, double* rho, 
+    const int nx, const int ny, Mesh* mesh, const double dt_h, double* rho, 
     const double* u, double* F_x, const double* celldx, const double* edgedx, 
-    const double* celldy, const double* edgedy, const int* neighbours);
+    const double* celldy, const double* edgedy);
 
 // Calculate the flux in the y direction
 static inline void y_mass_flux(
-    const int nx, const int ny, const double dt_h, double* rho, 
+    const int nx, const int ny, Mesh* mesh, const double dt_h, double* rho, 
     const double* v, double* F_y, const double* celldx, const double* edgedx, 
-    const double* celldy, const double* edgedy, const int* neighbours);
+    const double* celldy, const double* edgedy);
 
 // Advect momentum according to the velocity
 static inline void advect_momentum(
-    const int nx, const int ny, const double dt_h, const double dt, double* u, 
-    double* v, double* slope_x, double* slope_y, double* mF_x, double* mF_y, double* rho_u, 
-    double* rho_v, const double* rho, const double* F_x, const double* F_y, const int* neighbours,
+    const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
+    double* u, double* v, double* slope_x, double* slope_y, double* mF_x, 
+    double* mF_y, double* rho_u, double* rho_v, const double* rho, 
+    const double* F_x, const double* F_y, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy);
 
 // Perform advection of internal energy
 static inline void advect_energy(
-    const int nx, const int ny, const double dt_h, const double dt, double* e, 
-    double* slope_x, double* slope_y, double* F_x, double* F_y, const double* u, 
-    const double* v, const double* rho_old, const double* rho, const int* neighbours,
+    const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
+    double* e, double* slope_x, double* slope_y, double* F_x, double* F_y, 
+    const double* u, const double* v, const double* rho_old, const double* rho,
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy);
 
 // Enforce reflective boundary conditions on the problem state
-static inline void reflective_boundary(
-    const int nx, const int ny, const int* neighbours, double* arr, int invert);
+static inline void handle_boundary(
+    const int nx, const int ny, Mesh* mesh, 
+    double* arr, const int invert, const int pack);
 
 // Initialise the state for the problem
 static inline void initialise_state(
@@ -188,6 +182,7 @@ static inline void write_to_visit(
     const int nx, const int ny, const int x_off, const int y_off, 
     const double* data, const char* name, const int step, const double time);
 
+// Prints some conservation values
 static inline void print_conservation(
     const int nx, const int ny, State* state, Mesh* mesh);
 
@@ -196,4 +191,3 @@ static inline void finalise_state(State* state);
 
 // Deallocate all of the mesh memory
 static inline void finalise_mesh(Mesh* mesh);
-
