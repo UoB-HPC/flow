@@ -173,7 +173,7 @@ static inline void advect_energy(
 
 // Enforce reflective boundary conditions on the problem state
 static inline void reflective_boundary(
-    const int nx, const int ny, const int depth, const int* neighbours, double* arr, int invert);
+    const int nx, const int ny, const int* neighbours, double* arr, int invert);
 
 // Initialise the state for the problem
 static inline void initialise_state(
