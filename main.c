@@ -17,8 +17,8 @@ int main(int argc, char** argv)
   // Store the dimensions of the mesh
   Mesh mesh = {0};
   State state = {0};
-  mesh.global_nx = atoi(argv[1]) + 2*PAD;
-  mesh.global_ny = atoi(argv[2]) + 2*PAD;
+  mesh.global_nx = atoi(argv[1]);// + 2*PAD;
+  mesh.global_ny = atoi(argv[2]);// + 2*PAD;
   mesh.local_nx = atoi(argv[1]) + 2*PAD;
   mesh.local_ny = atoi(argv[2]) + 2*PAD;
   mesh.rank = MASTER;
@@ -148,8 +148,8 @@ int main(int argc, char** argv)
 
   char visit_name[256];
   sprintf(visit_name, "density_%d", mesh.rank);
-  write_to_visit(mesh.local_nx, mesh.local_ny, mesh.x_off, 
-      mesh.y_off, state.rho, visit_name, tt, elapsed_sim_time);
+  write_to_visit(mesh.local_nx+1, mesh.local_ny, mesh.x_off, 
+      mesh.y_off, state.rho_u, visit_name, tt, elapsed_sim_time);
 
   finalise_state(&state);
   finalise_mesh(&mesh);
@@ -157,7 +157,6 @@ int main(int argc, char** argv)
   return 0;
 }
 
-#ifdef MPI
 static inline void initialise_comms(
     int argc, char** argv, Mesh* mesh)
 {
@@ -201,6 +200,7 @@ static inline void initialise_comms(
         mesh->global_nx, mesh->global_ny, mesh->niters);
 }
 
+#ifdef MPI
 // Decomposes the ranks, potentially load balancing and minimising the
 // ratio of perimeter to area
 static inline void decompose_ranks(Mesh* mesh) 
