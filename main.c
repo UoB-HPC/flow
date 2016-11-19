@@ -129,36 +129,21 @@ int main(int argc, char** argv)
 
   double global_wallclock = 0.0;
   if(tt > 0) {
-    struct ProfileEntry pe = profiler_get_profile_entry(&w, "wallclock");
-    global_wallclock = pe.time;
-  }
-
 #ifdef MPI
-  /// TODO: Can't quite remember whether this is a legitimate thing to do or
-  //not, do we end up reading and writing to the same location in random order?
-  MPI_Allreduce(&global_wallclock, &global_wallclock, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    struct ProfileEntry pe = profiler_get_profile_entry(&w, "wallclock");
+    MPI_Reduce(&global_wallclock, &pe.time, 1, MPI_DOUBLE, MPI_SUM, MASTER, MPI_COMM_WORLD);
 #endif
+  }
 
   if(mesh.rank == MASTER) {
     PRINT_PROFILING_RESULTS(&p);
-
-    printf("Wallclock %.2fs, Elapsed Simulation Time %.4fs\n", 
-        global_wallclock, elapsed_sim_time);
+    printf("Wallclock %.2fs, Elapsed Simulation Time %.4fs\n", global_wallclock, elapsed_sim_time);
   }
 
   char visit_name[256];
   sprintf(visit_name, "density%d", mesh.rank);
   write_to_visit_over_mpi(
       &mesh, mesh.rank, mesh.nranks, state.rho, visit_name, tt, elapsed_sim_time);
-
-#if 0
-  write_to_visit(
-      mesh.local_nx, mesh.local_ny, mesh.x_off, mesh.y_off, state.rho, visit_name, tt, elapsed_sim_time);
-  write_to_visit(mesh.local_nx+1, mesh.local_ny, mesh.x_off, mesh.y_off, state.u, "u", tt, elapsed_sim_time);
-  write_to_visit(mesh.local_nx, mesh.local_ny+1, mesh.x_off, mesh.y_off, state.v, "v", tt, elapsed_sim_time);
-  write_to_visit(mesh.local_nx, mesh.local_ny, mesh.x_off, mesh.y_off, state.e, "e", tt, elapsed_sim_time);
-  write_to_visit(mesh.local_nx, mesh.local_ny, mesh.x_off, mesh.y_off, state.P, "P", tt, elapsed_sim_time);
-#endif // if 0
 
   finalise_state(&state);
   finalise_mesh(&mesh);
@@ -589,27 +574,6 @@ static inline void advect_momentum(
     const double* F_x, const double* F_y, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
-#if 0
-#pragma omp parallel for
-  for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
-#pragma omp simd
-    for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
-      // Calculate the zone edge centered density
-      const double rho_edge_x = 
-        (rho[ind0]*celldx[jj]*celldy[ii] + rho[ind0-1]*celldx[jj - 1]*celldy[ii]) / 
-        (2.0*edgedx[jj]*celldy[ii]);
-      const double rho_edge_y = 
-        (rho[ind0]*celldy[ii]*celldx[jj] + rho[ind0-nx]*celldy[ii - 1]*celldx[jj]) / 
-        (2.0*edgedx[jj]*celldy[ii]);
-      u[ind1] = (rho_edge_x == 0.0) ? 0.0 : rho_u[ind1] / rho_edge_x;
-      v[ind0] = (rho_edge_y == 0.0) ? 0.0 : rho_v[ind0] / rho_edge_y;
-    }
-  }
-
-  handle_boundary(nx+1, ny, mesh, u, INVERT_X, PACK);
-  handle_boundary(nx, ny+1, mesh, v, INVERT_Y, PACK);
-#endif // if 0
-
   /// nx DIMENSION ADVECTION
 
 #pragma omp parallel for
@@ -1240,9 +1204,6 @@ static inline void write_to_visit_over_mpi(
     if(rank == MASTER) {
       if(ii > MASTER) {
         MPI_Recv(&dims, 4, MPI_INT, ii, 0, MPI_COMM_WORLD, MPI_STATUSES_IGNORE);
-
-        printf("master received %d %d %d %d %d \n", dims[0], dims[1], dims[2], dims[3], ii);
-
         remote_data[ii] = (double*)malloc(sizeof(double)*dims[0]*dims[1]);
         MPI_Recv(
             remote_data[ii], dims[0]*dims[1], MPI_DOUBLE, ii, 1, 
@@ -1613,3 +1574,25 @@ static inline void communicate_halos(
 }
 
 #endif // if 0
+
+#if 0
+#pragma omp parallel for
+  for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
+#pragma omp simd
+    for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
+      // Calculate the zone edge centered density
+      const double rho_edge_x = 
+        (rho[ind0]*celldx[jj]*celldy[ii] + rho[ind0-1]*celldx[jj - 1]*celldy[ii]) / 
+        (2.0*edgedx[jj]*celldy[ii]);
+      const double rho_edge_y = 
+        (rho[ind0]*celldy[ii]*celldx[jj] + rho[ind0-nx]*celldy[ii - 1]*celldx[jj]) / 
+        (2.0*edgedx[jj]*celldy[ii]);
+      u[ind1] = (rho_edge_x == 0.0) ? 0.0 : rho_u[ind1] / rho_edge_x;
+      v[ind0] = (rho_edge_y == 0.0) ? 0.0 : rho_v[ind0] / rho_edge_y;
+    }
+  }
+
+  handle_boundary(nx+1, ny, mesh, u, INVERT_X, PACK);
+  handle_boundary(nx, ny+1, mesh, v, INVERT_Y, PACK);
+#endif // if 0
+

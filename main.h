@@ -4,8 +4,8 @@
 // Controllable parameters for the application
 #define GAM 1.4
 #define PAD 2
-#define MAX_DT 0.04
-#define C_Q 2.0 // Suggested between 1.0 and 2.0
+#define MAX_DT 0.004
+#define C_Q 1.0 // Suggested between 1.0 and 2.0
 #define C_T 0.5
 #define VISIT_STEP 10
 #define SIM_END 100.0
