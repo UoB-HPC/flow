@@ -147,9 +147,18 @@ int main(int argc, char** argv)
   }
 
   char visit_name[256];
-  sprintf(visit_name, "density_%d", mesh.rank);
-  write_to_visit(mesh.local_nx+1, mesh.local_ny, mesh.x_off, 
-      mesh.y_off, state.rho_u, visit_name, tt, elapsed_sim_time);
+  sprintf(visit_name, "density%d", mesh.rank);
+  write_to_visit_over_mpi(
+      &mesh, mesh.rank, mesh.nranks, state.rho, visit_name, tt, elapsed_sim_time);
+
+#if 0
+  write_to_visit(
+      mesh.local_nx, mesh.local_ny, mesh.x_off, mesh.y_off, state.rho, visit_name, tt, elapsed_sim_time);
+  write_to_visit(mesh.local_nx+1, mesh.local_ny, mesh.x_off, mesh.y_off, state.u, "u", tt, elapsed_sim_time);
+  write_to_visit(mesh.local_nx, mesh.local_ny+1, mesh.x_off, mesh.y_off, state.v, "v", tt, elapsed_sim_time);
+  write_to_visit(mesh.local_nx, mesh.local_ny, mesh.x_off, mesh.y_off, state.e, "e", tt, elapsed_sim_time);
+  write_to_visit(mesh.local_nx, mesh.local_ny, mesh.x_off, mesh.y_off, state.P, "P", tt, elapsed_sim_time);
+#endif // if 0
 
   finalise_state(&state);
   finalise_mesh(&mesh);
@@ -331,6 +340,17 @@ static inline void lagrangian_step(
 #pragma omp simd
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
       // Update the momenta using the pressure gradients
+#if 0
+      // TODO: FIx the small osciallations in momentum that occur when running the
+      // sod shock problem. It seems that there is some numerical issue that
+      // is causing some amount of velocity to occur. Run bottom sod and check u after
+      // some hundreds of steps.
+      if(P[ind0] != P[ind0-1]) {
+        printf("diff: %.15e, ind %d\n", P[ind0]-P[ind0-1], ind0);
+        printf("e_l: %.15e, e_r: %.15e, rho_l: %.15e, rho_r: %.15e\n", 
+            P[ind0-1]/rho[ind0-1], P[ind0]/rho[ind0], rho[ind0-1], rho[ind0]);
+      }
+#endif // if 0
       rho_u[ind1] -= dt*(P[ind0] - P[ind0-1])/(edgedx[jj]);
       rho_v[ind0] -= dt*(P[ind0] - P[ind0-nx])/(edgedy[ii]);
 
@@ -361,9 +381,9 @@ static inline void artificial_viscosity(
 {
   // Calculate the artificial viscous stresses
 #pragma omp parallel for 
-  for(int ii = PAD-1; ii < ny-PAD+1; ++ii) {
+  for(int ii = PAD; ii < ny-PAD; ++ii) {
 #pragma omp simd
-    for(int jj = PAD-1; jj < nx-PAD+1; ++jj) {
+    for(int jj = PAD; jj < nx-PAD; ++jj) {
       const double u_diff = (u[ind1+1] - u[ind1]);
       const double v_diff = (v[ind0+nx] - v[ind0]);
       Qxx[ind0] = (u_diff >= 0.0) ? 0.0 : C_Q*rho[ind0]*u_diff*u_diff;
@@ -371,8 +391,9 @@ static inline void artificial_viscosity(
     }
   }
 
-  handle_boundary(nx, ny, mesh, Qxx, NO_INVERT, NO_PACK);
-  handle_boundary(nx, ny, mesh, Qyy, NO_INVERT, NO_PACK);
+  // TODO: WE SHOULDN'T FILL IN GAPS HERE RIGHT?
+  handle_boundary(nx, ny, mesh, Qxx, NO_INVERT, PACK);
+  handle_boundary(nx, ny, mesh, Qyy, NO_INVERT, PACK);
 
   // Update the momenta by the artificial viscous stresses
 #pragma omp parallel for
@@ -498,7 +519,7 @@ static inline void x_mass_flux(
     }
   }
 
-  handle_boundary(nx+1, ny, mesh, F_x, INVERT_X, NO_PACK);
+  handle_boundary(nx+1, ny, mesh, F_x, INVERT_X, PACK);
 
   // Calculate the new density values
 #pragma omp parallel for
@@ -542,7 +563,7 @@ static inline void y_mass_flux(
     }
   }
 
-  handle_boundary(nx, ny+1, mesh, F_y, INVERT_Y, NO_PACK);
+  handle_boundary(nx, ny+1, mesh, F_y, INVERT_Y, PACK);
 
   // Calculate the new density values
 #pragma omp parallel for
@@ -554,6 +575,10 @@ static inline void y_mass_flux(
         (celldx[jj]*celldy[ii]);
     }
   }
+
+#if 0
+  handle_boundary(nx, ny, mesh, rho, NO_INVERT, PACK);
+#endif // if 0
 }
 
 // Advect momentum according to the velocity
@@ -564,12 +589,33 @@ static inline void advect_momentum(
     const double* F_x, const double* F_y, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
+#if 0
+#pragma omp parallel for
+  for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
+#pragma omp simd
+    for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
+      // Calculate the zone edge centered density
+      const double rho_edge_x = 
+        (rho[ind0]*celldx[jj]*celldy[ii] + rho[ind0-1]*celldx[jj - 1]*celldy[ii]) / 
+        (2.0*edgedx[jj]*celldy[ii]);
+      const double rho_edge_y = 
+        (rho[ind0]*celldy[ii]*celldx[jj] + rho[ind0-nx]*celldy[ii - 1]*celldx[jj]) / 
+        (2.0*edgedx[jj]*celldy[ii]);
+      u[ind1] = (rho_edge_x == 0.0) ? 0.0 : rho_u[ind1] / rho_edge_x;
+      v[ind0] = (rho_edge_y == 0.0) ? 0.0 : rho_v[ind0] / rho_edge_y;
+    }
+  }
+
+  handle_boundary(nx+1, ny, mesh, u, INVERT_X, PACK);
+  handle_boundary(nx, ny+1, mesh, v, INVERT_Y, PACK);
+#endif // if 0
+
   /// nx DIMENSION ADVECTION
 
 #pragma omp parallel for
-  for(int ii = PAD-1; ii < (ny+1)-PAD+1; ++ii) {
+  for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
 #pragma omp simd
-    for(int jj = PAD-1; jj < (nx+1)-PAD+1; ++jj) {
+    for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
       const double u_x_max = max(u[ind1-1], max(u[ind1], u[ind1+1]));
       const double u_x_min = min(u[ind1-1], min(u[ind1], u[ind1+1]));
       const double u_y_max = max(u[ind1-(nx+1)], max(u[ind1], u[ind1+(nx+1)]));
@@ -618,8 +664,8 @@ static inline void advect_momentum(
     }
   }
 
-  handle_boundary(nx, ny, mesh, mF_x, NO_INVERT, NO_PACK);
-  handle_boundary(nx+1, ny+1, mesh, mF_y, NO_INVERT, NO_PACK);
+  handle_boundary(nx, ny, mesh, mF_x, NO_INVERT, PACK);
+  handle_boundary(nx+1, ny+1, mesh, mF_y, NO_INVERT, PACK);
 
   // Calculate the axial momentum
 #pragma omp parallel for
@@ -630,6 +676,11 @@ static inline void advect_momentum(
         ((mF_x[ind0] - mF_x[ind0-1])/(edgedx[jj]*celldy[ii]) +
          (mF_y[ind1+(nx+1)] - mF_y[ind1])/(celldx[jj]*edgedy[ii]));
     }
+  }
+
+  for(int ii = 0; ii < (nx+1)*(ny+1); ++ii) {
+    mF_x[ii] = 0.0;
+    mF_y[ii] = 0.0;
   }
 
   /// ny DIMENSION ADVECTION
@@ -689,8 +740,8 @@ static inline void advect_momentum(
     }
   }
 
-  handle_boundary(nx+1, ny+1, mesh, mF_x, NO_INVERT, NO_PACK);
-  handle_boundary(nx, ny, mesh, mF_y, NO_INVERT, NO_PACK);
+  handle_boundary(nx+1, ny+1, mesh, mF_x, NO_INVERT, PACK);
+  handle_boundary(nx, ny, mesh, mF_y, NO_INVERT, PACK);
 
 #pragma omp parallel for
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
@@ -700,6 +751,11 @@ static inline void advect_momentum(
           (mF_x[ind1+1] - mF_x[ind1])/(edgedx[jj]*celldy[ii]) +
           (mF_y[ind0] - mF_y[ind0-nx])/(celldx[jj]*edgedy[ii]));
     }
+  }
+
+  for(int ii = 0; ii < (nx+1)*(ny+1); ++ii) {
+    mF_x[ii] = 0.0;
+    mF_y[ii] = 0.0;
   }
 }
 
@@ -746,7 +802,7 @@ static inline void advect_energy(
 
   // Calculate the zone edge centered energies, and flux
 #pragma omp parallel for
-  for(int ii = PAD; ii < ny-PAD; ++ii) {
+  for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
 #pragma omp simd
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
       // Calculate the interpolated densities
@@ -1008,10 +1064,19 @@ static inline void initialise_state(
         state->e[ii*mesh->local_nx+jj] = 2.5;
       }
 #endif // if 0
+#if 0
+      if(jj+mesh->x_off > mesh->global_nx/2) { //LEFT SOD
+        state->rho[ii*mesh->local_nx+jj] = 1.0;
+        state->e[ii*mesh->local_nx+jj] = 2.5;
+      }
+#endif // if 0
+
+#if 0
       if(ii+mesh->y_off < mesh->global_ny/2) { //BOTTOM SOD
         state->rho[ii*mesh->local_nx+jj] = 1.0;
         state->e[ii*mesh->local_nx+jj] = 2.5;
       }
+#endif // if 0
 
 #if 0
       // BLUE HOLE TEST 
@@ -1023,7 +1088,6 @@ static inline void initialise_state(
       }
 #endif // if 0
 
-#if 0
       // CENTER SQUARE TEST
       const int dist = 20;
       if(jj+mesh->x_off-PAD >= mesh->global_nx/2-dist && 
@@ -1033,7 +1097,6 @@ static inline void initialise_state(
         state->rho[ii*mesh->local_nx+jj] = 1.0;
         state->e[ii*mesh->local_nx+jj] = 2.5;
       }
-#endif // if 0
     }
   }
 
@@ -1144,13 +1207,65 @@ static inline void print_conservation(
   double global_energy_tot = energy_tot;
 
 #ifdef MPI
-  MPI_Allreduce(&mass_tot, &global_mass_tot, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(&energy_tot, &global_energy_tot, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  MPI_Reduce(&mass_tot, &global_mass_tot, 1, MPI_DOUBLE, MPI_SUM, MASTER, MPI_COMM_WORLD);
+  MPI_Reduce(&energy_tot, &global_energy_tot, 1, MPI_DOUBLE, MPI_SUM, MASTER, MPI_COMM_WORLD);
 #endif
 
   if(mesh->rank == MASTER) {
     printf("total mass: %.12e\n", global_mass_tot);
     printf("total energy: %.12e\n", global_energy_tot);
+  }
+}
+
+static inline void write_to_visit_over_mpi(
+    Mesh* mesh, const int rank, const int nranks, double* local_arr, 
+    const char* name, const int tt, const double elapsed_sim_time)
+{
+  double* global_arr;
+  double** remote_data;
+
+  if(rank == MASTER) {
+    global_arr = (double*)malloc(sizeof(double)*mesh->global_nx*mesh->global_ny);
+    remote_data = (double**)malloc(sizeof(double*)*nranks);
+    remote_data[MASTER] = local_arr;
+  }
+
+  for(int ii = 0; ii < nranks; ++ii) {
+    int dims[4];
+    dims[0] = mesh->local_nx;
+    dims[1] = mesh->local_ny;
+    dims[2] = mesh->x_off;
+    dims[3] = mesh->y_off;
+
+    if(rank == MASTER) {
+      if(ii > MASTER) {
+        MPI_Recv(&dims, 4, MPI_INT, ii, 0, MPI_COMM_WORLD, MPI_STATUSES_IGNORE);
+
+        printf("master received %d %d %d %d %d \n", dims[0], dims[1], dims[2], dims[3], ii);
+
+        remote_data[ii] = (double*)malloc(sizeof(double)*dims[0]*dims[1]);
+        MPI_Recv(
+            remote_data[ii], dims[0]*dims[1], MPI_DOUBLE, ii, 1, 
+            MPI_COMM_WORLD, MPI_STATUSES_IGNORE);
+      }
+
+      for(int jj = PAD; jj < dims[1]-PAD; ++jj) {
+        for(int kk = PAD; kk < dims[0]-PAD; ++kk) {
+          global_arr[(dims[3]+(jj-PAD))*mesh->global_nx+((kk-PAD)+dims[2])] =
+            remote_data[ii][jj*dims[0]+kk];
+        }
+      }
+    }
+    else if(ii == rank) {
+      MPI_Send(&dims, 4, MPI_INT, MASTER, 0, MPI_COMM_WORLD);
+      MPI_Send(local_arr, dims[0]*dims[1], MPI_DOUBLE, MASTER, 1, MPI_COMM_WORLD);
+    }
+  }
+  MPI_Barrier(MPI_COMM_WORLD);
+
+  if(rank == MASTER) {
+    write_to_visit(mesh->global_nx, mesh->global_ny, 0, 
+        0, global_arr, name, tt, elapsed_sim_time);
   }
 }
 
@@ -1304,27 +1419,6 @@ handle_boundary(nx, ny+1, neighbours, v, INVERT_Y);
 #endif // if 0
 
 
-
-#if 0
-if(jj >= nx/2) { //RIGHT SOD
-  state->rho[ind0] = 1.0;
-  state->e[ind0] = 2.5;
-}
-#endif // if 0
-
-#if 0
-if(ii < ny/2) { //UP SOD
-  state->rho[ind0] = 1.0;
-  state->e[ind0] = 2.5;
-}
-#endif // if 0
-
-#if 0
-if(ii >= ny/2) { //DOWN SOD
-  state->rho[ind0] = 1.0;
-  state->e[ind0] = 2.5;
-}
-#endif // if 0
 
 #if 0
 // Batches the halos up into buffers, communicates and then unwraps them

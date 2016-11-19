@@ -1,7 +1,5 @@
 //#define MPI
-#ifdef MPI
 #include <mpi.h>
-#endif
 
 // Controllable parameters for the application
 #define GAM 1.4
@@ -10,7 +8,7 @@
 #define C_Q 2.0 // Suggested between 1.0 and 2.0
 #define C_T 0.5
 #define VISIT_STEP 10
-#define SIM_END 10.0
+#define SIM_END 100.0
 #define LOAD_BALANCE 0
 
 #define max(a, b) (((a) > (b)) ? (a) : (b))
@@ -168,6 +166,10 @@ static inline void advect_energy(
 static inline void handle_boundary(
     const int nx, const int ny, Mesh* mesh, 
     double* arr, const int invert, const int pack);
+
+static inline void write_to_visit_over_mpi(
+    Mesh* mesh, const int rank, const int nranks, double* local_arr, 
+    const char* name, const int tt, const double elapsed_sim_time);
 
 // Initialise the state for the problem
 static inline void initialise_state(
