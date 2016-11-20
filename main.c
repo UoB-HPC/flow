@@ -1108,10 +1108,10 @@ static inline void initialise_state(
 static inline void initialise_mesh(
     Mesh* mesh)
 {
-  mesh->edgedx = (double*)malloc(sizeof(double)*mesh->local_nx+1);
-  mesh->celldx = (double*)malloc(sizeof(double)*mesh->local_nx);
-  mesh->edgedy = (double*)malloc(sizeof(double)*mesh->local_ny+1);
-  mesh->celldy = (double*)malloc(sizeof(double)*mesh->local_ny);
+  mesh->edgedx = (double*)_mm_malloc(sizeof(double)*mesh->local_nx+1, VEC_ALIGN);
+  mesh->celldx = (double*)_mm_malloc(sizeof(double)*mesh->local_nx, VEC_ALIGN);
+  mesh->edgedy = (double*)_mm_malloc(sizeof(double)*mesh->local_ny+1, VEC_ALIGN);
+  mesh->celldy = (double*)_mm_malloc(sizeof(double)*mesh->local_ny, VEC_ALIGN);
   mesh->dt = 0.5*C_T*MAX_DT;
   mesh->dt_h = 0.5*C_T*MAX_DT;
 
