@@ -1,7 +1,7 @@
 
 MPI     = yes
-OPTIONS = -g -DENABLE_PROFILING -qopt-report=5
-CFLAGS  = -O3 -std=gnu99 -xhost -qopenmp
+OPTIONS = -g -DENABLE_PROFILING -qopt-report=5 
+CFLAGS  = -O3 -std=gnu99 -xhost -qopenmp -no-prec-div
 LDFLAGS = #-lrt
 
 ifeq ($(MPI), yes)

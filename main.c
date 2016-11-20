@@ -7,6 +7,9 @@
 #define ind0 (ii*nx + jj)
 #define ind1 (ii*(nx+1) + jj)
 
+struct Profile compute_profiler = {0};
+struct Profile comms_profiler = {0};
+
 int main(int argc, char** argv)
 {
   if(argc != 4) {
@@ -17,8 +20,8 @@ int main(int argc, char** argv)
   // Store the dimensions of the mesh
   Mesh mesh = {0};
   State state = {0};
-  mesh.global_nx = atoi(argv[1]);// + 2*PAD;
-  mesh.global_ny = atoi(argv[2]);// + 2*PAD;
+  mesh.global_nx = atoi(argv[1]);
+  mesh.global_ny = atoi(argv[2]);
   mesh.local_nx = atoi(argv[1]) + 2*PAD;
   mesh.local_ny = atoi(argv[2]) + 2*PAD;
   mesh.rank = MASTER;
@@ -34,7 +37,6 @@ int main(int argc, char** argv)
       state.v, state.e, &mesh, 0, mesh.edgedx, mesh.edgedy, mesh.celldx, mesh.celldy);
 
   // Prepare for solve
-  struct Profile p = {0};
   struct Profile w = {0};
   double elapsed_sim_time = 0.0;
 
@@ -47,63 +49,47 @@ int main(int argc, char** argv)
 
     START_PROFILING(&w);
 
-    START_PROFILING(&p);
     equation_of_state(
         mesh.local_nx, mesh.local_ny, state.P, state.rho, state.e);
-    STOP_PROFILING(&p, "equation_of_state");
 
-    START_PROFILING(&p);
     lagrangian_step(
         mesh.local_nx, mesh.local_ny, &mesh, mesh.dt, state.rho_u, state.rho_v, 
         state.u, state.v, state.P, state.rho, mesh.edgedx, mesh.edgedy, 
         mesh.celldx, mesh.celldy);
-    STOP_PROFILING(&p, "lagrangian_step");
 
-    START_PROFILING(&p);
     artificial_viscosity(
         mesh.local_nx, mesh.local_ny, &mesh, mesh.dt, state.Qxx, state.Qyy, 
         state.u, state.v, state.rho_u, state.rho_v, state.rho, 
         mesh.edgedx, mesh.edgedy, mesh.celldx, mesh.celldy);
-    STOP_PROFILING(&p, "artificial_viscosity");
 
-    START_PROFILING(&p);
     set_timestep(
         mesh.local_nx, mesh.local_ny, state.Qxx, state.Qyy, state.rho, 
         state.u, state.v, state.e, &mesh, tt == 0, 
         mesh.edgedx, mesh.edgedy, mesh.celldx, mesh.celldy);
-    STOP_PROFILING(&p, "set_timestep");
 
     if(mesh.rank == MASTER)
       printf("dt %.12e dt_h %.12e\n", mesh.dt, mesh.dt_h);
 
-    START_PROFILING(&p);
     shock_heating_and_work(
         mesh.local_nx, mesh.local_ny, &mesh, mesh.dt, state.e, state.P, state.u, 
         state.v, state.rho, state.Qxx, state.Qyy, mesh.edgedx, mesh.edgedy, 
         mesh.celldx, mesh.celldy);
-    STOP_PROFILING(&p, "shock_heating_and_work");
 
     // Perform advection
-    START_PROFILING(&p);
     advect_mass(
         mesh.local_nx, mesh.local_ny, &mesh, tt, mesh.dt_h, state.rho, 
         state.rho_old, state.F_x, state.F_y, state.u, state.v, mesh.edgedx, 
         mesh.edgedy, mesh.celldx, mesh.celldy);
-    STOP_PROFILING(&p, "advect_mass");
 
-    START_PROFILING(&p);
     advect_momentum(
         mesh.local_nx, mesh.local_ny, &mesh, mesh.dt_h, mesh.dt, state.u, state.v, state.slope_x1, 
         state.slope_y1, state.mF_x, state.mF_y, state.rho_u, state.rho_v, 
         state.rho, state.F_x, state.F_y, mesh.edgedx, mesh.edgedy, mesh.celldx, mesh.celldy);
-    STOP_PROFILING(&p, "advect_momentum");
 
-    START_PROFILING(&p);
     advect_energy(
         mesh.local_nx, mesh.local_ny, &mesh, mesh.dt_h, mesh.dt, state.e, state.slope_x0, 
         state.slope_y0, state.F_x, state.F_y, state.u, state.v, state.rho_old, state.rho,
         mesh.edgedx, mesh.edgedy, mesh.celldx, mesh.celldy);
-    STOP_PROFILING(&p, "advect_energy");
 
     STOP_PROFILING(&w, "wallclock");
 
@@ -119,24 +105,19 @@ int main(int argc, char** argv)
     if(mesh.rank == MASTER) {
       printf("simulation time: %.4lf(s)\n", elapsed_sim_time);
     }
-
-#if 0
-    if(tt%VISIT_STEP == 0) 
-      write_to_visit(mesh.local_nx, mesh.local_ny, mesh.x_off, 
-          mesh.y_off, state.rho, "wet_density", tt, elapsed_sim_time);
-#endif // if 0
   }
 
   double global_wallclock = 0.0;
   if(tt > 0) {
 #ifdef MPI
     struct ProfileEntry pe = profiler_get_profile_entry(&w, "wallclock");
-    MPI_Reduce(&global_wallclock, &pe.time, 1, MPI_DOUBLE, MPI_SUM, MASTER, MPI_COMM_WORLD);
+    MPI_Reduce(&pe.time, &global_wallclock, 1, MPI_DOUBLE, MPI_SUM, MASTER, MPI_COMM_WORLD);
 #endif
   }
 
   if(mesh.rank == MASTER) {
-    PRINT_PROFILING_RESULTS(&p);
+    PRINT_PROFILING_RESULTS(&compute_profiler);
+    PRINT_PROFILING_RESULTS(&comms_profiler);
     printf("Wallclock %.2fs, Elapsed Simulation Time %.4fs\n", global_wallclock, elapsed_sim_time);
   }
 
@@ -267,13 +248,19 @@ static inline void decompose_ranks(Mesh* mesh)
 static inline void equation_of_state(
     const int nx, const int ny, double* P, const double* rho, const double* e)
 {
+  START_PROFILING(&compute_profiler);
+
 #pragma omp parallel for
   for(int ii = 0; ii < ny; ++ii) {
+#pragma vector aligned
+#pragma omp simd
     for(int jj = 0; jj < nx; ++jj) {
       // Only invoke simple GAMma law at the moment
       P[ind0] = (GAM - 1.0)*rho[ind0]*e[ind0];
     }
   }
+
+  STOP_PROFILING(&compute_profiler, __func__);
 }
 
 // Calculates the timestep from the cuyyent state
@@ -282,31 +269,42 @@ static inline void set_timestep(
     const double* u, const double* v, const double* e, Mesh* mesh, const int first_step,
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
+  START_PROFILING(&compute_profiler);
+
   double local_min_dt = MAX_DT;
 
   // Check the minimum timestep from the sound speed in the nx and ny directions
 #pragma omp parallel for reduction(min: local_min_dt)
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
+#pragma vector aligned
+#pragma omp simd 
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
+      double thread_min_dt = 1.0;
+
       // Constrain based on the artificial viscous stresses
-      if(Qxx[ind0] != 0.0)
-        local_min_dt = min(local_min_dt, 0.25*edgedx[jj]*sqrt(rho[ind0]/Qxx[ind0]));
-      if(Qyy[ind0] != 0.0)
-        local_min_dt = min(local_min_dt, 0.25*edgedy[ii]*sqrt(rho[ind0]/Qyy[ind0]));
+      const double xmask = (Qxx[ind0] != 0.0) ? 0.0 : MAX_DT;
+      thread_min_dt = min(thread_min_dt, xmask+0.25*edgedx[jj]*sqrt(rho[ind0]/Qxx[ind0]));
+      const double ymask = (Qyy[ind0] != 0.0) ? 0.0 : MAX_DT;
+      thread_min_dt = min(thread_min_dt, ymask+0.25*edgedy[ii]*sqrt(rho[ind0]/Qyy[ind0]));
 
       // Constrain based on the sound speed within the system
       const double c_s = sqrt(GAM*(GAM - 1.0)*e[ind0]);
-
       // TODO: possible DBZ
-      local_min_dt = min(local_min_dt, (celldx[jj]/(fabs(u[ind1]) + c_s)));
-      local_min_dt = min(local_min_dt, (celldy[ii]/(fabs(v[ind0]) + c_s)));
+      thread_min_dt = min(thread_min_dt, (celldx[jj]/(fabs(u[ind1]) + c_s)));
+      thread_min_dt = min(thread_min_dt, (celldy[ii]/(fabs(v[ind0]) + c_s)));
+      
+      local_min_dt = min(local_min_dt, thread_min_dt);
     }
   }
+
+  STOP_PROFILING(&compute_profiler, __func__);
 
   double global_min_dt = local_min_dt;
 
 #ifdef MPI
+  START_PROFILING(&comms_profiler);
   MPI_Allreduce(&local_min_dt, &global_min_dt, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
+  STOP_PROFILING(&comms_profiler, "reductions");
 #endif
 
   mesh->dt = 0.5*(C_T*global_min_dt + mesh->dt_h);
@@ -320,8 +318,11 @@ static inline void lagrangian_step(
     double* rho_v, double* u, double* v, const double* P, const double* rho,
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
+  START_PROFILING(&compute_profiler);
+
 #pragma omp parallel for
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
+#pragma vector aligned
 #pragma omp simd
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
       // Update the momenta using the pressure gradients
@@ -355,6 +356,8 @@ static inline void lagrangian_step(
     }
   }
 
+  STOP_PROFILING(&compute_profiler, __func__);
+
   handle_boundary(nx+1, ny, mesh, u, INVERT_X, PACK);
   handle_boundary(nx, ny+1, mesh, v, INVERT_Y, PACK);
 }
@@ -364,9 +367,12 @@ static inline void artificial_viscosity(
     double* Qyy, double* u, double* v, double* rho_u, double* rho_v, const double* rho, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
+  START_PROFILING(&compute_profiler);
+
   // Calculate the artificial viscous stresses
 #pragma omp parallel for 
   for(int ii = PAD; ii < ny-PAD; ++ii) {
+#pragma vector aligned
 #pragma omp simd
     for(int jj = PAD; jj < nx-PAD; ++jj) {
       const double u_diff = (u[ind1+1] - u[ind1]);
@@ -376,13 +382,18 @@ static inline void artificial_viscosity(
     }
   }
 
+  STOP_PROFILING(&compute_profiler, __func__);
+
   // TODO: WE SHOULDN'T FILL IN GAPS HERE RIGHT?
   handle_boundary(nx, ny, mesh, Qxx, NO_INVERT, PACK);
   handle_boundary(nx, ny, mesh, Qyy, NO_INVERT, PACK);
 
+  START_PROFILING(&compute_profiler);
+
   // Update the momenta by the artificial viscous stresses
 #pragma omp parallel for
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
+#pragma vector aligned
 #pragma omp simd
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
       rho_u[ind1] -= (dt/(edgedx[jj]*celldy[ii]))*
@@ -404,6 +415,8 @@ static inline void artificial_viscosity(
     }
   }
 
+  STOP_PROFILING(&compute_profiler, __func__);
+
   handle_boundary(nx+1, ny, mesh, u, INVERT_X, PACK);
   handle_boundary(nx, ny+1, mesh, v, INVERT_Y, PACK);
 }
@@ -415,8 +428,11 @@ static inline void shock_heating_and_work(
     const double* Qxx, const double* Qyy, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
+  START_PROFILING(&compute_profiler);
+
 #pragma omp parallel for
   for(int ii = PAD; ii < ny-PAD; ++ii) {
+#pragma vector aligned
 #pragma omp simd
     for(int jj = PAD; jj < nx-PAD; ++jj) {
       if(rho[ind0] == 0.0) {
@@ -444,6 +460,8 @@ static inline void shock_heating_and_work(
     }
   }
 
+  STOP_PROFILING(&compute_profiler, __func__);
+
   handle_boundary(nx, ny, mesh, e, NO_INVERT, PACK);
 }
 
@@ -455,10 +473,14 @@ static inline void advect_mass(
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
   // Store the current value of rho
+  START_PROFILING(&compute_profiler);
+
 #pragma omp parallel for
   for(int ii = 0; ii < nx*ny; ++ii) {
     rho_old[ii] = rho[ii];
   }
+
+  STOP_PROFILING(&compute_profiler, __func__);
 
   // Perform the dimensional splitting on the mass flux, with a the alternating
   // fix for asymmetries
@@ -480,10 +502,13 @@ static inline void x_mass_flux(
     const double* u, double* F_x, const double* celldx, const double* edgedx, 
     const double* celldy, const double* edgedy)
 {
+  START_PROFILING(&compute_profiler);
+
   // Compute the mass fluxes along the x edges
   // In the ghost cells flux is left as 0.0
 #pragma omp parallel for
   for(int ii = PAD; ii < ny-PAD; ++ii) {
+#pragma vector aligned
 #pragma omp simd
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
       double rx_denom = (rho[ind0]-rho[ind0-1]);
@@ -504,11 +529,16 @@ static inline void x_mass_flux(
     }
   }
 
+  STOP_PROFILING(&compute_profiler, "advect_mass");
+
   handle_boundary(nx+1, ny, mesh, F_x, INVERT_X, PACK);
+
+  START_PROFILING(&compute_profiler);
 
   // Calculate the new density values
 #pragma omp parallel for
   for(int ii = PAD; ii < ny-PAD; ++ii) {
+#pragma vector aligned
 #pragma omp simd
     for(int jj = PAD; jj < nx-PAD; ++jj) {
       rho[ind0] -= dt_h*
@@ -516,6 +546,8 @@ static inline void x_mass_flux(
         (celldx[jj]*celldy[ii]);
     }
   }
+
+  STOP_PROFILING(&compute_profiler, "advect_mass");
 }
 
 // Calculate the flux in the y direction
@@ -524,10 +556,13 @@ static inline void y_mass_flux(
     const double* v, double* F_y, const double* celldx, const double* edgedx, 
     const double* celldy, const double* edgedy)
 {
+  START_PROFILING(&compute_profiler);
+
   // Compute the mass flux along the y edges
   // In the ghost cells flux is left as 0.0
 #pragma omp parallel for
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
+#pragma vector aligned
 #pragma omp simd
     for(int jj = PAD; jj < nx-PAD; ++jj) {
       double ry_denom = (rho[ind0]-rho[ind0-nx]);
@@ -548,11 +583,16 @@ static inline void y_mass_flux(
     }
   }
 
+  STOP_PROFILING(&compute_profiler, "advect_mass");
+
   handle_boundary(nx, ny+1, mesh, F_y, INVERT_Y, PACK);
+
+  START_PROFILING(&compute_profiler);
 
   // Calculate the new density values
 #pragma omp parallel for
   for(int ii = PAD; ii < ny-PAD; ++ii) {
+#pragma vector aligned
 #pragma omp simd
     for(int jj = PAD; jj < nx-PAD; ++jj) {
       rho[ind0] -= dt_h*
@@ -561,9 +601,7 @@ static inline void y_mass_flux(
     }
   }
 
-#if 0
-  handle_boundary(nx, ny, mesh, rho, NO_INVERT, PACK);
-#endif // if 0
+  STOP_PROFILING(&compute_profiler, "advect_mass");
 }
 
 // Advect momentum according to the velocity
@@ -576,41 +614,28 @@ static inline void advect_momentum(
 {
   /// nx DIMENSION ADVECTION
 
+  START_PROFILING(&compute_profiler);
+
 #pragma omp parallel for
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
+#pragma vector aligned
 #pragma omp simd
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
-      const double u_x_max = max(u[ind1-1], max(u[ind1], u[ind1+1]));
-      const double u_x_min = min(u[ind1-1], min(u[ind1], u[ind1+1]));
-      const double u_y_max = max(u[ind1-(nx+1)], max(u[ind1], u[ind1+(nx+1)]));
-      const double u_y_min = min(u[ind1-(nx+1)], min(u[ind1], u[ind1+(nx+1)]));
-
-      // Construct absolute value of slope S_L or S_R
-      const double s1_x = min(u_x_max - u[ind1], u[ind1] - u_x_min) / (celldx[jj] / 2.0);
-      const double s1_y = min(u_y_max - u[ind1], u[ind1] - u_y_min) / (celldy[ii] / 2.0);
-
-      const double u_edge_l = 
-        (edgedx[jj]*u[ind1-1] + edgedx[jj-1]*u[ind1])/(edgedx[jj] + edgedx[jj - 1]);
-      const double u_edge_r = 
-        (edgedx[jj+1]*u[ind1] + edgedx[jj]*u[ind1+1])/(edgedx[jj+1] + edgedx[jj]);
-      const double u_edge_d = 
-        (edgedy[ii]*u[ind1 - (nx+1)] + edgedy[ii - 1]*u[ind1])/(edgedy[ii] + edgedy[ii - 1]);
-      const double u_edge_u = 
-        (edgedy[ii + 1]*u[ind1] + edgedy[ii]*u[ind1 + (nx+1)])/(edgedy[ii + 1] + edgedy[ii]);
-
-      // Construct the slope
-      const double s2_x = (u_edge_r - u_edge_l) / edgedx[jj];
-      const double s2_y = (u_edge_u - u_edge_d) / edgedy[ii];
-
-      // Define the zone centered slope (culling 0's)
-      slope_x[ind1] = (s2_x != 0.0) ? (s2_x / fabs(s2_x))*min(fabs(s2_x), s1_x) : 0.0;
-      slope_y[ind0] = (s2_y != 0.0) ? (s2_y / fabs(s2_y))*min(fabs(s2_y), s1_y) : 0.0;
+      const double S_L = (u[ind1] - u[ind1-1])/edgedx[jj];
+      const double S_R = (u[ind1+1] - u[ind1])/edgedx[jj+1];
+      const double S_D = (u[ind1] - u[ind1-(nx+1)])/edgedy[ii];
+      const double S_U = (u[ind1+(nx+1)] - u[ind1])/edgedy[ii+1];
+      slope_x[ind1] = 
+        ((S_L >= 0.0) ^ (S_R < 0.0)) ? (fabs(S_L) < fabs(S_R) ? S_L : S_R) : (0.0);
+      slope_y[ind0] =
+        ((S_D >= 0.0) ^ (S_U < 0.0)) ? (fabs(S_D) < fabs(S_U) ? S_D : S_U) : (0.0);
     }
   }
 
   // Calculate the cell centered x momentum fluxes in the x direction
 #pragma omp parallel for
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
+#pragma vector aligned
 #pragma omp simd
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
       const double f_x = edgedy[ii]*0.5*(F_x[ind1] + F_x[ind1+1]); 
@@ -628,12 +653,17 @@ static inline void advect_momentum(
     }
   }
 
+  STOP_PROFILING(&compute_profiler, __func__);
+
   handle_boundary(nx, ny, mesh, mF_x, NO_INVERT, PACK);
   handle_boundary(nx+1, ny+1, mesh, mF_y, NO_INVERT, PACK);
+
+  START_PROFILING(&compute_profiler);
 
   // Calculate the axial momentum
 #pragma omp parallel for
   for(int ii = PAD; ii < ny-PAD; ++ii) {
+#pragma vector aligned
 #pragma omp simd
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
       rho_u[ind1] -= dt_h*
@@ -642,44 +672,21 @@ static inline void advect_momentum(
     }
   }
 
-  for(int ii = 0; ii < (nx+1)*(ny+1); ++ii) {
-    mF_x[ii] = 0.0;
-    mF_y[ii] = 0.0;
-  }
-
   /// ny DIMENSION ADVECTION
 
+  // Calculate the cell centered monotonic slopes for u and v
 #pragma omp parallel for
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
 #pragma omp simd
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
-      // Calculate the maximum and minimum neighbouring density
-      const double v_x_max = max(v[ind0-1], max(v[ind0], v[ind0+1]));
-      const double v_x_min = min(v[ind0-1], min(v[ind0], v[ind0+1]));
-      const double v_y_max = max(v[ind0-nx], max(v[ind0], v[ind0+nx]));
-      const double v_y_min = min(v[ind0-nx], min(v[ind0], v[ind0+nx]));
-
-      // Construct absolute value of slope S_L or S_R
-      const double s1_x = min(v_x_max - v[ind0], v[ind0] - v_x_min) / (celldx[jj] / 2.0);
-      const double s1_y = min(v_y_max - v[ind0], v[ind0] - v_y_min) / (celldy[ii] / 2.0);
-
-      // Calculate the density interpolated from the zone center to zone boundary
-      const double v_edge_l = 
-        (celldx[jj]*v[ind0 - 1] + celldx[jj - 1]*v[ind0])/(celldx[jj] + celldx[jj - 1]);
-      const double v_edge_r = 
-        (celldx[jj + 1]*v[ind0] + celldx[jj]*v[ind0 + 1])/(celldx[jj + 1] + celldx[jj]);
-      const double v_edge_d = 
-        (celldy[ii]*v[ind0 - nx] + celldy[ii - 1]*v[ind0])/(celldy[ii] + celldy[ii - 1]);
-      const double v_edge_u = 
-        (celldy[ii + 1]*v[ind0] + celldy[ii]*v[ind0 + nx])/(celldy[ii + 1] + celldy[ii]);
-
-      // Construct the slope
-      const double s2_x = (v_edge_r - v_edge_l) / celldx[jj];
-      const double s2_y = (v_edge_u - v_edge_d) / celldy[ii];
-
-      // Define the zone centered slope (culling 0's)
-      slope_x[ind1] = (s2_x != 0.0) ? (s2_x / fabs(s2_x))*min(fabs(s2_x), s1_x) : 0.0;
-      slope_y[ind0] = (s2_y != 0.0) ? (s2_y / fabs(s2_y))*min(fabs(s2_y), s1_y) : 0.0;
+      const double S_L = (v[ind0] - v[ind0-1])/edgedx[jj];
+      const double S_R = (v[ind0+1] - v[ind0])/edgedx[jj+1];
+      const double S_D = (v[ind0] - v[ind0-nx])/edgedy[ii];
+      const double S_U = (v[ind0+nx] - v[ind0])/edgedy[ii+1];
+      slope_x[ind1] = ((S_L >= 0.0) ^ (S_R < 0.0)) 
+        ? (fabs(S_L) < fabs(S_R) ? S_L : S_R) : (0.0);
+      slope_y[ind0] = ((S_D >= 0.0) ^ (S_U < 0.0)) 
+        ? (fabs(S_D) < fabs(S_U) ? S_D : S_U) : (0.0);
     }
   }
 
@@ -687,6 +694,7 @@ static inline void advect_momentum(
   // Calculate the cell centered y momentum fluxes in the y direction
 #pragma omp parallel for
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
+#pragma vector aligned
 #pragma omp simd
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
       const double f_x = celldy[ii]*0.5*(F_x[ind1] + F_x[ind1-(nx+1)]);
@@ -704,11 +712,16 @@ static inline void advect_momentum(
     }
   }
 
+  STOP_PROFILING(&compute_profiler, __func__);
+
   handle_boundary(nx+1, ny+1, mesh, mF_x, NO_INVERT, PACK);
   handle_boundary(nx, ny, mesh, mF_y, NO_INVERT, PACK);
 
+  START_PROFILING(&compute_profiler);
+
 #pragma omp parallel for
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
+#pragma vector aligned
 #pragma omp simd
     for(int jj = PAD; jj < nx-PAD; ++jj) {
       rho_v[ind0] -= dt_h*(
@@ -717,10 +730,7 @@ static inline void advect_momentum(
     }
   }
 
-  for(int ii = 0; ii < (nx+1)*(ny+1); ++ii) {
-    mF_x[ii] = 0.0;
-    mF_y[ii] = 0.0;
-  }
+  STOP_PROFILING(&compute_profiler, __func__);
 }
 
 // Perform advection of internal energy
@@ -730,8 +740,11 @@ static inline void advect_energy(
     const double* u, const double* v, const double* rho_old, const double* rho,
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
+  START_PROFILING(&compute_profiler);
+
 #pragma omp parallel for
   for(int ii = PAD; ii < ny-PAD; ++ii) {
+#pragma vector aligned
 #pragma omp simd
     for(int jj = PAD; jj < nx-PAD; ++jj) {
       // Calculate the maximum and minimum neighbouring density
@@ -767,6 +780,7 @@ static inline void advect_energy(
   // Calculate the zone edge centered energies, and flux
 #pragma omp parallel for
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
+#pragma vector aligned
 #pragma omp simd
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
       // Calculate the interpolated densities
@@ -786,6 +800,7 @@ static inline void advect_energy(
   // Calculate the new energy values
 #pragma omp parallel for
   for(int ii = PAD; ii < ny-PAD; ++ii) { 
+#pragma vector aligned
 #pragma omp simd
     for(int jj = PAD; jj < nx-PAD; ++jj) {
       e[ind0] = (rho[ind0] == 0.0) ? 0.0 : 
@@ -793,6 +808,8 @@ static inline void advect_energy(
          (F_x[ind1+1] - F_x[ind1] + F_y[ind0+nx] - F_y[ind0]))/rho[ind0];
     }
   }
+
+  STOP_PROFILING(&compute_profiler, __func__);
 
   handle_boundary(nx, ny, mesh, e, NO_INVERT, PACK);
 }
@@ -802,6 +819,8 @@ static inline void handle_boundary(
     const int nx, const int ny, Mesh* mesh, double* arr, 
     const int invert, const int pack)
 {
+  START_PROFILING(&comms_profiler);
+
 #ifdef MPI
   int nmessages = 0;
   MPI_Request out_req[NNEIGHBOURS];
@@ -954,6 +973,8 @@ static inline void handle_boundary(
     }
   }
 #endif
+
+  STOP_PROFILING(&comms_profiler, __func__);
 }
 
 // Initialise the state for the problem
@@ -961,24 +982,24 @@ static inline void initialise_state(
     State* state, Mesh* mesh)
 {
   // Allocate memory for all state variables
-  state->rho = (double*)malloc(sizeof(double)*mesh->local_nx*mesh->local_ny);
-  state->rho_old = (double*)malloc(sizeof(double)*mesh->local_nx*mesh->local_ny);
-  state->P = (double*)malloc(sizeof(double)*mesh->local_nx*mesh->local_ny);
-  state->e = (double*)malloc(sizeof(double)*mesh->local_nx*mesh->local_ny);
-  state->rho_u = (double*)malloc(sizeof(double)*(mesh->local_nx+1)*(mesh->local_ny+1));
-  state->rho_v = (double*)malloc(sizeof(double)*(mesh->local_nx+1)*(mesh->local_ny+1));
-  state->u = (double*)malloc(sizeof(double)*(mesh->local_nx+1)*(mesh->local_ny+1));
-  state->v = (double*)malloc(sizeof(double)*(mesh->local_nx+1)*(mesh->local_ny+1));
-  state->F_x = (double*)malloc(sizeof(double)*(mesh->local_nx+1)*(mesh->local_ny+1));
-  state->F_y = (double*)malloc(sizeof(double)*(mesh->local_nx+1)*(mesh->local_ny+1));
-  state->mF_x = (double*)malloc(sizeof(double)*(mesh->local_nx+1)*(mesh->local_ny+1));
-  state->mF_y = (double*)malloc(sizeof(double)*(mesh->local_nx+1)*(mesh->local_ny+1));
-  state->slope_x0 = (double*)malloc(sizeof(double)*mesh->local_nx*mesh->local_ny);
-  state->slope_y0 = (double*)malloc(sizeof(double)*mesh->local_nx*mesh->local_ny);
-  state->slope_x1 = (double*)malloc(sizeof(double)*(mesh->local_nx+1)*(mesh->local_ny+1));
-  state->slope_y1 = (double*)malloc(sizeof(double)*(mesh->local_nx+1)*(mesh->local_ny+1));
-  state->Qxx = (double*)malloc(sizeof(double)*(mesh->local_nx+1)*(mesh->local_ny+1));
-  state->Qyy = (double*)malloc(sizeof(double)*(mesh->local_nx+1)*(mesh->local_ny+1));
+  state->rho = (double*)_mm_malloc(sizeof(double)*mesh->local_nx*mesh->local_ny, VEC_ALIGN);
+  state->rho_old = (double*)_mm_malloc(sizeof(double)*mesh->local_nx*mesh->local_ny, VEC_ALIGN);
+  state->P = (double*)_mm_malloc(sizeof(double)*mesh->local_nx*mesh->local_ny, VEC_ALIGN);
+  state->e = (double*)_mm_malloc(sizeof(double)*mesh->local_nx*mesh->local_ny, VEC_ALIGN);
+  state->rho_u = (double*)_mm_malloc(sizeof(double)*(mesh->local_nx+1)*(mesh->local_ny+1), VEC_ALIGN);
+  state->rho_v = (double*)_mm_malloc(sizeof(double)*(mesh->local_nx+1)*(mesh->local_ny+1), VEC_ALIGN);
+  state->u = (double*)_mm_malloc(sizeof(double)*(mesh->local_nx+1)*(mesh->local_ny+1), VEC_ALIGN);
+  state->v = (double*)_mm_malloc(sizeof(double)*(mesh->local_nx+1)*(mesh->local_ny+1), VEC_ALIGN);
+  state->F_x = (double*)_mm_malloc(sizeof(double)*(mesh->local_nx+1)*(mesh->local_ny+1), VEC_ALIGN);
+  state->F_y = (double*)_mm_malloc(sizeof(double)*(mesh->local_nx+1)*(mesh->local_ny+1), VEC_ALIGN);
+  state->mF_x = (double*)_mm_malloc(sizeof(double)*(mesh->local_nx+1)*(mesh->local_ny+1), VEC_ALIGN);
+  state->mF_y = (double*)_mm_malloc(sizeof(double)*(mesh->local_nx+1)*(mesh->local_ny+1), VEC_ALIGN);
+  state->slope_x0 = (double*)_mm_malloc(sizeof(double)*mesh->local_nx*mesh->local_ny, VEC_ALIGN);
+  state->slope_y0 = (double*)_mm_malloc(sizeof(double)*mesh->local_nx*mesh->local_ny, VEC_ALIGN);
+  state->slope_x1 = (double*)_mm_malloc(sizeof(double)*(mesh->local_nx+1)*(mesh->local_ny+1), VEC_ALIGN);
+  state->slope_y1 = (double*)_mm_malloc(sizeof(double)*(mesh->local_nx+1)*(mesh->local_ny+1), VEC_ALIGN);
+  state->Qxx = (double*)_mm_malloc(sizeof(double)*(mesh->local_nx+1)*(mesh->local_ny+1), VEC_ALIGN);
+  state->Qyy = (double*)_mm_malloc(sizeof(double)*(mesh->local_nx+1)*(mesh->local_ny+1), VEC_ALIGN);
 
   // Initialise all of the memory to default values
 #pragma omp parallel for
@@ -1053,7 +1074,7 @@ static inline void initialise_state(
 #endif // if 0
 
       // CENTER SQUARE TEST
-      const int dist = 20;
+      const int dist = 100;
       if(jj+mesh->x_off-PAD >= mesh->global_nx/2-dist && 
           jj+mesh->x_off-PAD < mesh->global_nx/2+dist && 
           ii+mesh->y_off-PAD >= mesh->global_ny/2-dist && 
@@ -1233,27 +1254,27 @@ static inline void write_to_visit_over_mpi(
 // Deallocate all of the state memory
 static inline void finalise_state(State* state)
 {
-  free(state->F_x);
-  free(state->F_y);
-  free(state->rho);
-  free(state->rho_old);
-  free(state->slope_x0);
-  free(state->slope_y0);
-  free(state->slope_x1);
-  free(state->slope_y1);
-  free(state->u);
-  free(state->v);
-  free(state->P);
-  free(state->e);
+  _mm_free(state->F_x);
+  _mm_free(state->F_y);
+  _mm_free(state->rho);
+  _mm_free(state->rho_old);
+  _mm_free(state->slope_x0);
+  _mm_free(state->slope_y0);
+  _mm_free(state->slope_x1);
+  _mm_free(state->slope_y1);
+  _mm_free(state->u);
+  _mm_free(state->v);
+  _mm_free(state->P);
+  _mm_free(state->e);
 }
 
 // Deallocate all of the mesh memory
 static inline void finalise_mesh(Mesh* mesh)
 {
-  free(mesh->edgedy);
-  free(mesh->celldy);
-  free(mesh->edgedx);
-  free(mesh->celldx);
+  _mm_free(mesh->edgedy);
+  _mm_free(mesh->celldy);
+  _mm_free(mesh->edgedx);
+  _mm_free(mesh->celldx);
 }
 
 
@@ -1319,41 +1340,6 @@ for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
       ? rho[ind0-nx] + 0.5*slope_y[ind0-nx]*(celldy[ii-1] - v[ind0]*dt_h)
       : rho[ind0] - 0.5*slope_y[ind0]*(celldy[ii] + v[ind0]*dt_h);
     F_y[ind0] = edge_rho_y*v[ind0]; 
-  }
-}
-#endif // if 0
-
-#if 0
-#pragma omp parallel for
-for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
-#pragma omp simd
-  for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
-    const double S_L = (u[ind1] - u[ind1-1])/edgedx[jj];
-    const double S_R = (u[ind1+1] - u[ind1])/edgedx[jj+1];
-    const double S_D = (u[ind1] - u[ind1-(nx+1)])/edgedy[ii];
-    const double S_U = (u[ind1+(nx+1)] - u[ind1])/edgedy[ii+1];
-    slope_x[ind1] = 
-      ((S_L >= 0.0) ^ (S_R < 0.0)) ? (fabs(S_L) < fabs(S_R) ? S_L : S_R) : (0.0);
-    slope_y[ind0] =
-      ((S_D >= 0.0) ^ (S_U < 0.0)) ? (fabs(S_D) < fabs(S_U) ? S_D : S_U) : (0.0);
-  }
-}
-#endif // if 0
-
-#if 0
-// Calculate the cell centered monotonic slopes for u and v
-#pragma omp parallel for
-for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
-#pragma omp simd
-  for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
-    const double S_L = (v[ind0] - v[ind0-1])/edgedx[jj];
-    const double S_R = (v[ind0+1] - v[ind0])/edgedx[jj+1];
-    const double S_D = (v[ind0] - v[ind0-nx])/edgedy[ii];
-    const double S_U = (v[ind0+nx] - v[ind0])/edgedy[ii+1];
-    slope_x[ind1] = ((S_L >= 0.0) ^ (S_R < 0.0)) 
-      ? (fabs(S_L) < fabs(S_R) ? S_L : S_R) : (0.0);
-    slope_y[ind0] = ((S_D >= 0.0) ^ (S_U < 0.0)) 
-      ? (fabs(S_D) < fabs(S_U) ? S_D : S_U) : (0.0);
   }
 }
 #endif // if 0
@@ -1577,22 +1563,92 @@ static inline void communicate_halos(
 
 #if 0
 #pragma omp parallel for
-  for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
+for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
 #pragma omp simd
-    for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
-      // Calculate the zone edge centered density
-      const double rho_edge_x = 
-        (rho[ind0]*celldx[jj]*celldy[ii] + rho[ind0-1]*celldx[jj - 1]*celldy[ii]) / 
-        (2.0*edgedx[jj]*celldy[ii]);
-      const double rho_edge_y = 
-        (rho[ind0]*celldy[ii]*celldx[jj] + rho[ind0-nx]*celldy[ii - 1]*celldx[jj]) / 
-        (2.0*edgedx[jj]*celldy[ii]);
-      u[ind1] = (rho_edge_x == 0.0) ? 0.0 : rho_u[ind1] / rho_edge_x;
-      v[ind0] = (rho_edge_y == 0.0) ? 0.0 : rho_v[ind0] / rho_edge_y;
-    }
+  for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
+    // Calculate the zone edge centered density
+    const double rho_edge_x = 
+      (rho[ind0]*celldx[jj]*celldy[ii] + rho[ind0-1]*celldx[jj - 1]*celldy[ii]) / 
+      (2.0*edgedx[jj]*celldy[ii]);
+    const double rho_edge_y = 
+      (rho[ind0]*celldy[ii]*celldx[jj] + rho[ind0-nx]*celldy[ii - 1]*celldx[jj]) / 
+      (2.0*edgedx[jj]*celldy[ii]);
+    u[ind1] = (rho_edge_x == 0.0) ? 0.0 : rho_u[ind1] / rho_edge_x;
+    v[ind0] = (rho_edge_y == 0.0) ? 0.0 : rho_v[ind0] / rho_edge_y;
   }
+}
 
-  handle_boundary(nx+1, ny, mesh, u, INVERT_X, PACK);
-  handle_boundary(nx, ny+1, mesh, v, INVERT_Y, PACK);
+handle_boundary(nx+1, ny, mesh, u, INVERT_X, PACK);
+handle_boundary(nx, ny+1, mesh, v, INVERT_Y, PACK);
 #endif // if 0
 
+#if 0
+#pragma omp parallel for
+for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
+#pragma omp simd
+  for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
+    // Calculate the maximum and minimum neighbouring density
+    const double v_x_max = max(v[ind0-1], max(v[ind0], v[ind0+1]));
+    const double v_x_min = min(v[ind0-1], min(v[ind0], v[ind0+1]));
+    const double v_y_max = max(v[ind0-nx], max(v[ind0], v[ind0+nx]));
+    const double v_y_min = min(v[ind0-nx], min(v[ind0], v[ind0+nx]));
+
+    // Construct absolute value of slope S_L or S_R
+    const double s1_x = min(v_x_max - v[ind0], v[ind0] - v_x_min) / (celldx[jj] / 2.0);
+    const double s1_y = min(v_y_max - v[ind0], v[ind0] - v_y_min) / (celldy[ii] / 2.0);
+
+    // Calculate the density interpolated from the zone center to zone boundary
+    const double v_edge_l = 
+      (celldx[jj]*v[ind0 - 1] + celldx[jj - 1]*v[ind0])/(celldx[jj] + celldx[jj - 1]);
+    const double v_edge_r = 
+      (celldx[jj + 1]*v[ind0] + celldx[jj]*v[ind0 + 1])/(celldx[jj + 1] + celldx[jj]);
+    const double v_edge_d = 
+      (celldy[ii]*v[ind0 - nx] + celldy[ii - 1]*v[ind0])/(celldy[ii] + celldy[ii - 1]);
+    const double v_edge_u = 
+      (celldy[ii + 1]*v[ind0] + celldy[ii]*v[ind0 + nx])/(celldy[ii + 1] + celldy[ii]);
+
+    // Construct the slope
+    const double s2_x = (v_edge_r - v_edge_l) / celldx[jj];
+    const double s2_y = (v_edge_u - v_edge_d) / celldy[ii];
+
+    // Define the zone centered slope (culling 0's)
+    slope_x[ind1] = (s2_x != 0.0) ? (s2_x / fabs(s2_x))*min(fabs(s2_x), s1_x) : 0.0;
+    slope_y[ind0] = (s2_y != 0.0) ? (s2_y / fabs(s2_y))*min(fabs(s2_y), s1_y) : 0.0;
+  }
+}
+#endif // if 0
+
+
+#if 0
+#pragma omp parallel for
+for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
+#pragma omp simd
+  for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
+    const double u_x_max = max(u[ind1-1], max(u[ind1], u[ind1+1]));
+    const double u_x_min = min(u[ind1-1], min(u[ind1], u[ind1+1]));
+    const double u_y_max = max(u[ind1-(nx+1)], max(u[ind1], u[ind1+(nx+1)]));
+    const double u_y_min = min(u[ind1-(nx+1)], min(u[ind1], u[ind1+(nx+1)]));
+
+    // Construct absolute value of slope S_L or S_R
+    const double s1_x = min(u_x_max - u[ind1], u[ind1] - u_x_min) / (celldx[jj] / 2.0);
+    const double s1_y = min(u_y_max - u[ind1], u[ind1] - u_y_min) / (celldy[ii] / 2.0);
+
+    const double u_edge_l = 
+      (edgedx[jj]*u[ind1-1] + edgedx[jj-1]*u[ind1])/(edgedx[jj] + edgedx[jj - 1]);
+    const double u_edge_r = 
+      (edgedx[jj+1]*u[ind1] + edgedx[jj]*u[ind1+1])/(edgedx[jj+1] + edgedx[jj]);
+    const double u_edge_d = 
+      (edgedy[ii]*u[ind1 - (nx+1)] + edgedy[ii - 1]*u[ind1])/(edgedy[ii] + edgedy[ii - 1]);
+    const double u_edge_u = 
+      (edgedy[ii + 1]*u[ind1] + edgedy[ii]*u[ind1 + (nx+1)])/(edgedy[ii + 1] + edgedy[ii]);
+
+    // Construct the slope
+    const double s2_x = (u_edge_r - u_edge_l) / edgedx[jj];
+    const double s2_y = (u_edge_u - u_edge_d) / edgedy[ii];
+
+    // Define the zone centered slope (culling 0's)
+    slope_x[ind1] = (s2_x != 0.0) ? (s2_x / fabs(s2_x))*min(fabs(s2_x), s1_x) : 0.0;
+    slope_y[ind0] = (s2_y != 0.0) ? (s2_y / fabs(s2_y))*min(fabs(s2_y), s1_y) : 0.0;
+  }
+}
+#endif // if 0
