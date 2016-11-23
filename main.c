@@ -399,10 +399,9 @@ void x_mass_flux(
     const double* u, double* F_x, const double* celldx, const double* edgedx, 
     const double* celldy, const double* edgedy)
 {
-  START_PROFILING(&compute_profiler);
-
   // Compute the mass fluxes along the x edges
   // In the ghost cells flux is left as 0.0
+  START_PROFILING(&compute_profiler);
 #pragma omp parallel for
   for(int ii = PAD; ii < ny-PAD; ++ii) {
 #pragma omp simd
@@ -424,14 +423,12 @@ void x_mass_flux(
         0.5*fabs(u[ind1])*(1.0-fabs((u[ind1]*dt_h)/celldx[jj]))*limiter*rho_diff);
     }
   }
-
   STOP_PROFILING(&compute_profiler, "advect_mass");
 
   handle_boundary(nx+1, ny, mesh, F_x, INVERT_X, PACK);
 
-  START_PROFILING(&compute_profiler);
-
   // Calculate the new density values
+  START_PROFILING(&compute_profiler);
 #pragma omp parallel for
   for(int ii = PAD; ii < ny-PAD; ++ii) {
 #pragma omp simd
@@ -441,7 +438,6 @@ void x_mass_flux(
         (celldx[jj]*celldy[ii]);
     }
   }
-
   STOP_PROFILING(&compute_profiler, "advect_mass");
 }
 
@@ -464,7 +460,7 @@ void y_mass_flux(
       double limiter = 0.0;
       if(rho_diff) {
         const double smoothness = (v[ind0] >= 0.0) 
-          ? (rho[ind0-nx]-rho[ind0-nx])/rho_diff
+          ? (rho[ind0-nx]-rho[ind0-2*nx])/rho_diff
           : (rho[ind0+nx]-rho[ind0])/rho_diff;
         limiter = (smoothness + fabs(smoothness))/(1.0+fabs(smoothness));
       }
@@ -512,17 +508,11 @@ void advect_momentum(
       // Construct all required slopes for the stencil to interpolate the
       // velocities at the cell centers
       const double S_L_0 = invdx*(u[ind1] - u[ind1-1]);
-      const double S_R_0 = invdx*(u[ind1+1] - u[ind1]);
-      const double S_D_0 = invdy*(u[ind1-(nx+1)] - u[ind1-2*(nx+1)]);
-      const double S_U_0 = invdy*(u[ind1] - u[ind1-(nx+1)]);
-      const double sx_0 = minmod(S_L_0, S_R_0);
-      const double sy_0 = minmod(S_D_0, S_U_0);
-      const double S_L_1 = invdx*(u[ind1+1] - u[ind1]);
-      const double S_R_1 = invdx*(u[ind1+2] - u[ind1+1]);
-      const double S_D_1 = invdy*(u[ind1] - u[ind1-(nx+1)]);
+      const double S_C_0 = invdx*(u[ind1+1] - u[ind1]);
+      const double S_R_0 = invdx*(u[ind1+2] - u[ind1+1]);
+      const double S_D_1 = invdy*(u[ind1-(nx+1)] - u[ind1-2*(nx+1)]);
+      const double S_C_1 = invdy*(u[ind1] - u[ind1-(nx+1)]);
       const double S_U_1 = invdy*(u[ind1+(nx+1)] - u[ind1]);
-      const double sx_1 = minmod(S_L_1, S_R_1);
-      const double sy_1 = minmod(S_D_1, S_U_1);
 
       // Construct the fluxes
       const double f_x = edgedy[ii]*0.5*(F_x[ind1] + F_x[ind1+1]); 
@@ -532,11 +522,11 @@ void advect_momentum(
 
       // Construct the fluxes from the slopes
       mF_x[ind0] = f_x*((u_cell_x >= 0.0) 
-          ? u[ind1] + 0.5*sx_0*(edgedx[jj]+u_cell_x*dt)
-          : u[ind1+1] - 0.5*sx_1*(edgedx[jj]-u_cell_x*dt));
+          ? u[ind1] + 0.5*minmod(S_L_0, S_C_0)*(edgedx[jj]+u_cell_x*dt)
+          : u[ind1+1] - 0.5*minmod(S_C_0, S_R_0)*(edgedx[jj]-u_cell_x*dt));
       mF_y[ind1] = f_y*((v_cell_y >= 0.0)
-          ? u[ind1-(nx+1)] + 0.5*sy_0*(edgedx[jj]+v_cell_y*dt)
-          : u[ind1] - 0.5*sy_1*(edgedx[jj]-v_cell_y*dt));
+          ? u[ind1-(nx+1)] + 0.5*minmod(S_D_1, S_C_1)*(edgedx[jj]+v_cell_y*dt)
+          : u[ind1] - 0.5*minmod(S_C_1, S_U_1)*(edgedx[jj]-v_cell_y*dt));
     }
   }
   STOP_PROFILING(&compute_profiler, __func__);
@@ -557,7 +547,6 @@ void advect_momentum(
   }
 
   /// ny DIMENSION ADVECTION
-
   // Calculate the corner centered y momentum fluxes in the x direction
   // Calculate the cell centered y momentum fluxes in the y direction
 #pragma omp parallel for
@@ -568,30 +557,23 @@ void advect_momentum(
       const double invdy = 1.0/edgedy[ii];
 
       const double S_L_0 = invdx*(v[ind0-1] - v[ind0-2]);
-      const double S_R_0 = invdx*(v[ind0] - v[ind0-1]);
-      const double S_D_0 = invdy*(v[ind0] - v[ind0-nx]);
-      const double S_U_0 = invdy*(v[ind0+nx] - v[ind0]);
-      const double sx_0 = minmod(S_L_0, S_R_0);
-      const double sy_0 = minmod(S_D_0, S_U_0);
-
-      const double S_L_1 = invdx*(v[ind0] - v[ind0-1]);
-      const double S_R_1 = invdx*(v[ind0+1] - v[ind0]);
-      const double S_D_1 = invdy*(v[ind0+nx] - v[ind0]);
+      const double S_C_0 = invdx*(v[ind0] - v[ind0-1]);
+      const double S_R_0 = invdx*(v[ind0+1] - v[ind0]);
+      const double S_D_1 = invdy*(v[ind0] - v[ind0-nx]);
+      const double S_C_1 = invdy*(v[ind0+nx] - v[ind0]);
       const double S_U_1 = invdy*(v[ind0+2*nx] - v[ind0+nx]);
-      const double sx_1 = minmod(S_L_1, S_R_1);
-      const double sy_1 = minmod(S_D_1, S_U_1);
-
+      
       const double f_x = celldy[ii]*0.5*(F_x[ind1] + F_x[ind1-(nx+1)]);
       const double f_y = celldx[jj]*0.5*(F_y[ind0] + F_y[ind0+nx]);
       const double u_cell_x = 0.5*(u[ind1]+u[ind1-(nx+1)]);
       const double v_cell_y = 0.5*(v[ind0]+v[ind0+nx]);
 
       mF_x[ind1] = f_x*((u_cell_x >= 0.0) 
-          ? v[ind0-1] + 0.5*sx_0*(edgedx[jj]+u_cell_x*dt)
-          : v[ind0] - 0.5*sx_1*(edgedx[jj]-u_cell_x*dt));
+          ? v[ind0-1] + 0.5*minmod(S_L_0, S_C_0)*(edgedx[jj]+u_cell_x*dt)
+          : v[ind0] - 0.5*minmod(S_C_0, S_R_0)*(edgedx[jj]-u_cell_x*dt));
       mF_y[ind0] = f_y*((v_cell_y >= 0.0)
-          ? v[ind0] + 0.5*sy_0*(edgedx[jj]+v_cell_y*dt)
-          : v[ind0+nx] - 0.5*sy_1*(edgedx[jj]-v_cell_y*dt));
+          ? v[ind0] + 0.5*minmod(S_D_1, S_C_1)*(edgedx[jj]+v_cell_y*dt)
+          : v[ind0+nx] - 0.5*minmod(S_C_1, S_U_1)*(edgedx[jj]-v_cell_y*dt));
     }
   }
   STOP_PROFILING(&compute_profiler, __func__);
@@ -617,7 +599,8 @@ void advect_energy(
     const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
     double* e, double* slope_x, double* slope_y, double* F_x, double* F_y, 
     const double* u, const double* v, const double* rho_old, const double* rho,
-    const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
+    const double* edgedx, const double* edgedy, const double* celldx, 
+    const double* celldy)
 {
   START_PROFILING(&compute_profiler);
 
@@ -919,7 +902,6 @@ void initialise_state(
   // Introduce a problem
   for(int ii = 0; ii < mesh->local_ny; ++ii) {
     for(int jj = 0; jj < mesh->local_nx; ++jj) {
-#if 0
       // CENTER SQUARE TEST
       const int dist = 100;
       if(jj+mesh->x_off-PAD >= mesh->global_nx/2-dist && 
@@ -929,11 +911,30 @@ void initialise_state(
         state->rho[ii*mesh->local_nx+jj] = 1.0;
         state->e[ii*mesh->local_nx+jj] = 2.5;
       }
-#endif // if 0
+#if 0
       if(jj <= mesh->local_nx/2) {
         state->rho[ii*mesh->local_nx+jj] = 1.0;
         state->e[ii*mesh->local_nx+jj] = 2.5;
       }
+#endif // if 0
+#if 0
+      if(ii <= mesh->local_ny/2) {
+        state->rho[ii*mesh->local_nx+jj] = 1.0;
+        state->e[ii*mesh->local_nx+jj] = 2.5;
+      }
+#endif // if 0
+#if 0
+      if(ii > mesh->local_ny/2) {
+        state->rho[ii*mesh->local_nx+jj] = 1.0;
+        state->e[ii*mesh->local_nx+jj] = 2.5;
+      }
+#endif // if 0
+#if 0
+      if(jj > mesh->local_nx/2) {
+        state->rho[ii*mesh->local_nx+jj] = 1.0;
+        state->e[ii*mesh->local_nx+jj] = 2.5;
+      }
+#endif // if 0
     }
   }
 }
