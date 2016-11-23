@@ -184,10 +184,9 @@ void set_timestep(
     const double* u, const double* v, const double* e, Mesh* mesh, const int first_step,
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
-  START_PROFILING(&compute_profiler);
-
   double local_min_dt = MAX_DT;
 
+  START_PROFILING(&compute_profiler);
   // Check the minimum timestep from the sound speed in the nx and ny directions
 #pragma omp parallel for reduction(min: local_min_dt)
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
@@ -203,14 +202,13 @@ void set_timestep(
 
       // Constrain based on the sound speed within the system
       const double c_s = sqrt(GAM*(GAM - 1.0)*e[ind0]);
+
       // TODO: possible DBZ
       thread_min_dt = min(thread_min_dt, (celldx[jj]/(fabs(u[ind1]) + c_s)));
       thread_min_dt = min(thread_min_dt, (celldy[ii]/(fabs(v[ind0]) + c_s)));
-
       local_min_dt = min(local_min_dt, thread_min_dt);
     }
   }
-
   STOP_PROFILING(&compute_profiler, __func__);
 
   double global_min_dt = local_min_dt;
@@ -314,7 +312,6 @@ void artificial_viscosity(
       v[ind0] = (rho_edge_y == 0.0) ? 0.0 : rho_v[ind0] / rho_edge_y;
     }
   }
-
   STOP_PROFILING(&compute_profiler, __func__);
 
   handle_boundary(nx+1, ny, mesh, u, INVERT_X, PACK);
@@ -355,6 +352,7 @@ void shock_heating_and_work(
       const double e_C = e[ind0] - (P[ind0]*div_v_dt)/rho[ind0];
       const double rho_C = rho[ind0]/(1.0 + div_v_dt);
       const double work = 0.5*div_v_dt*(P[ind0] + (GAM-1.0)*e_C*rho_C)/rho[ind0];
+
       e[ind0] -= (shock_heating + work);
     }
   }
@@ -453,10 +451,9 @@ void y_mass_flux(
     const double* v, double* F_y, const double* celldx, const double* edgedx, 
     const double* celldy, const double* edgedy)
 {
-  START_PROFILING(&compute_profiler);
-
   // Compute the mass flux along the y edges
   // In the ghost cells flux is left as 0.0
+  START_PROFILING(&compute_profiler);
 #pragma omp parallel for
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
 #pragma omp simd
@@ -478,14 +475,12 @@ void y_mass_flux(
         limitery*ry_denom;
     }
   }
-
   STOP_PROFILING(&compute_profiler, "advect_mass");
 
   handle_boundary(nx, ny+1, mesh, F_y, INVERT_Y, PACK);
 
-  START_PROFILING(&compute_profiler);
-
   // Calculate the new density values
+  START_PROFILING(&compute_profiler);
 #pragma omp parallel for
   for(int ii = PAD; ii < ny-PAD; ++ii) {
 #pragma omp simd
@@ -495,7 +490,6 @@ void y_mass_flux(
         (celldx[jj]*celldy[ii]);
     }
   }
-
   STOP_PROFILING(&compute_profiler, "advect_mass");
 }
 
@@ -510,7 +504,6 @@ void advect_momentum(
   /// nx DIMENSION ADVECTION
 
   START_PROFILING(&compute_profiler);
-
 #pragma omp parallel for
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
 #pragma omp simd
@@ -545,15 +538,13 @@ void advect_momentum(
           : u[ind1] - 0.5*slope_y[ind0]*(edgedx[jj]-v_cell_y*dt));
     }
   }
-
   STOP_PROFILING(&compute_profiler, __func__);
 
   handle_boundary(nx, ny, mesh, mF_x, NO_INVERT, PACK);
   handle_boundary(nx+1, ny+1, mesh, mF_y, NO_INVERT, PACK);
 
-  START_PROFILING(&compute_profiler);
-
   // Calculate the axial momentum
+  START_PROFILING(&compute_profiler);
 #pragma omp parallel for
   for(int ii = PAD; ii < ny-PAD; ++ii) {
 #pragma omp simd
@@ -602,14 +593,12 @@ void advect_momentum(
           : v[ind0] - 0.5*slope_x[ind1]*(edgedx[jj]-u_cell_x*dt));
     }
   }
-
   STOP_PROFILING(&compute_profiler, __func__);
 
   handle_boundary(nx+1, ny+1, mesh, mF_x, NO_INVERT, PACK);
   handle_boundary(nx, ny, mesh, mF_y, NO_INVERT, PACK);
 
   START_PROFILING(&compute_profiler);
-
 #pragma omp parallel for
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
 #pragma omp simd
@@ -619,7 +608,6 @@ void advect_momentum(
           (mF_y[ind0] - mF_y[ind0-nx])/(celldx[jj]*edgedy[ii]));
     }
   }
-
   STOP_PROFILING(&compute_profiler, __func__);
 }
 
@@ -930,12 +918,18 @@ void initialise_state(
   // Introduce a problem
   for(int ii = 0; ii < mesh->local_ny; ++ii) {
     for(int jj = 0; jj < mesh->local_nx; ++jj) {
+#if 0
       // CENTER SQUARE TEST
       const int dist = 100;
       if(jj+mesh->x_off-PAD >= mesh->global_nx/2-dist && 
           jj+mesh->x_off-PAD < mesh->global_nx/2+dist && 
           ii+mesh->y_off-PAD >= mesh->global_ny/2-dist && 
           ii+mesh->y_off-PAD < mesh->global_ny/2+dist) {
+        state->rho[ii*mesh->local_nx+jj] = 1.0;
+        state->e[ii*mesh->local_nx+jj] = 2.5;
+      }
+#endif // if 0
+      if(jj <= mesh->local_nx/2) {
         state->rho[ii*mesh->local_nx+jj] = 1.0;
         state->e[ii*mesh->local_nx+jj] = 2.5;
       }
