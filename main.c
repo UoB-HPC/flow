@@ -407,23 +407,21 @@ void x_mass_flux(
   for(int ii = PAD; ii < ny-PAD; ++ii) {
 #pragma omp simd
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
-      const int up = (u[ind1] > 0.0) ? -1 : 1;
       const double rho_diff = (rho[ind0]-rho[ind0-1]);
-      const double rho_upwind = (u[ind1] > 0.0) ? rho[ind0-1] : rho[ind0];
 
       // Van leer limiter
       double limiter = 0.0;
-      if(rho_diff > 0.0) {
-        const double smoothness = (rho[ind0+up]-rho[ind0-1+up])/rho_diff;
+      if(rho_diff) {
+        const double smoothness = (u[ind1] >= 0.0) 
+          ? (rho[ind0-1]-rho[ind0-2])/rho_diff
+          : (rho[ind0+1]-rho[ind0])/rho_diff;
         limiter = (smoothness + fabs(smoothness))/(1.0+fabs(smoothness));
       }
 
       // Calculate the flux
-      F_x[ind1] = u[ind1]*rho_upwind+
-        0.5*fabs(u[ind1])*(1.0-fabs((u[ind1]*dt_h)/celldx[jj]))*limiter*rho_diff;
-
-      // Calculate the flux affecting the energy
-      
+      const double rho_upwind = (u[ind1] >= 0.0) ? rho[ind0-1] : rho[ind0];
+      F_x[ind1] = (u[ind1]*rho_upwind+
+        0.5*fabs(u[ind1])*(1.0-fabs((u[ind1]*dt_h)/celldx[jj]))*limiter*rho_diff);
     }
   }
 
@@ -460,20 +458,21 @@ void y_mass_flux(
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
 #pragma omp simd
     for(int jj = PAD; jj < nx-PAD; ++jj) {
-      const int up = (v[ind1] > 0.0) ? -nx : nx;
       const double rho_diff = (rho[ind0]-rho[ind0-nx]);
-      const double rho_upwind = (v[ind1] > 0.0) ? rho[ind0-nx] : rho[ind0];
 
       // Van leer limiter
       double limiter = 0.0;
-      if(rho_diff > 0.0) {
-        const double smoothness = (rho[ind0+up]-rho[ind0-nx+up])/rho_diff;
+      if(rho_diff) {
+        const double smoothness = (v[ind0] >= 0.0) 
+          ? (rho[ind0-nx]-rho[ind0-nx])/rho_diff
+          : (rho[ind0+nx]-rho[ind0])/rho_diff;
         limiter = (smoothness + fabs(smoothness))/(1.0+fabs(smoothness));
       }
 
       // Calculate the flux
-      F_y[ind1] = v[ind1]*rho_upwind+
-        0.5*fabs(v[ind1])*(1.0-fabs((v[ind1]*dt_h)/celldx[jj]))*limiter*rho_diff;
+      const double rho_upwind = (v[ind0] >= 0.0) ? rho[ind0-nx] : rho[ind0];
+      F_y[ind0] = (v[ind0]*rho_upwind+
+        0.5*fabs(v[ind0])*(1.0-fabs((v[ind0]*dt_h)/celldx[jj]))*limiter*rho_diff);
     }
   }
   STOP_PROFILING(&compute_profiler, "advect_mass");
