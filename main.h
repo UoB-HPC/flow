@@ -10,7 +10,8 @@
 
 #define max(a, b) (((a) > (b)) ? (a) : (b))
 #define min(a, b) (((a) < (b)) ? (a) : (b))
-#define minmod(a, b) (((a*b) > 0.0) ? (min(fabs(a), fabs(b))) : 0.0)
+#define absmin(a, b) ((fabs(a) < fabs(b)) ? (a) : (b))
+#define minmod(a, b) (((a*b) > 0.0) ? (absmin(fabs(a), fabs(b))) : 0.0)
 
 #define NVARS_TO_COMM 4 // rho, e, rho_u, rho_v
 

@@ -501,40 +501,42 @@ void advect_momentum(
     const double* F_x, const double* F_y, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
-  /// nx DIMENSION ADVECTION
-  START_PROFILING(&compute_profiler);
-#pragma omp parallel for
-  for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
-#pragma omp simd
-    for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
-      const double S_L = (u[ind1] - u[ind1-1])/edgedx[jj];
-      const double S_R = (u[ind1+1] - u[ind1])/edgedx[jj+1];
-      const double S_D = (u[ind1] - u[ind1-(nx+1)])/edgedy[ii];
-      const double S_U = (u[ind1+(nx+1)] - u[ind1])/edgedy[ii+1];
-      slope_x[ind1] = 
-        ((S_L >= 0.0) ^ (S_R < 0.0)) ? (fabs(S_L) < fabs(S_R) ? S_L : S_R) : (0.0);
-      slope_y[ind0] =
-        ((S_D >= 0.0) ^ (S_U < 0.0)) ? (fabs(S_D) < fabs(S_U) ? S_D : S_U) : (0.0);
-    }
-  }
-
   // Calculate the cell centered x momentum fluxes in the x direction
 #pragma omp parallel for
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
 #pragma omp simd
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
+      const double invdx = 1.0/edgedx[jj];
+      const double invdy = 1.0/edgedy[ii];
+
+      // Construct all required slopes for the stencil to interpolate the
+      // velocities at the cell centers
+      const double S_L_0 = invdx*(u[ind1] - u[ind1-1]);
+      const double S_R_0 = invdx*(u[ind1+1] - u[ind1]);
+      const double S_D_0 = invdy*(u[ind1-(nx+1)] - u[ind1-2*(nx+1)]);
+      const double S_U_0 = invdy*(u[ind1] - u[ind1-(nx+1)]);
+      const double sx_0 = minmod(S_L_0, S_R_0);
+      const double sy_0 = minmod(S_D_0, S_U_0);
+      const double S_L_1 = invdx*(u[ind1+1] - u[ind1]);
+      const double S_R_1 = invdx*(u[ind1+2] - u[ind1+1]);
+      const double S_D_1 = invdy*(u[ind1] - u[ind1-(nx+1)]);
+      const double S_U_1 = invdy*(u[ind1+(nx+1)] - u[ind1]);
+      const double sx_1 = minmod(S_L_1, S_R_1);
+      const double sy_1 = minmod(S_D_1, S_U_1);
+
+      // Construct the fluxes
       const double f_x = edgedy[ii]*0.5*(F_x[ind1] + F_x[ind1+1]); 
       const double f_y = edgedx[jj]*0.5*(F_y[ind0] + F_y[ind0-1]);
-
       const double u_cell_x = 0.5*(u[ind1]+u[ind1+1]);
       const double v_cell_y = 0.5*(v[ind0]+v[ind0-1]);
 
+      // Construct the fluxes from the slopes
       mF_x[ind0] = f_x*((u_cell_x >= 0.0) 
-          ? u[ind1] + 0.5*slope_x[ind1]*(edgedx[jj]+u_cell_x*dt)
-          : u[ind1+1] - 0.5*slope_x[ind1+1]*(edgedx[jj]-u_cell_x*dt));
+          ? u[ind1] + 0.5*sx_0*(edgedx[jj]+u_cell_x*dt)
+          : u[ind1+1] - 0.5*sx_1*(edgedx[jj]-u_cell_x*dt));
       mF_y[ind1] = f_y*((v_cell_y >= 0.0)
-          ? u[ind1-(nx+1)] + 0.5*slope_y[ind0-nx]*(edgedx[jj]+v_cell_y*dt)
-          : u[ind1] - 0.5*slope_y[ind0]*(edgedx[jj]-v_cell_y*dt));
+          ? u[ind1-(nx+1)] + 0.5*sy_0*(edgedx[jj]+v_cell_y*dt)
+          : u[ind1] - 0.5*sy_1*(edgedx[jj]-v_cell_y*dt));
     }
   }
   STOP_PROFILING(&compute_profiler, __func__);
@@ -556,40 +558,40 @@ void advect_momentum(
 
   /// ny DIMENSION ADVECTION
 
-  // Calculate the cell centered monotonic slopes for u and v
-#pragma omp parallel for
-  for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
-#pragma omp simd
-    for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
-      const double S_L = (v[ind0] - v[ind0-1])/edgedx[jj];
-      const double S_R = (v[ind0+1] - v[ind0])/edgedx[jj+1];
-      const double S_D = (v[ind0] - v[ind0-nx])/edgedy[ii];
-      const double S_U = (v[ind0+nx] - v[ind0])/edgedy[ii+1];
-      slope_x[ind1] = ((S_L >= 0.0) ^ (S_R < 0.0)) 
-        ? (fabs(S_L) < fabs(S_R) ? S_L : S_R) : (0.0);
-      slope_y[ind0] = ((S_D >= 0.0) ^ (S_U < 0.0)) 
-        ? (fabs(S_D) < fabs(S_U) ? S_D : S_U) : (0.0);
-    }
-  }
-
   // Calculate the corner centered y momentum fluxes in the x direction
   // Calculate the cell centered y momentum fluxes in the y direction
 #pragma omp parallel for
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
 #pragma omp simd
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
+      const double invdx = 1.0/edgedx[jj];
+      const double invdy = 1.0/edgedy[ii];
+
+      const double S_L_0 = invdx*(v[ind0-1] - v[ind0-2]);
+      const double S_R_0 = invdx*(v[ind0] - v[ind0-1]);
+      const double S_D_0 = invdy*(v[ind0] - v[ind0-nx]);
+      const double S_U_0 = invdy*(v[ind0+nx] - v[ind0]);
+      const double sx_0 = minmod(S_L_0, S_R_0);
+      const double sy_0 = minmod(S_D_0, S_U_0);
+
+      const double S_L_1 = invdx*(v[ind0] - v[ind0-1]);
+      const double S_R_1 = invdx*(v[ind0+1] - v[ind0]);
+      const double S_D_1 = invdy*(v[ind0+nx] - v[ind0]);
+      const double S_U_1 = invdy*(v[ind0+2*nx] - v[ind0+nx]);
+      const double sx_1 = minmod(S_L_1, S_R_1);
+      const double sy_1 = minmod(S_D_1, S_U_1);
+
       const double f_x = celldy[ii]*0.5*(F_x[ind1] + F_x[ind1-(nx+1)]);
       const double f_y = celldx[jj]*0.5*(F_y[ind0] + F_y[ind0+nx]);
-
       const double u_cell_x = 0.5*(u[ind1]+u[ind1-(nx+1)]);
       const double v_cell_y = 0.5*(v[ind0]+v[ind0+nx]);
 
-      mF_y[ind0] = f_y*((v_cell_y >= 0.0)
-          ? v[ind0] + 0.5*slope_y[ind0]*(edgedx[jj]+v_cell_y*dt)
-          : v[ind0+nx] - 0.5*slope_y[ind0+nx]*(edgedx[jj]-v_cell_y*dt));
       mF_x[ind1] = f_x*((u_cell_x >= 0.0) 
-          ? v[ind0-1] + 0.5*slope_x[ind1-1]*(edgedx[jj]+u_cell_x*dt)
-          : v[ind0] - 0.5*slope_x[ind1]*(edgedx[jj]-u_cell_x*dt));
+          ? v[ind0-1] + 0.5*sx_0*(edgedx[jj]+u_cell_x*dt)
+          : v[ind0] - 0.5*sx_1*(edgedx[jj]-u_cell_x*dt));
+      mF_y[ind0] = f_y*((v_cell_y >= 0.0)
+          ? v[ind0] + 0.5*sy_0*(edgedx[jj]+v_cell_y*dt)
+          : v[ind0+nx] - 0.5*sy_1*(edgedx[jj]-v_cell_y*dt));
     }
   }
   STOP_PROFILING(&compute_profiler, __func__);
@@ -623,29 +625,33 @@ void advect_energy(
   for(int ii = PAD; ii < ny-PAD; ++ii) {
 #pragma omp simd
     for(int jj = PAD; jj < nx-PAD; ++jj) {
-      // Use MC limiter to get slope of energy
-      const double a_x = (e[ind0+1]-e[ind0-1])/(2.0*edgedx[jj]);
-      const double b_x = 2.0*(e[ind0]-e[ind0-1])/edgedx[jj];
-      const double c_x = 2.0*(e[ind0+1]-e[ind0])/edgedx[jj];
-      slope_x[ind0] = minmod(minmod(a_x, b_x), c_x);
+      // Calculate the maximum and minimum neighbouring density
+      const double ie_x_max = max(e[ind0-1], max(e[ind0], e[ind0+1]));
+      const double ie_x_min = min(e[ind0-1], min(e[ind0], e[ind0+1]));
+      const double ie_y_max = max(e[ind0-nx], max(e[ind0], e[ind0+nx]));
+      const double ie_y_min = min(e[ind0-nx], min(e[ind0], e[ind0+nx]));
 
-      // Use MC limiter to get slope of energy
-      const double a_y = (e[ind0+nx]-e[ind0-nx])/(2.0*edgedx[jj]);
-      const double b_y = 2.0*(e[ind0]-e[ind0-nx])/edgedx[jj];
-      const double c_y = 2.0*(e[ind0+nx]-e[ind0])/edgedx[jj];
-      slope_y[ind0] = minmod(minmod(a_y, b_y), c_y);
+      // Construct absolute value of slope S_L or S_R
+      const double s1_x = min(ie_x_max - e[ind0], e[ind0] - ie_x_min) / (celldx[jj] / 2.0);
+      const double s1_y = min(ie_y_max - e[ind0], e[ind0] - ie_y_min) / (celldy[ii] / 2.0);
 
-#if 0
+      // Calculate the density interpolated from the zone center to zone boundary
+      const double ie_edge_l = 
+        (celldx[jj]*e[ind0-1] + celldx[jj - 1]*e[ind0])/(celldx[jj] + celldx[jj - 1]);
+      const double ie_edge_r = 
+        (celldx[jj + 1]*e[ind0] + celldx[jj]*e[ind0+1])/(celldx[jj + 1] + celldx[jj]);
       const double ie_edge_d = 
         (celldy[ii]*e[ind0-nx] + celldy[ii - 1]*e[ind0])/(celldy[ii] + celldy[ii - 1]);
       const double ie_edge_u = 
         (celldy[ii + 1]*e[ind0] + celldy[ii]*e[ind0+nx])/(celldy[ii + 1] + celldy[ii]);
-      const double ie_y_max = max(e[ind0-nx], max(e[ind0], e[ind0+nx]));
-      const double ie_y_min = min(e[ind0-nx], min(e[ind0], e[ind0+nx]));
-      const double s1_y = min(ie_y_max - e[ind0], e[ind0] - ie_y_min) / (celldy[ii] / 2.0);
+
+      // Construct the slope
+      const double s2_x = (ie_edge_r - ie_edge_l) / celldx[jj];
       const double s2_y = (ie_edge_u - ie_edge_d) / celldy[ii];
+
+      // Define the zone centered slope (culling 0's)
+      slope_x[ind0] = (s2_x != 0.0) ? (s2_x / fabs(s2_x))*min(fabs(s2_x), s1_x) : 0.0;
       slope_y[ind0] = (s2_y != 0.0) ? (s2_y / fabs(s2_y))*min(fabs(s2_y), s1_y) : 0.0;
-#endif // if 0
     }
   }
 
@@ -656,18 +662,11 @@ void advect_energy(
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
       // Calculate the interpolated densities
       const double edge_e_x = (u[ind1] > 0.0)
-        ? e[ind0-1] + 0.5*u[ind1]*(dt/edgedx[jj])*(edgedx[jj]-u[ind1]*dt)*(slope_x[ind0]-slope_x[ind0-1])
-        : e[ind0] - 0.5*u[ind1]*(dt/edgedx[jj])*(edgedx[jj]-u[ind1]*dt)*(slope_x[ind0]-slope_x[ind0-1]);
-
-      const double edge_e_y = (v[ind1] > 0.0)
-        ? e[ind0-nx] + 0.5*v[ind1]*(dt/edgedy[ii])*(edgedy[ii]-v[ind1]*dt)*(slope_y[ind0]-slope_y[ind0-1])
-        : e[ind0] - 0.5*v[ind1]*(dt/edgedy[ii])*(edgedy[ii]-v[ind1]*dt)*(slope_y[ind0]-slope_y[ind0-1]);
-
-#if 0
+        ? e[ind0-1] + 0.5*slope_x[ind0-1]*(celldx[jj-1] - u[ind1]*dt)
+        : e[ind0] - 0.5*slope_x[ind0]*(celldx[jj] + u[ind1]*dt);
       const double edge_e_y = (v[ind0] > 0.0)
         ? e[ind0-nx] + 0.5*slope_y[ind0-nx]*(celldy[ii-1] - v[ind0]*dt)
         : e[ind0] - 0.5*slope_y[ind0]*(celldy[ii] + v[ind0]*dt);
-#endif // if 0
 
       // Update the fluxes to now include the contribution from energy
       F_x[ind1] = edgedy[ii]*edge_e_x*F_x[ind1]; 
