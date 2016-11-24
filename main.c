@@ -121,12 +121,18 @@ int main(int argc, char** argv)
     printf("Wallclock %.2fs, Elapsed Simulation Time %.4fs\n", global_wallclock, elapsed_sim_time);
   }
 
-  char visit_name[256];
-  sprintf(visit_name, "density%d", mesh.rank);
-
   write_all_ranks_to_visit(
       mesh.global_nx, mesh.global_ny, mesh.local_nx, mesh.local_ny, mesh.x_off, 
-      mesh.y_off, mesh.rank, mesh.nranks, state.rho, visit_name, tt, elapsed_sim_time);
+      mesh.y_off, mesh.rank, mesh.nranks, state.rho, "density", 0, elapsed_sim_time);
+  write_all_ranks_to_visit(
+      mesh.global_nx, mesh.global_ny, mesh.local_nx, mesh.local_ny, mesh.x_off, 
+      mesh.y_off, mesh.rank, mesh.nranks, state.e, "energy", 0, elapsed_sim_time);
+  write_all_ranks_to_visit(
+      mesh.global_nx+1, mesh.global_ny, mesh.local_nx+1, mesh.local_ny, mesh.x_off, 
+      mesh.y_off, mesh.rank, mesh.nranks, state.u, "u", 0, elapsed_sim_time);
+  write_all_ranks_to_visit(
+      mesh.global_nx, mesh.global_ny+1, mesh.local_nx, mesh.local_ny+1, mesh.x_off, 
+      mesh.y_off, mesh.rank, mesh.nranks, state.v, "v", 0, elapsed_sim_time);
 
   finalise_state(&state);
   finalise_mesh(&mesh);
@@ -219,8 +225,10 @@ void set_timestep(
   STOP_PROFILING(&comms_profiler, "reductions");
 #endif
 
-  mesh->dt = 0.5*(C_T*global_min_dt + mesh->dt_h);
-  mesh->dt_h = (first_step) ? mesh->dt : C_T*global_min_dt;
+  // Ensure that the timestep does not jump too far from one step to the next
+  const double final_min_dt = min(global_min_dt, C_M*mesh->dt_h);
+  mesh->dt = 0.5*(C_T*final_min_dt + mesh->dt_h);
+  mesh->dt_h = (first_step) ? mesh->dt : C_T*final_min_dt;
 }
 
 // Calculate change in momentum caused by pressure gradients, and then extract
@@ -352,7 +360,6 @@ void shock_heating_and_work(
       const double e_C = e[ind0] - (P[ind0]*div_v_dt)/rho[ind0];
       const double rho_C = rho[ind0]/(1.0 + div_v_dt);
       const double work = 0.5*div_v_dt*(P[ind0] + (GAM-1.0)*e_C*rho_C)/rho[ind0];
-
       e[ind0] -= (shock_heating + work);
     }
   }
@@ -492,8 +499,8 @@ void y_mass_flux(
 // Advect momentum according to the velocity
 void advect_momentum(
     const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
-    double* u, double* v, double* slope_x, double* slope_y, double* mF_x, 
-    double* mF_y, double* rho_u, double* rho_v, const double* rho, 
+    double* u, double* v, double* uF_x, double* uF_y, double* vF_x, 
+    double* vF_y, double* rho_u, double* rho_v, const double* rho, 
     const double* F_x, const double* F_y, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
@@ -521,18 +528,18 @@ void advect_momentum(
       const double v_cell_y = 0.5*(v[ind0]+v[ind0-1]);
 
       // Construct the fluxes from the slopes
-      mF_x[ind0] = f_x*((u_cell_x >= 0.0) 
+      uF_x[ind0] = f_x*((u_cell_x >= 0.0) 
           ? u[ind1] + 0.5*minmod(S_L_0, S_C_0)*(edgedx[jj]+u_cell_x*dt)
           : u[ind1+1] - 0.5*minmod(S_C_0, S_R_0)*(edgedx[jj]-u_cell_x*dt));
-      mF_y[ind1] = f_y*((v_cell_y >= 0.0)
+      uF_y[ind1] = f_y*((v_cell_y >= 0.0)
           ? u[ind1-(nx+1)] + 0.5*minmod(S_D_1, S_C_1)*(edgedx[jj]+v_cell_y*dt)
           : u[ind1] - 0.5*minmod(S_C_1, S_U_1)*(edgedx[jj]-v_cell_y*dt));
     }
   }
   STOP_PROFILING(&compute_profiler, __func__);
 
-  handle_boundary(nx, ny, mesh, mF_x, NO_INVERT, PACK);
-  handle_boundary(nx+1, ny+1, mesh, mF_y, NO_INVERT, PACK);
+  handle_boundary(nx, ny, mesh, uF_x, NO_INVERT, PACK);
+  handle_boundary(nx+1, ny+1, mesh, uF_y, NO_INVERT, PACK);
 
   // Calculate the axial momentum
   START_PROFILING(&compute_profiler);
@@ -541,8 +548,8 @@ void advect_momentum(
 #pragma omp simd
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
       rho_u[ind1] -= dt_h*
-        ((mF_x[ind0] - mF_x[ind0-1])/(edgedx[jj]*celldy[ii]) +
-         (mF_y[ind1+(nx+1)] - mF_y[ind1])/(celldx[jj]*edgedy[ii]));
+        ((uF_x[ind0] - uF_x[ind0-1])/(edgedx[jj]*celldy[ii]) +
+         (uF_y[ind1+(nx+1)] - uF_y[ind1])/(celldx[jj]*edgedy[ii]));
     }
   }
 
@@ -568,18 +575,18 @@ void advect_momentum(
       const double u_cell_x = 0.5*(u[ind1]+u[ind1-(nx+1)]);
       const double v_cell_y = 0.5*(v[ind0]+v[ind0+nx]);
 
-      mF_x[ind1] = f_x*((u_cell_x >= 0.0) 
+      vF_x[ind1] = f_x*((u_cell_x >= 0.0) 
           ? v[ind0-1] + 0.5*minmod(S_L_0, S_C_0)*(edgedx[jj]+u_cell_x*dt)
           : v[ind0] - 0.5*minmod(S_C_0, S_R_0)*(edgedx[jj]-u_cell_x*dt));
-      mF_y[ind0] = f_y*((v_cell_y >= 0.0)
+      vF_y[ind0] = f_y*((v_cell_y >= 0.0)
           ? v[ind0] + 0.5*minmod(S_D_1, S_C_1)*(edgedx[jj]+v_cell_y*dt)
           : v[ind0+nx] - 0.5*minmod(S_C_1, S_U_1)*(edgedx[jj]-v_cell_y*dt));
     }
   }
   STOP_PROFILING(&compute_profiler, __func__);
 
-  handle_boundary(nx+1, ny+1, mesh, mF_x, NO_INVERT, PACK);
-  handle_boundary(nx, ny, mesh, mF_y, NO_INVERT, PACK);
+  handle_boundary(nx+1, ny+1, mesh, vF_x, NO_INVERT, PACK);
+  handle_boundary(nx, ny, mesh, vF_y, NO_INVERT, PACK);
 
   START_PROFILING(&compute_profiler);
 #pragma omp parallel for
@@ -587,8 +594,8 @@ void advect_momentum(
 #pragma omp simd
     for(int jj = PAD; jj < nx-PAD; ++jj) {
       rho_v[ind0] -= dt_h*(
-          (mF_x[ind1+1] - mF_x[ind1])/(edgedx[jj]*celldy[ii]) +
-          (mF_y[ind0] - mF_y[ind0-nx])/(celldx[jj]*edgedy[ii]));
+          (vF_x[ind1+1] - vF_x[ind1])/(edgedx[jj]*celldy[ii]) +
+          (vF_y[ind0] - vF_y[ind0-nx])/(celldx[jj]*edgedy[ii]));
     }
   }
   STOP_PROFILING(&compute_profiler, __func__);
@@ -604,52 +611,34 @@ void advect_energy(
 {
   START_PROFILING(&compute_profiler);
 
-#pragma omp parallel for
-  for(int ii = PAD; ii < ny-PAD; ++ii) {
-#pragma omp simd
-    for(int jj = PAD; jj < nx-PAD; ++jj) {
-      // Calculate the maximum and minimum neighbouring density
-      const double ie_x_max = max(e[ind0-1], max(e[ind0], e[ind0+1]));
-      const double ie_x_min = min(e[ind0-1], min(e[ind0], e[ind0+1]));
-      const double ie_y_max = max(e[ind0-nx], max(e[ind0], e[ind0+nx]));
-      const double ie_y_min = min(e[ind0-nx], min(e[ind0], e[ind0+nx]));
-
-      // Construct absolute value of slope S_L or S_R
-      const double s1_x = min(ie_x_max - e[ind0], e[ind0] - ie_x_min) / (celldx[jj] / 2.0);
-      const double s1_y = min(ie_y_max - e[ind0], e[ind0] - ie_y_min) / (celldy[ii] / 2.0);
-
-      // Calculate the density interpolated from the zone center to zone boundary
-      const double ie_edge_l = 
-        (celldx[jj]*e[ind0-1] + celldx[jj - 1]*e[ind0])/(celldx[jj] + celldx[jj - 1]);
-      const double ie_edge_r = 
-        (celldx[jj + 1]*e[ind0] + celldx[jj]*e[ind0+1])/(celldx[jj + 1] + celldx[jj]);
-      const double ie_edge_d = 
-        (celldy[ii]*e[ind0-nx] + celldy[ii - 1]*e[ind0])/(celldy[ii] + celldy[ii - 1]);
-      const double ie_edge_u = 
-        (celldy[ii + 1]*e[ind0] + celldy[ii]*e[ind0+nx])/(celldy[ii + 1] + celldy[ii]);
-
-      // Construct the slope
-      const double s2_x = (ie_edge_r - ie_edge_l) / celldx[jj];
-      const double s2_y = (ie_edge_u - ie_edge_d) / celldy[ii];
-
-      // Define the zone centered slope (culling 0's)
-      slope_x[ind0] = (s2_x != 0.0) ? (s2_x / fabs(s2_x))*min(fabs(s2_x), s1_x) : 0.0;
-      slope_y[ind0] = (s2_y != 0.0) ? (s2_y / fabs(s2_y))*min(fabs(s2_y), s1_y) : 0.0;
-    }
-  }
-
   // Calculate the zone edge centered energies, and flux
 #pragma omp parallel for
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
 #pragma omp simd
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
+      // Use MC limiter to get slope of energy
+      const double invdx = 1.0/edgedx[jj];
+      const double invdy = 1.0/edgedx[ii];
+      const double a_x_0 = 0.5*invdx*(e[ind0]-e[ind0-2]);
+      const double b_x_0 = 2.0*invdx*(e[ind0-1]-e[ind0-2]);
+      const double c_x_0 = 2.0*invdx*(e[ind0]-e[ind0-1]);
+      const double a_x_1 = 0.5*invdx*(e[ind0+1]-e[ind0-1]);
+      const double b_x_1 = 2.0*invdx*(e[ind0]-e[ind0-1]);
+      const double c_x_1 = 2.0*invdx*(e[ind0+1]-e[ind0]);
+      const double a_y_0 = 0.5*invdy*(e[ind0+nx]-e[ind0-nx]);
+      const double b_y_0 = 2.0*invdy*(e[ind0]-e[ind0-nx]);
+      const double c_y_0 = 2.0*invdy*(e[ind0+nx]-e[ind0]);
+      const double a_y_1 = 0.5*invdy*(e[ind0+nx]-e[ind0-nx]);
+      const double b_y_1 = 2.0*invdy*(e[ind0]-e[ind0-nx]);
+      const double c_y_1 = 2.0*invdy*(e[ind0+nx]-e[ind0]);
+
       // Calculate the interpolated densities
       const double edge_e_x = (u[ind1] > 0.0)
-        ? e[ind0-1] + 0.5*slope_x[ind0-1]*(celldx[jj-1] - u[ind1]*dt)
-        : e[ind0] - 0.5*slope_x[ind0]*(celldx[jj] + u[ind1]*dt);
+        ? e[ind0-1] + 0.5*minmod(minmod(a_x_0, b_x_0), c_x_0)*(celldx[jj-1] - u[ind1]*dt)
+        : e[ind0] - 0.5*minmod(minmod(a_x_1, b_x_1), c_x_1)*(celldx[jj] + u[ind1]*dt);
       const double edge_e_y = (v[ind0] > 0.0)
-        ? e[ind0-nx] + 0.5*slope_y[ind0-nx]*(celldy[ii-1] - v[ind0]*dt)
-        : e[ind0] - 0.5*slope_y[ind0]*(celldy[ii] + v[ind0]*dt);
+        ? e[ind0-nx] + 0.5*minmod(minmod(a_y_0, b_y_0), c_y_0)*(celldy[ii-1] - v[ind0]*dt)
+        : e[ind0] - 0.5*minmod(minmod(a_y_1, b_y_1), c_y_1)*(celldy[ii] + v[ind0]*dt);
 
       // Update the fluxes to now include the contribution from energy
       F_x[ind1] = edgedy[ii]*edge_e_x*F_x[ind1]; 
@@ -903,7 +892,7 @@ void initialise_state(
   for(int ii = 0; ii < mesh->local_ny; ++ii) {
     for(int jj = 0; jj < mesh->local_nx; ++jj) {
       // CENTER SQUARE TEST
-      const int dist = 100;
+      const int dist = 102;
       if(jj+mesh->x_off-PAD >= mesh->global_nx/2-dist && 
           jj+mesh->x_off-PAD < mesh->global_nx/2+dist && 
           ii+mesh->y_off-PAD >= mesh->global_ny/2-dist && 
@@ -912,7 +901,7 @@ void initialise_state(
         state->e[ii*mesh->local_nx+jj] = 2.5;
       }
 #if 0
-      if(jj <= mesh->local_nx/2) {
+      if(jj <= (mesh->local_nx/2+PAD)) {
         state->rho[ii*mesh->local_nx+jj] = 1.0;
         state->e[ii*mesh->local_nx+jj] = 2.5;
       }
@@ -947,8 +936,8 @@ void initialise_mesh(
   mesh->celldx = (double*)_mm_malloc(sizeof(double)*mesh->local_nx, VEC_ALIGN);
   mesh->edgedy = (double*)_mm_malloc(sizeof(double)*mesh->local_ny+1, VEC_ALIGN);
   mesh->celldy = (double*)_mm_malloc(sizeof(double)*mesh->local_ny, VEC_ALIGN);
-  mesh->dt = 0.5*C_T*MAX_DT;
-  mesh->dt_h = 0.5*C_T*MAX_DT;
+  mesh->dt = 0.01*C_T*MAX_DT;
+  mesh->dt_h = 0.01*C_T*MAX_DT;
 
   // Simple uniform rectilinear initialisation
   for(int ii = 0; ii < mesh->local_ny+1; ++ii) {
