@@ -124,13 +124,13 @@ void advect_mass_and_energy(
 // Calculate the flux in the x direction
 void x_mass_and_energy_flux(
     const int nx, const int ny, Mesh* mesh, const double dt_h, double* rho, 
-    double* e, const double* u, double* F_x, double* eF_x, double* de,
+    double* e, const double* u, double* F_x, double* eF_x, double* rho_e,
     const double* celldx, const double* edgedx, const double* celldy, const double* edgedy);
 
 // Calculate the flux in the y direction
 void y_mass_and_energy_flux(
-    const int nx, const int ny, Mesh* mesh, const double dt_h, double* rho, double* e,
-    const double* v, double* F_y, double* eF_y, double* de, 
+    const int nx, const int ny, Mesh* mesh, const double dt_h, double* rho, 
+    double* e, const double* v, double* F_y, double* eF_y, double* rho_e,
     const double* celldx, const double* edgedx, const double* celldy, const double* edgedy);
 
 // Advect momentum according to the velocity

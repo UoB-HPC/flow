@@ -382,7 +382,7 @@ void advect_mass_and_energy(
       de[ind0] = 0.0;
     }
   }
-  STOP_PROFILING(&compute_profiler, "advect_mass_and_energy");
+  STOP_PROFILING(&compute_profiler, "advect_mass_and_energy pre_e");
 
   STOP_PROFILING(&compute_profiler, __func__);
 
@@ -390,15 +390,15 @@ void advect_mass_and_energy(
   // fix for asymmetries
   if(tt % 2) {
     x_mass_and_energy_flux(
-        nx, ny, mesh, dt_h, rho, e, u, F_x, F_x0, de, celldx, edgedx, celldy, edgedy);
+        nx, ny, mesh, dt_h, rho, e, u, F_x, F_x0, rho_e, celldx, edgedx, celldy, edgedy);
     y_mass_and_energy_flux(
-        nx, ny, mesh, dt_h, rho, e, v, F_y, F_y0, de, celldx, edgedx, celldy, edgedy);
+        nx, ny, mesh, dt_h, rho, e, v, F_y, F_y0, rho_e, celldx, edgedx, celldy, edgedy);
   }
   else {
     y_mass_and_energy_flux(
-        nx, ny, mesh, dt_h, rho, e, v, F_y, F_y0, de, celldx, edgedx, celldy, edgedy);
+        nx, ny, mesh, dt_h, rho, e, v, F_y, F_y0, rho_e, celldx, edgedx, celldy, edgedy);
     x_mass_and_energy_flux(
-        nx, ny, mesh, dt_h, rho, e, u, F_x, F_x0, de, celldx, edgedx, celldy, edgedy);
+        nx, ny, mesh, dt_h, rho, e, u, F_x, F_x0, rho_e, celldx, edgedx, celldy, edgedy);
   }
 
   // Fixup the energy from the delta
@@ -407,10 +407,10 @@ void advect_mass_and_energy(
   for(int ii = PAD; ii < ny-PAD; ++ii) {
 #pragma omp simd
     for(int jj = PAD; jj < nx-PAD; ++jj) {
-      e[ind0] = (rho_e[ind0] - (dt_h/(celldx[jj]*celldy[ii]))*de[ind0])/rho[ind0];
+      e[ind0] = rho_e[ind0]/rho[ind0];
     }
   }
-  STOP_PROFILING(&compute_profiler, "advect_mass_and_energy");
+  STOP_PROFILING(&compute_profiler, "advect_mass_and_energy after_e");
 
   handle_boundary(nx, ny, mesh, rho, NO_INVERT, PACK);
   handle_boundary(nx, ny, mesh, e, NO_INVERT, PACK);
@@ -419,7 +419,7 @@ void advect_mass_and_energy(
 // Calculate the flux in the x direction
 void x_mass_and_energy_flux(
     const int nx, const int ny, Mesh* mesh, const double dt_h, double* rho, 
-    double* e, const double* u, double* F_x, double* eF_x, double* de, 
+    double* e, const double* u, double* F_x, double* eF_x, double* rho_e,
     const double* celldx, const double* edgedx, const double* celldy, const double* edgedy)
 {
   // Compute the mass fluxes along the x edges
@@ -476,7 +476,7 @@ void x_mass_and_energy_flux(
       rho[ind0] -= dt_h*
         (edgedx[jj+1]*F_x[ind1+1] - edgedx[jj]*F_x[ind1])/ 
         (celldx[jj]*celldy[ii]);
-      de[ind0] += (eF_x[ind1+1] - eF_x[ind1]);
+      rho_e[ind0] -= (dt_h/(celldx[jj]*celldy[ii]))*(eF_x[ind1+1] - eF_x[ind1]);
     }
   }
   STOP_PROFILING(&compute_profiler, "advect_mass_and_energy");
@@ -484,8 +484,8 @@ void x_mass_and_energy_flux(
 
 // Calculate the flux in the y direction
 void y_mass_and_energy_flux(
-    const int nx, const int ny, Mesh* mesh, const double dt_h, double* rho, double* e,
-    const double* v, double* F_y, double* eF_y, double* de, 
+    const int nx, const int ny, Mesh* mesh, const double dt_h, double* rho, 
+    double* e, const double* v, double* F_y, double* eF_y, double* rho_e,
     const double* celldx, const double* edgedx, const double* celldy, const double* edgedy)
 {
   // Compute the mass flux along the y edges
@@ -541,7 +541,7 @@ void y_mass_and_energy_flux(
       rho[ind0] -= dt_h*
         (edgedy[ii+1]*F_y[ind0+nx] - edgedy[ii]*F_y[ind0])/
         (celldx[jj]*celldy[ii]);
-      de[ind0] += (eF_y[ind0+nx] - eF_y[ind0]);
+      rho_e[ind0] -= (dt_h/(celldx[jj]*celldy[ii]))*(eF_y[ind0+nx] - eF_y[ind0]);
     }
   }
   STOP_PROFILING(&compute_profiler, "advect_mass_and_energy");
