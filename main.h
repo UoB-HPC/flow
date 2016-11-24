@@ -29,6 +29,7 @@ typedef struct
   // Pressure and internal energy, (cell centered)
   double* P;
   double* e;
+  double* rho_e;
 
   // Momenta (edge centered)
   double* rho_u;
@@ -41,14 +42,10 @@ typedef struct
   // Mass fluxes, stored to avoid repetetive recomputation
   double* F_x;
   double* F_y;
-  double* mF_x;
-  double* mF_y;
-
-  // Slopes for monotonic advection
-  double* slope_x0;
-  double* slope_y0;
-  double* slope_x1;
-  double* slope_y1;
+  double* F_x0;
+  double* F_y0;
+  double* F_x1;
+  double* F_y1;
 
   // Interpolated velocity values
   double* Qxx;
@@ -118,37 +115,29 @@ void shock_heating_and_work(
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy);
 
 // Perform advection with monotonicity improvement
-void advect_mass(
+void advect_mass_and_energy(
     const int nx, const int ny, Mesh* mesh, const int tt, const double dt_h, 
-    double* rho, double* rho_old, double* F_x, double* F_y, const double* u, 
-    const double* v, 
+    double* rho, double* pe, double* e, double* F_x, double* F_y, 
+    double* F_x0, double* F_y0, double* de, const double* u, const double* v, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy);
 
 // Calculate the flux in the x direction
-void x_mass_flux(
+void x_mass_and_energy_flux(
     const int nx, const int ny, Mesh* mesh, const double dt_h, double* rho, 
-    const double* u, double* F_x, const double* celldx, const double* edgedx, 
-    const double* celldy, const double* edgedy);
+    double* e, const double* u, double* F_x, double* eF_x, double* de,
+    const double* celldx, const double* edgedx, const double* celldy, const double* edgedy);
 
 // Calculate the flux in the y direction
-void y_mass_flux(
-    const int nx, const int ny, Mesh* mesh, const double dt_h, double* rho, 
-    const double* v, double* F_y, const double* celldx, const double* edgedx, 
-    const double* celldy, const double* edgedy);
+void y_mass_and_energy_flux(
+    const int nx, const int ny, Mesh* mesh, const double dt_h, double* rho, double* e,
+    const double* v, double* F_y, double* eF_y, double* de, 
+    const double* celldx, const double* edgedx, const double* celldy, const double* edgedy);
 
 // Advect momentum according to the velocity
 void advect_momentum(
     const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
-    double* u, double* v, double* slope_x, double* slope_y, double* mF_x, 
-    double* mF_y, double* rho_u, double* rho_v, const double* rho, 
-    const double* F_x, const double* F_y, 
-    const double* edgedx, const double* edgedy, const double* celldx, const double* celldy);
-
-// Perform advection of internal energy
-void advect_energy(
-    const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
-    double* e, double* slope_x, double* slope_y, double* F_x, double* F_y, 
-    const double* u, const double* v, const double* rho_old, const double* rho,
+    double* u, double* v, double* uF_x, double* uF_y, double* vF_x, 
+    double* vF_y, double* rho_u, double* rho_v, const double* F_x, const double* F_y, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy);
 
 // Enforce reflective boundary conditions on the problem state

@@ -76,19 +76,16 @@ int main(int argc, char** argv)
         mesh.celldx, mesh.celldy);
 
     // Perform advection
-    advect_mass(
-        mesh.local_nx, mesh.local_ny, &mesh, tt, mesh.dt_h, state.rho, 
-        state.rho_old, state.F_x, state.F_y, state.u, state.v, mesh.edgedx, 
-        mesh.edgedy, mesh.celldx, mesh.celldy);
+    advect_mass_and_energy(
+        mesh.local_nx,  mesh.local_ny,  &mesh,  tt,  mesh.dt_h, 
+        state.rho, state.rho_e, state.e, state.F_x, state.F_y, 
+        state.F_x0, state.F_y0, state.F_x1, state.u,  state.v, 
+        mesh.edgedx,  mesh.edgedy,  mesh.celldx,  mesh.celldy);
 
     advect_momentum(
-        mesh.local_nx, mesh.local_ny, &mesh, mesh.dt_h, mesh.dt, state.u, state.v, state.slope_x1, 
-        state.slope_y1, state.mF_x, state.mF_y, state.rho_u, state.rho_v, 
-        state.rho, state.F_x, state.F_y, mesh.edgedx, mesh.edgedy, mesh.celldx, mesh.celldy);
-
-    advect_energy(
-        mesh.local_nx, mesh.local_ny, &mesh, mesh.dt_h, mesh.dt, state.e, state.slope_x0, 
-        state.slope_y0, state.F_x, state.F_y, state.u, state.v, state.rho_old, state.rho,
+        mesh.local_nx, mesh.local_ny, &mesh, mesh.dt_h, mesh.dt, 
+        state.u, state.v, state.F_x0, state.F_y0, state.F_x1, 
+        state.F_y1, state.rho_u, state.rho_v, state.F_x, state.F_y, 
         mesh.edgedx, mesh.edgedy, mesh.celldx, mesh.celldy);
 
     STOP_PROFILING(&w, "wallclock");
@@ -110,8 +107,8 @@ int main(int argc, char** argv)
   double global_wallclock = 0.0;
   if(tt > 0) {
 #ifdef MPI
-    struct ProfileEntry pe = profiler_get_profile_entry(&w, "wallclock");
-    MPI_Reduce(&pe.time, &global_wallclock, 1, MPI_DOUBLE, MPI_SUM, MASTER, MPI_COMM_WORLD);
+    struct ProfileEntry rho_e = profiler_get_profile_entry(&w, "wallclock");
+    MPI_Reduce(&rho_e.time, &global_wallclock, 1, MPI_DOUBLE, MPI_SUM, MASTER, MPI_COMM_WORLD);
 #endif
   }
 
@@ -370,41 +367,60 @@ void shock_heating_and_work(
 }
 
 // Perform advection with monotonicity improvement
-void advect_mass(
+void advect_mass_and_energy(
     const int nx, const int ny, Mesh* mesh, const int tt, const double dt_h, 
-    double* rho, double* rho_old, double* F_x, double* F_y, const double* u, 
-    const double* v, 
+    double* rho, double* rho_e, double* e, double* F_x, double* F_y, 
+    double* F_x0, double* F_y0, double* de, const double* u, const double* v, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
-  // Store the current value of rho
   START_PROFILING(&compute_profiler);
-
 #pragma omp parallel for
-  for(int ii = 0; ii < nx*ny; ++ii) {
-    rho_old[ii] = rho[ii];
+  for(int ii = PAD; ii < ny-PAD; ++ii) {
+#pragma omp simd
+    for(int jj = PAD; jj < nx-PAD; ++jj) {
+      rho_e[ind0] = rho[ind0]*e[ind0];
+      de[ind0] = 0.0;
+    }
   }
+  STOP_PROFILING(&compute_profiler, "advect_mass_and_energy");
 
   STOP_PROFILING(&compute_profiler, __func__);
 
   // Perform the dimensional splitting on the mass flux, with a the alternating
   // fix for asymmetries
-  if(tt % 2 == 0) {
-    x_mass_flux(nx, ny, mesh, dt_h, rho, u, F_x, celldx, edgedx, celldy, edgedy);
-    y_mass_flux(nx, ny, mesh, dt_h, rho, v, F_y, celldx, edgedx, celldy, edgedy);
+  if(tt % 2) {
+    x_mass_and_energy_flux(
+        nx, ny, mesh, dt_h, rho, e, u, F_x, F_x0, de, celldx, edgedx, celldy, edgedy);
+    y_mass_and_energy_flux(
+        nx, ny, mesh, dt_h, rho, e, v, F_y, F_y0, de, celldx, edgedx, celldy, edgedy);
   }
   else {
-    y_mass_flux(nx, ny, mesh, dt_h, rho, v, F_y, celldx, edgedx, celldy, edgedy);
-    x_mass_flux(nx, ny, mesh, dt_h, rho, u, F_x, celldx, edgedx, celldy, edgedy);
+    y_mass_and_energy_flux(
+        nx, ny, mesh, dt_h, rho, e, v, F_y, F_y0, de, celldx, edgedx, celldy, edgedy);
+    x_mass_and_energy_flux(
+        nx, ny, mesh, dt_h, rho, e, u, F_x, F_x0, de, celldx, edgedx, celldy, edgedy);
   }
 
+  // Fixup the energy from the delta
+  START_PROFILING(&compute_profiler);
+#pragma omp parallel for
+  for(int ii = PAD; ii < ny-PAD; ++ii) {
+#pragma omp simd
+    for(int jj = PAD; jj < nx-PAD; ++jj) {
+      e[ind0] = (rho_e[ind0] - (dt_h/(celldx[jj]*celldy[ii]))*de[ind0])/rho[ind0];
+    }
+  }
+  STOP_PROFILING(&compute_profiler, "advect_mass_and_energy");
+
   handle_boundary(nx, ny, mesh, rho, NO_INVERT, PACK);
+  handle_boundary(nx, ny, mesh, e, NO_INVERT, PACK);
 }
 
 // Calculate the flux in the x direction
-void x_mass_flux(
+void x_mass_and_energy_flux(
     const int nx, const int ny, Mesh* mesh, const double dt_h, double* rho, 
-    const double* u, double* F_x, const double* celldx, const double* edgedx, 
-    const double* celldy, const double* edgedy)
+    double* e, const double* u, double* F_x, double* eF_x, double* de, 
+    const double* celldx, const double* edgedx, const double* celldy, const double* edgedy)
 {
   // Compute the mass fluxes along the x edges
   // In the ghost cells flux is left as 0.0
@@ -427,10 +443,27 @@ void x_mass_flux(
       // Calculate the flux
       const double rho_upwind = (u[ind1] >= 0.0) ? rho[ind0-1] : rho[ind0];
       F_x[ind1] = (u[ind1]*rho_upwind+
-        0.5*fabs(u[ind1])*(1.0-fabs((u[ind1]*dt_h)/celldx[jj]))*limiter*rho_diff);
+          0.5*fabs(u[ind1])*(1.0-fabs((u[ind1]*dt_h)/celldx[jj]))*limiter*rho_diff);
+
+      // Use MC limiter to get slope of energy
+      const double invdx = 1.0/edgedx[jj];
+      const double a_x_0 = 0.5*invdx*(e[ind0]-e[ind0-2]);
+      const double b_x_0 = 2.0*invdx*(e[ind0-1]-e[ind0-2]);
+      const double c_x_0 = 2.0*invdx*(e[ind0]-e[ind0-1]);
+      const double a_x_1 = 0.5*invdx*(e[ind0+1]-e[ind0-1]);
+      const double b_x_1 = 2.0*invdx*(e[ind0]-e[ind0-1]);
+      const double c_x_1 = 2.0*invdx*(e[ind0+1]-e[ind0]);
+
+      // Calculate the interpolated densities
+      const double edge_e_x = (u[ind1] > 0.0)
+        ? e[ind0-1] + 0.5*minmod(minmod(a_x_0, b_x_0), c_x_0)*(celldx[jj-1] - u[ind1]*dt_h)
+        : e[ind0] - 0.5*minmod(minmod(a_x_1, b_x_1), c_x_1)*(celldx[jj] + u[ind1]*dt_h);
+
+      // Update the fluxes to now include the contribution from energy
+      eF_x[ind1] = edgedy[ii]*edge_e_x*F_x[ind1]; 
     }
   }
-  STOP_PROFILING(&compute_profiler, "advect_mass");
+  STOP_PROFILING(&compute_profiler, "advect_mass_and_energy");
 
   handle_boundary(nx+1, ny, mesh, F_x, INVERT_X, PACK);
 
@@ -443,16 +476,17 @@ void x_mass_flux(
       rho[ind0] -= dt_h*
         (edgedx[jj+1]*F_x[ind1+1] - edgedx[jj]*F_x[ind1])/ 
         (celldx[jj]*celldy[ii]);
+      de[ind0] += (eF_x[ind1+1] - eF_x[ind1]);
     }
   }
-  STOP_PROFILING(&compute_profiler, "advect_mass");
+  STOP_PROFILING(&compute_profiler, "advect_mass_and_energy");
 }
 
 // Calculate the flux in the y direction
-void y_mass_flux(
-    const int nx, const int ny, Mesh* mesh, const double dt_h, double* rho, 
-    const double* v, double* F_y, const double* celldx, const double* edgedx, 
-    const double* celldy, const double* edgedy)
+void y_mass_and_energy_flux(
+    const int nx, const int ny, Mesh* mesh, const double dt_h, double* rho, double* e,
+    const double* v, double* F_y, double* eF_y, double* de, 
+    const double* celldx, const double* edgedx, const double* celldy, const double* edgedy)
 {
   // Compute the mass flux along the y edges
   // In the ghost cells flux is left as 0.0
@@ -475,10 +509,26 @@ void y_mass_flux(
       // Calculate the flux
       const double rho_upwind = (v[ind0] >= 0.0) ? rho[ind0-nx] : rho[ind0];
       F_y[ind0] = (v[ind0]*rho_upwind+
-        0.5*fabs(v[ind0])*(1.0-fabs((v[ind0]*dt_h)/celldx[jj]))*limiter*rho_diff);
+          0.5*fabs(v[ind0])*(1.0-fabs((v[ind0]*dt_h)/celldx[jj]))*limiter*rho_diff);
+
+      // Use MC limiter to get slope of energy
+      const double invdy = 1.0/edgedx[ii];
+      const double a_y_0 = 0.5*invdy*(e[ind0]-e[ind0-2*nx]);
+      const double b_y_0 = 2.0*invdy*(e[ind0-nx]-e[ind0-2*nx]);
+      const double c_y_0 = 2.0*invdy*(e[ind0]-e[ind0-nx]);
+      const double a_y_1 = 0.5*invdy*(e[ind0+nx]-e[ind0-nx]);
+      const double b_y_1 = 2.0*invdy*(e[ind0]-e[ind0-nx]);
+      const double c_y_1 = 2.0*invdy*(e[ind0+nx]-e[ind0]);
+
+      const double edge_e_y = (v[ind0] > 0.0)
+        ? e[ind0-nx] + 0.5*minmod(minmod(a_y_0, b_y_0), c_y_0)*(celldy[ii-1] - v[ind0]*dt_h)
+        : e[ind0] - 0.5*minmod(minmod(a_y_1, b_y_1), c_y_1)*(celldy[ii] + v[ind0]*dt_h);
+
+      // Update the fluxes to now include the contribution from energy
+      eF_y[ind0] = edgedx[jj]*edge_e_y*F_y[ind0]; 
     }
   }
-  STOP_PROFILING(&compute_profiler, "advect_mass");
+  STOP_PROFILING(&compute_profiler, "advect_mass_and_energy");
 
   handle_boundary(nx, ny+1, mesh, F_y, INVERT_Y, PACK);
 
@@ -491,17 +541,17 @@ void y_mass_flux(
       rho[ind0] -= dt_h*
         (edgedy[ii+1]*F_y[ind0+nx] - edgedy[ii]*F_y[ind0])/
         (celldx[jj]*celldy[ii]);
+      de[ind0] += (eF_y[ind0+nx] - eF_y[ind0]);
     }
   }
-  STOP_PROFILING(&compute_profiler, "advect_mass");
+  STOP_PROFILING(&compute_profiler, "advect_mass_and_energy");
 }
 
 // Advect momentum according to the velocity
 void advect_momentum(
     const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
     double* u, double* v, double* uF_x, double* uF_y, double* vF_x, 
-    double* vF_y, double* rho_u, double* rho_v, const double* rho, 
-    const double* F_x, const double* F_y, 
+    double* vF_y, double* rho_u, double* rho_v, const double* F_x, const double* F_y, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
   // Calculate the cell centered x momentum fluxes in the x direction
@@ -514,12 +564,12 @@ void advect_momentum(
 
       // Construct all required slopes for the stencil to interpolate the
       // velocities at the cell centers
-      const double S_L_0 = invdx*(u[ind1] - u[ind1-1]);
-      const double S_C_0 = invdx*(u[ind1+1] - u[ind1]);
-      const double S_R_0 = invdx*(u[ind1+2] - u[ind1+1]);
-      const double S_D_1 = invdy*(u[ind1-(nx+1)] - u[ind1-2*(nx+1)]);
-      const double S_C_1 = invdy*(u[ind1] - u[ind1-(nx+1)]);
-      const double S_U_1 = invdy*(u[ind1+(nx+1)] - u[ind1]);
+      const double SL_0 = invdx*(u[ind1] - u[ind1-1]);
+      const double SC_0 = invdx*(u[ind1+1] - u[ind1]);
+      const double SR_0 = invdx*(u[ind1+2] - u[ind1+1]);
+      const double SD_1 = invdy*(u[ind1-(nx+1)] - u[ind1-2*(nx+1)]);
+      const double SC_1 = invdy*(u[ind1] - u[ind1-(nx+1)]);
+      const double SU_1 = invdy*(u[ind1+(nx+1)] - u[ind1]);
 
       // Construct the fluxes
       const double f_x = edgedy[ii]*0.5*(F_x[ind1] + F_x[ind1+1]); 
@@ -529,11 +579,11 @@ void advect_momentum(
 
       // Construct the fluxes from the slopes
       uF_x[ind0] = f_x*((u_cell_x >= 0.0) 
-          ? u[ind1] + 0.5*minmod(S_L_0, S_C_0)*(edgedx[jj]+u_cell_x*dt)
-          : u[ind1+1] - 0.5*minmod(S_C_0, S_R_0)*(edgedx[jj]-u_cell_x*dt));
+          ? u[ind1] + 0.5*minmod(SL_0, SC_0)*(edgedx[jj]+u_cell_x*dt)
+          : u[ind1+1] - 0.5*minmod(SC_0, SR_0)*(edgedx[jj]-u_cell_x*dt));
       uF_y[ind1] = f_y*((v_cell_y >= 0.0)
-          ? u[ind1-(nx+1)] + 0.5*minmod(S_D_1, S_C_1)*(edgedx[jj]+v_cell_y*dt)
-          : u[ind1] - 0.5*minmod(S_C_1, S_U_1)*(edgedx[jj]-v_cell_y*dt));
+          ? u[ind1-(nx+1)] + 0.5*minmod(SD_1, SC_1)*(edgedx[jj]+v_cell_y*dt)
+          : u[ind1] - 0.5*minmod(SC_1, SU_1)*(edgedx[jj]-v_cell_y*dt));
     }
   }
   STOP_PROFILING(&compute_profiler, __func__);
@@ -563,24 +613,24 @@ void advect_momentum(
       const double invdx = 1.0/edgedx[jj];
       const double invdy = 1.0/edgedy[ii];
 
-      const double S_L_0 = invdx*(v[ind0-1] - v[ind0-2]);
-      const double S_C_0 = invdx*(v[ind0] - v[ind0-1]);
-      const double S_R_0 = invdx*(v[ind0+1] - v[ind0]);
-      const double S_D_1 = invdy*(v[ind0] - v[ind0-nx]);
-      const double S_C_1 = invdy*(v[ind0+nx] - v[ind0]);
-      const double S_U_1 = invdy*(v[ind0+2*nx] - v[ind0+nx]);
-      
+      const double SL_0 = invdx*(v[ind0-1] - v[ind0-2]);
+      const double SC_0 = invdx*(v[ind0] - v[ind0-1]);
+      const double SR_0 = invdx*(v[ind0+1] - v[ind0]);
+      const double SD_1 = invdy*(v[ind0] - v[ind0-nx]);
+      const double SC_1 = invdy*(v[ind0+nx] - v[ind0]);
+      const double SU_1 = invdy*(v[ind0+2*nx] - v[ind0+nx]);
+
       const double f_x = celldy[ii]*0.5*(F_x[ind1] + F_x[ind1-(nx+1)]);
       const double f_y = celldx[jj]*0.5*(F_y[ind0] + F_y[ind0+nx]);
       const double u_cell_x = 0.5*(u[ind1]+u[ind1-(nx+1)]);
       const double v_cell_y = 0.5*(v[ind0]+v[ind0+nx]);
 
       vF_x[ind1] = f_x*((u_cell_x >= 0.0) 
-          ? v[ind0-1] + 0.5*minmod(S_L_0, S_C_0)*(edgedx[jj]+u_cell_x*dt)
-          : v[ind0] - 0.5*minmod(S_C_0, S_R_0)*(edgedx[jj]-u_cell_x*dt));
+          ? v[ind0-1] + 0.5*minmod(SL_0, SC_0)*(edgedx[jj]+u_cell_x*dt)
+          : v[ind0] - 0.5*minmod(SC_0, SR_0)*(edgedx[jj]-u_cell_x*dt));
       vF_y[ind0] = f_y*((v_cell_y >= 0.0)
-          ? v[ind0] + 0.5*minmod(S_D_1, S_C_1)*(edgedx[jj]+v_cell_y*dt)
-          : v[ind0+nx] - 0.5*minmod(S_C_1, S_U_1)*(edgedx[jj]-v_cell_y*dt));
+          ? v[ind0] + 0.5*minmod(SD_1, SC_1)*(edgedx[jj]+v_cell_y*dt)
+          : v[ind0+nx] - 0.5*minmod(SC_1, SU_1)*(edgedx[jj]-v_cell_y*dt));
     }
   }
   STOP_PROFILING(&compute_profiler, __func__);
@@ -599,67 +649,6 @@ void advect_momentum(
     }
   }
   STOP_PROFILING(&compute_profiler, __func__);
-}
-
-// Perform advection of internal energy
-void advect_energy(
-    const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
-    double* e, double* slope_x, double* slope_y, double* F_x, double* F_y, 
-    const double* u, const double* v, const double* rho_old, const double* rho,
-    const double* edgedx, const double* edgedy, const double* celldx, 
-    const double* celldy)
-{
-  START_PROFILING(&compute_profiler);
-
-  // Calculate the zone edge centered energies, and flux
-#pragma omp parallel for
-  for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
-#pragma omp simd
-    for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
-      // Use MC limiter to get slope of energy
-      const double invdx = 1.0/edgedx[jj];
-      const double invdy = 1.0/edgedx[ii];
-      const double a_x_0 = 0.5*invdx*(e[ind0]-e[ind0-2]);
-      const double b_x_0 = 2.0*invdx*(e[ind0-1]-e[ind0-2]);
-      const double c_x_0 = 2.0*invdx*(e[ind0]-e[ind0-1]);
-      const double a_x_1 = 0.5*invdx*(e[ind0+1]-e[ind0-1]);
-      const double b_x_1 = 2.0*invdx*(e[ind0]-e[ind0-1]);
-      const double c_x_1 = 2.0*invdx*(e[ind0+1]-e[ind0]);
-      const double a_y_0 = 0.5*invdy*(e[ind0+nx]-e[ind0-nx]);
-      const double b_y_0 = 2.0*invdy*(e[ind0]-e[ind0-nx]);
-      const double c_y_0 = 2.0*invdy*(e[ind0+nx]-e[ind0]);
-      const double a_y_1 = 0.5*invdy*(e[ind0+nx]-e[ind0-nx]);
-      const double b_y_1 = 2.0*invdy*(e[ind0]-e[ind0-nx]);
-      const double c_y_1 = 2.0*invdy*(e[ind0+nx]-e[ind0]);
-
-      // Calculate the interpolated densities
-      const double edge_e_x = (u[ind1] > 0.0)
-        ? e[ind0-1] + 0.5*minmod(minmod(a_x_0, b_x_0), c_x_0)*(celldx[jj-1] - u[ind1]*dt)
-        : e[ind0] - 0.5*minmod(minmod(a_x_1, b_x_1), c_x_1)*(celldx[jj] + u[ind1]*dt);
-      const double edge_e_y = (v[ind0] > 0.0)
-        ? e[ind0-nx] + 0.5*minmod(minmod(a_y_0, b_y_0), c_y_0)*(celldy[ii-1] - v[ind0]*dt)
-        : e[ind0] - 0.5*minmod(minmod(a_y_1, b_y_1), c_y_1)*(celldy[ii] + v[ind0]*dt);
-
-      // Update the fluxes to now include the contribution from energy
-      F_x[ind1] = edgedy[ii]*edge_e_x*F_x[ind1]; 
-      F_y[ind0] = edgedx[jj]*edge_e_y*F_y[ind0]; 
-    }
-  }
-
-  // Calculate the new energy values
-#pragma omp parallel for
-  for(int ii = PAD; ii < ny-PAD; ++ii) { 
-#pragma omp simd
-    for(int jj = PAD; jj < nx-PAD; ++jj) {
-      e[ind0] = (rho[ind0] == 0.0) ? 0.0 : 
-        (rho_old[ind0]*e[ind0] - (dt_h/(celldx[jj]*celldy[ii]))*
-         (F_x[ind1+1] - F_x[ind1] + F_y[ind0+nx] - F_y[ind0]))/rho[ind0];
-    }
-  }
-
-  STOP_PROFILING(&compute_profiler, __func__);
-
-  handle_boundary(nx, ny, mesh, e, NO_INVERT, PACK);
 }
 
 // Enforce reflective boundary conditions on the problem state
@@ -831,7 +820,7 @@ void initialise_state(
 {
   // Allocate memory for all state variables
   state->rho = (double*)_mm_malloc(sizeof(double)*mesh->local_nx*mesh->local_ny, VEC_ALIGN);
-  state->rho_old = (double*)_mm_malloc(sizeof(double)*mesh->local_nx*mesh->local_ny, VEC_ALIGN);
+  state->rho_e = (double*)_mm_malloc(sizeof(double)*mesh->local_nx*mesh->local_ny, VEC_ALIGN);
   state->P = (double*)_mm_malloc(sizeof(double)*mesh->local_nx*mesh->local_ny, VEC_ALIGN);
   state->e = (double*)_mm_malloc(sizeof(double)*mesh->local_nx*mesh->local_ny, VEC_ALIGN);
   state->rho_u = (double*)_mm_malloc(sizeof(double)*(mesh->local_nx+1)*(mesh->local_ny+1), VEC_ALIGN);
@@ -840,12 +829,10 @@ void initialise_state(
   state->v = (double*)_mm_malloc(sizeof(double)*(mesh->local_nx+1)*(mesh->local_ny+1), VEC_ALIGN);
   state->F_x = (double*)_mm_malloc(sizeof(double)*(mesh->local_nx+1)*(mesh->local_ny+1), VEC_ALIGN);
   state->F_y = (double*)_mm_malloc(sizeof(double)*(mesh->local_nx+1)*(mesh->local_ny+1), VEC_ALIGN);
-  state->mF_x = (double*)_mm_malloc(sizeof(double)*(mesh->local_nx+1)*(mesh->local_ny+1), VEC_ALIGN);
-  state->mF_y = (double*)_mm_malloc(sizeof(double)*(mesh->local_nx+1)*(mesh->local_ny+1), VEC_ALIGN);
-  state->slope_x0 = (double*)_mm_malloc(sizeof(double)*mesh->local_nx*mesh->local_ny, VEC_ALIGN);
-  state->slope_y0 = (double*)_mm_malloc(sizeof(double)*mesh->local_nx*mesh->local_ny, VEC_ALIGN);
-  state->slope_x1 = (double*)_mm_malloc(sizeof(double)*(mesh->local_nx+1)*(mesh->local_ny+1), VEC_ALIGN);
-  state->slope_y1 = (double*)_mm_malloc(sizeof(double)*(mesh->local_nx+1)*(mesh->local_ny+1), VEC_ALIGN);
+  state->F_x0 = (double*)_mm_malloc(sizeof(double)*(mesh->local_nx+1)*(mesh->local_ny+1), VEC_ALIGN);
+  state->F_y0 = (double*)_mm_malloc(sizeof(double)*(mesh->local_nx+1)*(mesh->local_ny+1), VEC_ALIGN);
+  state->F_x1 = (double*)_mm_malloc(sizeof(double)*(mesh->local_nx+1)*(mesh->local_ny+1), VEC_ALIGN);
+  state->F_y1 = (double*)_mm_malloc(sizeof(double)*(mesh->local_nx+1)*(mesh->local_ny+1), VEC_ALIGN);
   state->Qxx = (double*)_mm_malloc(sizeof(double)*(mesh->local_nx+1)*(mesh->local_ny+1), VEC_ALIGN);
   state->Qyy = (double*)_mm_malloc(sizeof(double)*(mesh->local_nx+1)*(mesh->local_ny+1), VEC_ALIGN);
 
@@ -853,23 +840,21 @@ void initialise_state(
 #pragma omp parallel for
   for(int ii = 0; ii < mesh->local_nx*mesh->local_ny; ++ii) {
     state->rho[ii] = 0.0;
-    state->rho_old[ii] = 0.0;
+    state->rho_e[ii] = 0.0;
     state->P[ii] = 0.0;
     state->e[ii] = 0.0;
-    state->slope_x0[ii] = 0.0;
-    state->slope_y0[ii] = 0.0;
   }
 
 #pragma omp parallel for
   for(int ii = 0; ii < (mesh->local_nx+1)*(mesh->local_ny+1); ++ii) {
     state->F_x[ii] = 0.0;
     state->F_y[ii] = 0.0;
-    state->mF_x[ii] = 0.0;
-    state->mF_y[ii] = 0.0;
     state->Qxx[ii] = 0.0;
     state->Qyy[ii] = 0.0;
-    state->slope_x1[ii] = 0.0;
-    state->slope_y1[ii] = 0.0;
+    state->F_x0[ii] = 0.0;
+    state->F_y0[ii] = 0.0;
+    state->F_x1[ii] = 0.0;
+    state->F_y1[ii] = 0.0;
     state->rho_u[ii] = 0.0;
     state->u[ii] = 0.0;
     state->v[ii] = 0.0;
@@ -1003,12 +988,12 @@ void finalise_state(State* state)
 {
   _mm_free(state->F_x);
   _mm_free(state->F_y);
+  _mm_free(state->F_x0);
+  _mm_free(state->F_y0);
+  _mm_free(state->F_x1);
+  _mm_free(state->F_y1);
   _mm_free(state->rho);
-  _mm_free(state->rho_old);
-  _mm_free(state->slope_x0);
-  _mm_free(state->slope_y0);
-  _mm_free(state->slope_x1);
-  _mm_free(state->slope_y1);
+  _mm_free(state->rho_e);
   _mm_free(state->u);
   _mm_free(state->v);
   _mm_free(state->P);
