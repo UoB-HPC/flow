@@ -384,102 +384,45 @@ void advect_mass(
     rho_old[ii] = rho[ii];
   }
 
-  STOP_PROFILING(&compute_profiler, __func__);
-
-  // Perform the dimensional splitting on the mass flux, with a the alternating
-  // fix for asymmetries
-  if(tt % 2 == 0) {
-    x_mass_flux(nx, ny, mesh, dt_h, rho, u, F_x, celldx, edgedx, celldy, edgedy);
-    y_mass_flux(nx, ny, mesh, dt_h, rho, v, F_y, celldx, edgedx, celldy, edgedy);
-  }
-  else {
-    y_mass_flux(nx, ny, mesh, dt_h, rho, v, F_y, celldx, edgedx, celldy, edgedy);
-    x_mass_flux(nx, ny, mesh, dt_h, rho, u, F_x, celldx, edgedx, celldy, edgedy);
-  }
-
-  handle_boundary(nx, ny, mesh, rho, NO_INVERT, PACK);
-}
-
-// Calculate the flux in the x direction
-void x_mass_flux(
-    const int nx, const int ny, Mesh* mesh, const double dt_h, double* rho, 
-    const double* u, double* F_x, const double* celldx, const double* edgedx, 
-    const double* celldy, const double* edgedy)
-{
   // Compute the mass fluxes along the x edges
   // In the ghost cells flux is left as 0.0
-  START_PROFILING(&compute_profiler);
 #pragma omp parallel for
   for(int ii = PAD; ii < ny-PAD; ++ii) {
 #pragma omp simd
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
-      const double rho_diff = (rho[ind0]-rho[ind0-1]);
+      const double rho_x_diff = (rho[ind0]-rho[ind0-1]);
+      const double rho_y_diff = (rho[ind0]-rho[ind0-nx]);
 
       // Van leer limiter
-      double limiter = 0.0;
-      if(rho_diff) {
+      double limiterx = 0.0;
+      if(rho_x_diff) {
         const double smoothness = (u[ind1] >= 0.0) 
-          ? (rho[ind0-1]-rho[ind0-2])/rho_diff
-          : (rho[ind0+1]-rho[ind0])/rho_diff;
-        limiter = (smoothness + fabs(smoothness))/(1.0+fabs(smoothness));
+          ? (rho[ind0-1]-rho[ind0-2])/rho_x_diff
+          : (rho[ind0+1]-rho[ind0])/rho_x_diff;
+        limiterx = (smoothness + fabs(smoothness))/(1.0+fabs(smoothness));
+      }
+
+      // Van leer limiter
+      double limitery = 0.0;
+      if(rho_y_diff) {
+        const double smoothness = (v[ind0] >= 0.0) 
+          ? (rho[ind0-nx]-rho[ind0-2*nx])/rho_y_diff
+          : (rho[ind0+nx]-rho[ind0])/rho_y_diff;
+        limitery = (smoothness + fabs(smoothness))/(1.0+fabs(smoothness));
       }
 
       // Calculate the flux
-      const double rho_upwind = (u[ind1] >= 0.0) ? rho[ind0-1] : rho[ind0];
-      F_x[ind1] = (u[ind1]*rho_upwind+
-        0.5*fabs(u[ind1])*(1.0-fabs((u[ind1]*dt_h)/celldx[jj]))*limiter*rho_diff);
+      const double rho_x_upwind = (u[ind1] >= 0.0) ? rho[ind0-1] : rho[ind0];
+      F_x[ind1] = (u[ind1]*rho_x_upwind+
+        0.5*fabs(u[ind1])*(1.0-fabs((u[ind1]*dt_h)/celldx[jj]))*limiterx*rho_x_diff);
+      const double rho_y_upwind = (v[ind0] >= 0.0) ? rho[ind0-nx] : rho[ind0];
+      F_y[ind0] = (v[ind0]*rho_y_upwind+
+        0.5*fabs(v[ind0])*(1.0-fabs((v[ind0]*dt_h)/celldx[jj]))*limitery*rho_y_diff);
     }
   }
   STOP_PROFILING(&compute_profiler, "advect_mass");
 
   handle_boundary(nx+1, ny, mesh, F_x, INVERT_X, PACK);
-
-  // Calculate the new density values
-  START_PROFILING(&compute_profiler);
-#pragma omp parallel for
-  for(int ii = PAD; ii < ny-PAD; ++ii) {
-#pragma omp simd
-    for(int jj = PAD; jj < nx-PAD; ++jj) {
-      rho[ind0] -= dt_h*
-        (edgedx[jj+1]*F_x[ind1+1] - edgedx[jj]*F_x[ind1])/ 
-        (celldx[jj]*celldy[ii]);
-    }
-  }
-  STOP_PROFILING(&compute_profiler, "advect_mass");
-}
-
-// Calculate the flux in the y direction
-void y_mass_flux(
-    const int nx, const int ny, Mesh* mesh, const double dt_h, double* rho, 
-    const double* v, double* F_y, const double* celldx, const double* edgedx, 
-    const double* celldy, const double* edgedy)
-{
-  // Compute the mass flux along the y edges
-  // In the ghost cells flux is left as 0.0
-  START_PROFILING(&compute_profiler);
-#pragma omp parallel for
-  for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
-#pragma omp simd
-    for(int jj = PAD; jj < nx-PAD; ++jj) {
-      const double rho_diff = (rho[ind0]-rho[ind0-nx]);
-
-      // Van leer limiter
-      double limiter = 0.0;
-      if(rho_diff) {
-        const double smoothness = (v[ind0] >= 0.0) 
-          ? (rho[ind0-nx]-rho[ind0-2*nx])/rho_diff
-          : (rho[ind0+nx]-rho[ind0])/rho_diff;
-        limiter = (smoothness + fabs(smoothness))/(1.0+fabs(smoothness));
-      }
-
-      // Calculate the flux
-      const double rho_upwind = (v[ind0] >= 0.0) ? rho[ind0-nx] : rho[ind0];
-      F_y[ind0] = (v[ind0]*rho_upwind+
-        0.5*fabs(v[ind0])*(1.0-fabs((v[ind0]*dt_h)/celldx[jj]))*limiter*rho_diff);
-    }
-  }
-  STOP_PROFILING(&compute_profiler, "advect_mass");
-
   handle_boundary(nx, ny+1, mesh, F_y, INVERT_Y, PACK);
 
   // Calculate the new density values
@@ -489,11 +432,13 @@ void y_mass_flux(
 #pragma omp simd
     for(int jj = PAD; jj < nx-PAD; ++jj) {
       rho[ind0] -= dt_h*
-        (edgedy[ii+1]*F_y[ind0+nx] - edgedy[ii]*F_y[ind0])/
+        (edgedx[jj+1]*F_x[ind1+1] - edgedx[jj]*F_x[ind1]+
+         edgedy[ii+1]*F_y[ind0+nx] - edgedy[ii]*F_y[ind0])/
         (celldx[jj]*celldy[ii]);
     }
   }
   STOP_PROFILING(&compute_profiler, "advect_mass");
+  handle_boundary(nx, ny, mesh, rho, NO_INVERT, PACK);
 }
 
 // Advect momentum according to the velocity
@@ -569,7 +514,7 @@ void advect_momentum(
       const double S_D_1 = invdy*(v[ind0] - v[ind0-nx]);
       const double S_C_1 = invdy*(v[ind0+nx] - v[ind0]);
       const double S_U_1 = invdy*(v[ind0+2*nx] - v[ind0+nx]);
-      
+
       const double f_x = celldy[ii]*0.5*(F_x[ind1] + F_x[ind1-(nx+1)]);
       const double f_y = celldx[jj]*0.5*(F_y[ind0] + F_y[ind0+nx]);
       const double u_cell_x = 0.5*(u[ind1]+u[ind1-(nx+1)]);
@@ -892,7 +837,7 @@ void initialise_state(
   for(int ii = 0; ii < mesh->local_ny; ++ii) {
     for(int jj = 0; jj < mesh->local_nx; ++jj) {
       // CENTER SQUARE TEST
-      const int dist = 104;
+      const int dist = 100;
       if(jj+mesh->x_off-PAD >= mesh->global_nx/2-dist && 
           jj+mesh->x_off-PAD < mesh->global_nx/2+dist && 
           ii+mesh->y_off-PAD >= mesh->global_ny/2-dist && 

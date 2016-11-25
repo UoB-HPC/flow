@@ -2,9 +2,9 @@
 
 // Controllable parameters for the application
 #define GAM 1.4
-#define MAX_DT 0.01
-#define C_Q 1.0 // Suggested between 1.0 and 2.0
-#define C_T 0.7
+#define MAX_DT 0.04
+#define C_Q 2.0 // Suggested between 1.0 and 2.0
+#define C_T 0.5
 #define C_M (1.5/C_T)
 #define VISIT_STEP 10
 #define SIM_END 10.0
