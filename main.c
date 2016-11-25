@@ -625,9 +625,9 @@ void advect_energy(
       const double a_x_1 = 0.5*invdx*(e[ind0+1]-e[ind0-1]);
       const double b_x_1 = 2.0*invdx*(e[ind0]-e[ind0-1]);
       const double c_x_1 = 2.0*invdx*(e[ind0+1]-e[ind0]);
-      const double a_y_0 = 0.5*invdy*(e[ind0+nx]-e[ind0-nx]);
-      const double b_y_0 = 2.0*invdy*(e[ind0]-e[ind0-nx]);
-      const double c_y_0 = 2.0*invdy*(e[ind0+nx]-e[ind0]);
+      const double a_y_0 = 0.5*invdy*(e[ind0]-e[ind0-2*nx]);
+      const double b_y_0 = 2.0*invdy*(e[ind0-nx]-e[ind0-2*nx]);
+      const double c_y_0 = 2.0*invdy*(e[ind0]-e[ind0-nx]);
       const double a_y_1 = 0.5*invdy*(e[ind0+nx]-e[ind0-nx]);
       const double b_y_1 = 2.0*invdy*(e[ind0]-e[ind0-nx]);
       const double c_y_1 = 2.0*invdy*(e[ind0+nx]-e[ind0]);
@@ -892,7 +892,7 @@ void initialise_state(
   for(int ii = 0; ii < mesh->local_ny; ++ii) {
     for(int jj = 0; jj < mesh->local_nx; ++jj) {
       // CENTER SQUARE TEST
-      const int dist = 102;
+      const int dist = 104;
       if(jj+mesh->x_off-PAD >= mesh->global_nx/2-dist && 
           jj+mesh->x_off-PAD < mesh->global_nx/2+dist && 
           ii+mesh->y_off-PAD >= mesh->global_ny/2-dist && 
