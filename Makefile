@@ -12,8 +12,8 @@ else
 endif
 
 all:
-	$(CC) $(CFLAGS) $(OPTIONS) $(LDFLAGS) ../shared.c main.c profiler.c -o hydro.exe
+	$(CC) $(CFLAGS) $(OPTIONS) $(LDFLAGS) ../shared.c main.c profiler.c -o wet.exe
 
 clean:
-	rm -rf hydro.exe *.bov *.dat
+	rm -rf wet.exe *.bov *.dat
 
