@@ -17,7 +17,6 @@
 #define NVARS_TO_COMM 4 // rho, e, rho_u, rho_v
 
 enum { NO_INVERT, INVERT_X, INVERT_Y };
-enum { NO_PACK, PACK };
 
 /// Problem state
 typedef struct
