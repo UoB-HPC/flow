@@ -845,7 +845,7 @@ void initialise_state(
         state->e[ii*mesh->local_nx+jj] = 2.5;
       }
 #endif // if 0
-      if(jj <= (mesh->local_nx/2+PAD)) {
+      if(jj+mesh->x_off <= (mesh->global_nx/2+PAD)) {
         state->rho[ii*mesh->local_nx+jj] = 1.0;
         state->e[ii*mesh->local_nx+jj] = 2.5;
       }
