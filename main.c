@@ -243,17 +243,15 @@ void lagrangian_step(
 #pragma omp simd
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
       // Update the momenta using the pressure gradients
-      rho_u[ind1] -= dt*(P[ind0] - P[ind0-1])/(edgedx[jj]);
-      rho_v[ind0] -= dt*(P[ind0] - P[ind0-nx])/(edgedy[ii]);
+      rho_u[ind1] -= dt*(P[ind0] - P[ind0-1])/edgedx[jj];
+      rho_v[ind0] -= dt*(P[ind0] - P[ind0-nx])/edgedy[ii];
 
       // Calculate the zone edge centered density
       const double rho_edge_x = 
-        (rho[ind0]*celldx[jj]*celldy[ii] + 
-         rho[ind0-1]*celldx[jj - 1]*celldy[ii]) / 
+        (rho[ind0]*celldx[jj]*celldy[ii] + rho[ind0-1]*celldx[jj - 1]*celldy[ii])/ 
         (2.0*edgedx[jj]*celldy[ii]);
       const double rho_edge_y = 
-        (rho[ind0]*celldx[jj]*celldy[ii] + 
-         rho[ind0-nx]*celldx[jj]*celldy[ii - 1]) / 
+        (rho[ind0]*celldx[jj]*celldy[ii] + rho[ind0-nx]*celldx[jj]*celldy[ii - 1])/ 
         (2.0*celldx[jj]*edgedy[ii]);
 
       // Find the velocities from the momenta and edge centered mass densities
