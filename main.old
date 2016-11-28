@@ -1,4 +1,16 @@
 
+
+#if 0
+  // Lufkin, E, and Hawley, J. 1992
+      const double u_ii = 0.5*(
+          fabs((u[ind1+1]-u[ind1])-(u[ind1]-u[ind1-1])) + 
+          fabs((u[ind1]-u[ind1-1])-(u[ind1-1]-u[ind1-2])));
+      const double v_ii = 0.5*(
+          fabs((v[ind0+nx]-v[ind0])-(v[ind0]-v[ind0-nx])) + 
+          fabs((v[ind0]-v[ind0-nx])-(v[ind0-nx]-v[ind0-2*nx])));
+      Qxx[ind0] = -C_Q*rho[ind0]*u_i*u_ii;
+      Qyy[ind0] = -C_Q*rho[ind0]*v_i*v_ii;
+#endif // if 0
 #if 0
       // TODO: FIx the small osciallations in momentum that occur when running the
       // sod shock problem. It seems that there is some numerical issue that

@@ -122,16 +122,16 @@ int main(int argc, char** argv)
   }
 
   write_all_ranks_to_visit(
-      mesh.global_nx, mesh.global_ny, mesh.local_nx, mesh.local_ny, mesh.x_off, 
+      mesh.global_nx+2*PAD, mesh.global_ny+2*PAD, mesh.local_nx, mesh.local_ny, mesh.x_off, 
       mesh.y_off, mesh.rank, mesh.nranks, state.rho, "density", 0, elapsed_sim_time);
   write_all_ranks_to_visit(
-      mesh.global_nx, mesh.global_ny, mesh.local_nx, mesh.local_ny, mesh.x_off, 
+      mesh.global_nx+2*PAD, mesh.global_ny+2*PAD, mesh.local_nx, mesh.local_ny, mesh.x_off, 
       mesh.y_off, mesh.rank, mesh.nranks, state.e, "energy", 0, elapsed_sim_time);
   write_all_ranks_to_visit(
-      mesh.global_nx+1, mesh.global_ny, mesh.local_nx+1, mesh.local_ny, mesh.x_off, 
+      mesh.global_nx+1+2*PAD, mesh.global_ny+2*PAD, mesh.local_nx+1, mesh.local_ny, mesh.x_off, 
       mesh.y_off, mesh.rank, mesh.nranks, state.u, "u", 0, elapsed_sim_time);
   write_all_ranks_to_visit(
-      mesh.global_nx, mesh.global_ny+1, mesh.local_nx, mesh.local_ny+1, mesh.x_off, 
+      mesh.global_nx+2*PAD, mesh.global_ny+1+2*PAD, mesh.local_nx, mesh.local_ny+1, mesh.x_off, 
       mesh.y_off, mesh.rank, mesh.nranks, state.v, "v", 0, elapsed_sim_time);
 
   finalise_state(&state);
@@ -275,19 +275,18 @@ void artificial_viscosity(
 
   // Calculate the artificial viscous stresses
 #pragma omp parallel for 
-  for(int ii = PAD; ii < ny-PAD; ++ii) {
+  for(int ii = PAD-1; ii < ny-PAD; ++ii) {
 #pragma omp simd
-    for(int jj = PAD; jj < nx-PAD; ++jj) {
-      const double u_diff = (u[ind1+1] - u[ind1]);
-      const double v_diff = (v[ind0+nx] - v[ind0]);
-      Qxx[ind0] = (u_diff >= 0.0) ? 0.0 : C_Q*rho[ind0]*u_diff*u_diff;
-      Qyy[ind0] = (v_diff >= 0.0) ? 0.0 : C_Q*rho[ind0]*v_diff*v_diff;
+    for(int jj = PAD-1; jj < nx-PAD; ++jj) {
+      const double u_i = min(0.0, u[ind1+1] - u[ind1]);
+      const double v_i = min(0.0, v[ind0+nx] - v[ind0]);
+      Qxx[ind0] = C_Q*rho[ind0]*u_i*u_i;
+      Qyy[ind0] = C_Q*rho[ind0]*v_i*v_i;
     }
   }
 
   STOP_PROFILING(&compute_profiler, __func__);
 
-  // TODO: WE SHOULDN'T FILL IN GAPS HERE RIGHT?
   handle_boundary(nx, ny, mesh, Qxx, NO_INVERT, PACK);
   handle_boundary(nx, ny, mesh, Qyy, NO_INVERT, PACK);
 
@@ -338,21 +337,15 @@ void shock_heating_and_work(
         continue;
       }
 
-      const double div_v = 
-        (u[ind1+1] - u[ind1])/celldx[jj] + (v[ind0+nx] - v[ind0])/celldy[ii];
-      const double div_v_dt = div_v*dt_h;
-
-      const double rho_c = rho[ind0]/(1.0 + div_v_dt);
+      const double div_vel_x = (u[ind1+1] - u[ind1])/celldx[jj];
+      const double div_vel_y = (v[ind0+nx] - v[ind0])/celldy[ii];
+      const double div_vel_dt = (div_vel_x + div_vel_y)*dt_h;
 
       /// A working formulation that is second order in time for Pressure!?
-      const double e_c = e[ind0] - (P[ind0]*div_v_dt)/rho[ind0];
-      const double work = 0.5*div_v_dt*(P[ind0] + (GAM-1.0)*e_c*rho_c)/rho[ind0];
-
-      // Calculate the heating due to shock
-      double shock_heating = (dt_h*
-        (Qxx[ind0]*(u[ind1+1] - u[ind1])/(celldx[jj]*rho_c)+
-         Qyy[ind0]*(v[ind0+nx] - v[ind0])/(celldy[ii]*rho_c)));
-
+      const double rho_c = rho[ind0]/(1.0 + div_vel_dt);
+      const double e_c = e[ind0] - (P[ind0]*div_vel_dt)/rho[ind0];
+      const double work = 0.5*div_vel_dt*(P[ind0] + (GAM-1.0)*e_c*rho_c)/rho[ind0];
+      const double shock_heating = dt_h*(Qxx[ind0]*div_vel_x + Qyy[ind0]*div_vel_y)/rho_c;
       e[ind0] -= (work + shock_heating);
     }
   }
@@ -425,8 +418,8 @@ void advect_mass(
 #pragma omp simd
     for(int jj = PAD; jj < nx-PAD; ++jj) {
       rho[ind0] -= dt_h*
-        (edgedx[jj+1]*F_x[ind1+1] - edgedx[jj]*F_x[ind1]+
-         edgedy[ii+1]*F_y[ind0+nx] - edgedy[ii]*F_y[ind0])/
+        (edgedy[ii+1]*F_x[ind1+1] - edgedy[ii]*F_x[ind1]+
+         edgedx[jj+1]*F_y[ind0+nx] - edgedx[jj]*F_y[ind0])/
         (celldx[jj]*celldy[ii]);
     }
   }
@@ -460,8 +453,8 @@ void advect_momentum(
       const double S_U_1 = invdy*(u[ind1+(nx+1)] - u[ind1]);
 
       // Construct the fluxes
-      const double f_x = edgedx[jj]*0.5*(F_x[ind1] + F_x[ind1+1]); 
-      const double f_y = edgedy[ii]*0.5*(F_y[ind0] + F_y[ind0-1]);
+      const double f_x = edgedy[ii]*0.5*(F_x[ind1] + F_x[ind1+1]); 
+      const double f_y = edgedx[jj]*0.5*(F_y[ind0] + F_y[ind0-1]);
       const double u_cell_x = 0.5*(u[ind1]+u[ind1+1]);
       const double v_cell_y = 0.5*(v[ind0]+v[ind0-1]);
 
@@ -508,8 +501,8 @@ void advect_momentum(
       const double S_C_1 = invdy*(v[ind0+nx] - v[ind0]);
       const double S_U_1 = invdy*(v[ind0+2*nx] - v[ind0+nx]);
 
-      const double f_x = celldx[jj]*0.5*(F_x[ind1] + F_x[ind1-(nx+1)]);
-      const double f_y = celldy[ii]*0.5*(F_y[ind0] + F_y[ind0+nx]);
+      const double f_x = celldy[ii]*0.5*(F_x[ind1] + F_x[ind1-(nx+1)]);
+      const double f_y = celldx[jj]*0.5*(F_y[ind0] + F_y[ind0+nx]);
       const double u_cell_x = 0.5*(u[ind1]+u[ind1-(nx+1)]);
       const double v_cell_y = 0.5*(v[ind0]+v[ind0+nx]);
 
@@ -578,8 +571,8 @@ void advect_energy(
         : e[ind0] - 0.5*minmod(minmod(a_y_1, b_y_1), c_y_1)*(celldy[ii] + v[ind0]*dt);
 
       // Update the fluxes to now include the contribution from energy
-      F_x[ind1] = edgedx[jj]*edge_e_x*F_x[ind1]; 
-      F_y[ind0] = edgedy[ii]*edge_e_y*F_y[ind0]; 
+      F_x[ind1] = edgedy[ii]*edge_e_x*F_x[ind1]; 
+      F_y[ind0] = edgedx[jj]*edge_e_y*F_y[ind0]; 
     }
   }
 
@@ -828,6 +821,7 @@ void initialise_state(
   // Introduce a problem
   for(int ii = 0; ii < mesh->local_ny; ++ii) {
     for(int jj = 0; jj < mesh->local_nx; ++jj) {
+#if 0
       // CENTER SQUARE TEST
       const int dist = 100;
       if(jj+mesh->x_off-PAD >= mesh->global_nx/2-dist && 
@@ -837,12 +831,22 @@ void initialise_state(
         state->rho[ii*mesh->local_nx+jj] = 1.0;
         state->e[ii*mesh->local_nx+jj] = 2.5;
       }
+#endif // if 0
 #if 0
-      if(jj+mesh->x_off <= (mesh->global_nx/2+PAD)) {
+      // OFF CENTER SQUARE TEST
+      const int dist = 100;
+      if(jj+mesh->x_off-PAD >= mesh->global_nx/4-dist && 
+          jj+mesh->x_off-PAD < mesh->global_nx/4+dist && 
+          ii+mesh->y_off-PAD >= mesh->global_ny/2-dist && 
+          ii+mesh->y_off-PAD < mesh->global_ny/2+dist) {
         state->rho[ii*mesh->local_nx+jj] = 1.0;
         state->e[ii*mesh->local_nx+jj] = 2.5;
       }
 #endif // if 0
+      if(jj+mesh->x_off < (mesh->global_nx/2+2*PAD)) {
+        state->rho[ii*mesh->local_nx+jj] = 1.0;
+        state->e[ii*mesh->local_nx+jj] = 2.5;
+      }
 #if 0
       if(ii <= mesh->local_ny/2) {
         state->rho[ii*mesh->local_nx+jj] = 1.0;
