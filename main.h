@@ -3,11 +3,11 @@
 // Controllable parameters for the application
 #define GAM 1.4
 #define MAX_DT 0.04
-#define C_Q 2.0 // Suggested between 1.0 and 2.0
+#define C_Q 2.5 // Suggested between 1.0 and 2.0
 #define C_T 0.5
 #define C_M (1.5/C_T)
 #define VISIT_STEP 10
-#define SIM_END 10.0
+#define SIM_END 2.5
 
 #define max(a, b) (((a) > (b)) ? (a) : (b))
 #define min(a, b) (((a) < (b)) ? (a) : (b))
@@ -146,7 +146,7 @@ void advect_momentum(
 // Perform advection of internal energy
 void advect_energy(
     const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
-    double* e, double* slope_x, double* slope_y, double* F_x, double* F_y, 
+    double* e, double* F_x, double* F_y, 
     const double* u, const double* v, const double* rho_old, const double* rho,
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy);
 

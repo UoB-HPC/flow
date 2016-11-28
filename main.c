@@ -71,7 +71,7 @@ int main(int argc, char** argv)
       printf("dt %.12e dt_h %.12e\n", mesh.dt, mesh.dt_h);
 
     shock_heating_and_work(
-        mesh.local_nx, mesh.local_ny, &mesh, mesh.dt, state.e, state.P, state.u, 
+        mesh.local_nx, mesh.local_ny, &mesh, mesh.dt_h, state.e, state.P, state.u, 
         state.v, state.rho, state.Qxx, state.Qyy, mesh.edgedx, mesh.edgedy, 
         mesh.celldx, mesh.celldy);
 
@@ -87,8 +87,8 @@ int main(int argc, char** argv)
         state.rho, state.F_x, state.F_y, mesh.edgedx, mesh.edgedy, mesh.celldx, mesh.celldy);
 
     advect_energy(
-        mesh.local_nx, mesh.local_ny, &mesh, mesh.dt_h, mesh.dt, state.e, state.slope_x0, 
-        state.slope_y0, state.F_x, state.F_y, state.u, state.v, state.rho_old, state.rho,
+        mesh.local_nx, mesh.local_ny, &mesh, mesh.dt_h, mesh.dt, state.e, 
+        state.F_x, state.F_y, state.u, state.v, state.rho_old, state.rho,
         mesh.edgedx, mesh.edgedy, mesh.celldx, mesh.celldy);
 
     STOP_PROFILING(&w, "wallclock");
@@ -208,8 +208,6 @@ void set_timestep(
 
       // Constrain based on the sound speed within the system
       const double c_s = sqrt(GAM*(GAM - 1.0)*e[ind0]);
-
-      // TODO: possible DBZ
       thread_min_dt = min(thread_min_dt, (celldx[jj]/(fabs(u[ind1]) + c_s)));
       thread_min_dt = min(thread_min_dt, (celldy[ii]/(fabs(v[ind0]) + c_s)));
       local_min_dt = min(local_min_dt, thread_min_dt);
@@ -328,7 +326,7 @@ void artificial_viscosity(
 
 // Calculates the work done due to forces within the element
 void shock_heating_and_work(
-    const int nx, const int ny, Mesh* mesh, const double dt, double* e, 
+    const int nx, const int ny, Mesh* mesh, const double dt_h, double* e, 
     const double* P, const double* u, const double* v, const double* rho, 
     const double* Qxx, const double* Qyy, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
@@ -344,23 +342,24 @@ void shock_heating_and_work(
         continue;
       }
 
-      // Calculate the heating due to shock
-      double shock_heating = (rho[ind0] == 0.0) ? 0.0 : (dt*
-          (Qxx[ind0]*(edgedx[jj+1]*u[ind1+1] - edgedx[jj]*u[ind1])+
-           Qyy[ind0]*(edgedy[ii+1]*v[ind0+nx] - edgedy[ii]*v[ind0]))/
-          (celldx[jj]*celldy[ii]*rho[ind0]));
-
       const double div_v = 
         (edgedx[jj + 1]*u[ind1+1] - edgedx[jj]*u[ind1]+
          edgedy[ii + 1]*v[ind0+nx] - edgedy[ii]*v[ind0])/ 
         (celldx[jj]*celldy[ii]);
-      const double div_v_dt = div_v*dt;
+      const double div_v_dt = div_v*dt_h;
+
+      const double rho_c = rho[ind0]/(1.0 + div_v_dt);
 
       /// A working formulation that is second order in time for Pressure!?
-      const double e_C = e[ind0] - (P[ind0]*div_v_dt)/rho[ind0];
-      const double rho_C = rho[ind0]/(1.0 + div_v_dt);
-      const double work = 0.5*div_v_dt*(P[ind0] + (GAM-1.0)*e_C*rho_C)/rho[ind0];
-      e[ind0] -= (shock_heating + work);
+      const double e_c = e[ind0] - (P[ind0]*div_v_dt)/rho[ind0];
+      const double work = 0.5*div_v_dt*(P[ind0] + (GAM-1.0)*e_c*rho_c)/rho[ind0];
+
+      // Calculate the heating due to shock
+      double shock_heating = (dt_h/(celldx[jj]*celldy[ii]*rho_c))*
+          (Qxx[ind0]*(edgedx[jj+1]*u[ind1+1] - edgedx[jj]*u[ind1])+
+           Qyy[ind0]*(edgedy[ii+1]*v[ind0+nx] - edgedy[ii]*v[ind0]));
+
+      e[ind0] -= (work + shock_heating);
     }
   }
 
@@ -414,10 +413,10 @@ void advect_mass(
       // Calculate the flux
       const double rho_x_upwind = (u[ind1] >= 0.0) ? rho[ind0-1] : rho[ind0];
       F_x[ind1] = (u[ind1]*rho_x_upwind+
-        0.5*fabs(u[ind1])*(1.0-fabs((u[ind1]*dt_h)/celldx[jj]))*limiterx*rho_x_diff);
+          0.5*fabs(u[ind1])*(1.0-fabs((u[ind1]*dt_h)/celldx[jj]))*limiterx*rho_x_diff);
       const double rho_y_upwind = (v[ind0] >= 0.0) ? rho[ind0-nx] : rho[ind0];
       F_y[ind0] = (v[ind0]*rho_y_upwind+
-        0.5*fabs(v[ind0])*(1.0-fabs((v[ind0]*dt_h)/celldx[jj]))*limitery*rho_y_diff);
+          0.5*fabs(v[ind0])*(1.0-fabs((v[ind0]*dt_h)/celldx[jj]))*limitery*rho_y_diff);
     }
   }
   STOP_PROFILING(&compute_profiler, "advect_mass");
@@ -549,10 +548,9 @@ void advect_momentum(
 // Perform advection of internal energy
 void advect_energy(
     const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
-    double* e, double* slope_x, double* slope_y, double* F_x, double* F_y, 
-    const double* u, const double* v, const double* rho_old, const double* rho,
-    const double* edgedx, const double* edgedy, const double* celldx, 
-    const double* celldy)
+    double* e, double* F_x, double* F_y, const double* u, const double* v, 
+    const double* rho_old, const double* rho, const double* edgedx, 
+    const double* edgedy, const double* celldx, const double* celldy)
 {
   START_PROFILING(&compute_profiler);
 
@@ -836,6 +834,7 @@ void initialise_state(
   // Introduce a problem
   for(int ii = 0; ii < mesh->local_ny; ++ii) {
     for(int jj = 0; jj < mesh->local_nx; ++jj) {
+#if 0
       // CENTER SQUARE TEST
       const int dist = 100;
       if(jj+mesh->x_off-PAD >= mesh->global_nx/2-dist && 
@@ -845,12 +844,11 @@ void initialise_state(
         state->rho[ii*mesh->local_nx+jj] = 1.0;
         state->e[ii*mesh->local_nx+jj] = 2.5;
       }
-#if 0
+#endif // if 0
       if(jj <= (mesh->local_nx/2+PAD)) {
         state->rho[ii*mesh->local_nx+jj] = 1.0;
         state->e[ii*mesh->local_nx+jj] = 2.5;
       }
-#endif // if 0
 #if 0
       if(ii <= mesh->local_ny/2) {
         state->rho[ii*mesh->local_nx+jj] = 1.0;
