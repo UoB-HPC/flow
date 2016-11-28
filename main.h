@@ -7,7 +7,7 @@
 #define C_T 0.5
 #define C_M (1.5/C_T)
 #define VISIT_STEP 10
-#define SIM_END 2.5
+#define SIM_END 10.0
 
 #define max(a, b) (((a) > (b)) ? (a) : (b))
 #define min(a, b) (((a) < (b)) ? (a) : (b))

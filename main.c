@@ -300,10 +300,8 @@ void artificial_viscosity(
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
 #pragma omp simd
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
-      rho_u[ind1] -= (dt/(edgedx[jj]*celldy[ii]))*
-        (celldx[jj]*Qxx[ind0] - celldx[jj-1]*Qxx[ind0-1]);
-      rho_v[ind0] -= (dt/(edgedx[jj]*celldy[ii]))*
-        (celldy[ii]*Qyy[ind0] - celldy[ii-1]*Qyy[ind0-nx]);
+      rho_u[ind1] -= dt*(Qxx[ind0] - Qxx[ind0-1])/edgedx[jj];
+      rho_v[ind0] -= dt*(Qyy[ind0] - Qyy[ind0-nx])/celldy[ii];
 
       // Calculate the zone edge centered density
       const double rho_edge_x = 
@@ -343,9 +341,7 @@ void shock_heating_and_work(
       }
 
       const double div_v = 
-        (edgedx[jj + 1]*u[ind1+1] - edgedx[jj]*u[ind1]+
-         edgedy[ii + 1]*v[ind0+nx] - edgedy[ii]*v[ind0])/ 
-        (celldx[jj]*celldy[ii]);
+        (u[ind1+1] - u[ind1])/celldx[jj] + (v[ind0+nx] - v[ind0])/celldy[ii];
       const double div_v_dt = div_v*dt_h;
 
       const double rho_c = rho[ind0]/(1.0 + div_v_dt);
@@ -355,9 +351,9 @@ void shock_heating_and_work(
       const double work = 0.5*div_v_dt*(P[ind0] + (GAM-1.0)*e_c*rho_c)/rho[ind0];
 
       // Calculate the heating due to shock
-      double shock_heating = (dt_h/(celldx[jj]*celldy[ii]*rho_c))*
-          (Qxx[ind0]*(edgedx[jj+1]*u[ind1+1] - edgedx[jj]*u[ind1])+
-           Qyy[ind0]*(edgedy[ii+1]*v[ind0+nx] - edgedy[ii]*v[ind0]));
+      double shock_heating = (dt_h*
+        (Qxx[ind0]*(u[ind1+1] - u[ind1])/(celldx[jj]*rho_c)+
+         Qyy[ind0]*(v[ind0+nx] - v[ind0])/(celldy[ii]*rho_c)));
 
       e[ind0] -= (work + shock_heating);
     }
@@ -416,7 +412,7 @@ void advect_mass(
           0.5*fabs(u[ind1])*(1.0-fabs((u[ind1]*dt_h)/celldx[jj]))*limiterx*rho_x_diff);
       const double rho_y_upwind = (v[ind0] >= 0.0) ? rho[ind0-nx] : rho[ind0];
       F_y[ind0] = (v[ind0]*rho_y_upwind+
-          0.5*fabs(v[ind0])*(1.0-fabs((v[ind0]*dt_h)/celldx[jj]))*limitery*rho_y_diff);
+          0.5*fabs(v[ind0])*(1.0-fabs((v[ind0]*dt_h)/celldy[ii]))*limitery*rho_y_diff);
     }
   }
   STOP_PROFILING(&compute_profiler, "advect_mass");
@@ -466,8 +462,8 @@ void advect_momentum(
       const double S_U_1 = invdy*(u[ind1+(nx+1)] - u[ind1]);
 
       // Construct the fluxes
-      const double f_x = edgedy[ii]*0.5*(F_x[ind1] + F_x[ind1+1]); 
-      const double f_y = edgedx[jj]*0.5*(F_y[ind0] + F_y[ind0-1]);
+      const double f_x = edgedx[jj]*0.5*(F_x[ind1] + F_x[ind1+1]); 
+      const double f_y = edgedy[ii]*0.5*(F_y[ind0] + F_y[ind0-1]);
       const double u_cell_x = 0.5*(u[ind1]+u[ind1+1]);
       const double v_cell_y = 0.5*(v[ind0]+v[ind0-1]);
 
@@ -476,8 +472,8 @@ void advect_momentum(
           ? u[ind1] + 0.5*minmod(S_L_0, S_C_0)*(edgedx[jj]+u_cell_x*dt)
           : u[ind1+1] - 0.5*minmod(S_C_0, S_R_0)*(edgedx[jj]-u_cell_x*dt));
       uF_y[ind1] = f_y*((v_cell_y >= 0.0)
-          ? u[ind1-(nx+1)] + 0.5*minmod(S_D_1, S_C_1)*(edgedx[jj]+v_cell_y*dt)
-          : u[ind1] - 0.5*minmod(S_C_1, S_U_1)*(edgedx[jj]-v_cell_y*dt));
+          ? u[ind1-(nx+1)] + 0.5*minmod(S_D_1, S_C_1)*(edgedy[ii]+v_cell_y*dt)
+          : u[ind1] - 0.5*minmod(S_C_1, S_U_1)*(edgedy[ii]-v_cell_y*dt));
     }
   }
   STOP_PROFILING(&compute_profiler, __func__);
@@ -514,8 +510,8 @@ void advect_momentum(
       const double S_C_1 = invdy*(v[ind0+nx] - v[ind0]);
       const double S_U_1 = invdy*(v[ind0+2*nx] - v[ind0+nx]);
 
-      const double f_x = celldy[ii]*0.5*(F_x[ind1] + F_x[ind1-(nx+1)]);
-      const double f_y = celldx[jj]*0.5*(F_y[ind0] + F_y[ind0+nx]);
+      const double f_x = celldx[jj]*0.5*(F_x[ind1] + F_x[ind1-(nx+1)]);
+      const double f_y = celldy[ii]*0.5*(F_y[ind0] + F_y[ind0+nx]);
       const double u_cell_x = 0.5*(u[ind1]+u[ind1-(nx+1)]);
       const double v_cell_y = 0.5*(v[ind0]+v[ind0+nx]);
 
@@ -523,8 +519,8 @@ void advect_momentum(
           ? v[ind0-1] + 0.5*minmod(S_L_0, S_C_0)*(edgedx[jj]+u_cell_x*dt)
           : v[ind0] - 0.5*minmod(S_C_0, S_R_0)*(edgedx[jj]-u_cell_x*dt));
       vF_y[ind0] = f_y*((v_cell_y >= 0.0)
-          ? v[ind0] + 0.5*minmod(S_D_1, S_C_1)*(edgedx[jj]+v_cell_y*dt)
-          : v[ind0+nx] - 0.5*minmod(S_C_1, S_U_1)*(edgedx[jj]-v_cell_y*dt));
+          ? v[ind0] + 0.5*minmod(S_D_1, S_C_1)*(edgedy[ii]+v_cell_y*dt)
+          : v[ind0+nx] - 0.5*minmod(S_C_1, S_U_1)*(edgedy[ii]-v_cell_y*dt));
     }
   }
   STOP_PROFILING(&compute_profiler, __func__);
@@ -561,7 +557,7 @@ void advect_energy(
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
       // Use MC limiter to get slope of energy
       const double invdx = 1.0/edgedx[jj];
-      const double invdy = 1.0/edgedx[ii];
+      const double invdy = 1.0/edgedy[ii];
       const double a_x_0 = 0.5*invdx*(e[ind0]-e[ind0-2]);
       const double b_x_0 = 2.0*invdx*(e[ind0-1]-e[ind0-2]);
       const double c_x_0 = 2.0*invdx*(e[ind0]-e[ind0-1]);
@@ -584,8 +580,8 @@ void advect_energy(
         : e[ind0] - 0.5*minmod(minmod(a_y_1, b_y_1), c_y_1)*(celldy[ii] + v[ind0]*dt);
 
       // Update the fluxes to now include the contribution from energy
-      F_x[ind1] = edgedy[ii]*edge_e_x*F_x[ind1]; 
-      F_y[ind0] = edgedx[jj]*edge_e_y*F_y[ind0]; 
+      F_x[ind1] = edgedx[jj]*edge_e_x*F_x[ind1]; 
+      F_y[ind0] = edgedy[ii]*edge_e_y*F_y[ind0]; 
     }
   }
 
@@ -834,7 +830,6 @@ void initialise_state(
   // Introduce a problem
   for(int ii = 0; ii < mesh->local_ny; ++ii) {
     for(int jj = 0; jj < mesh->local_nx; ++jj) {
-#if 0
       // CENTER SQUARE TEST
       const int dist = 100;
       if(jj+mesh->x_off-PAD >= mesh->global_nx/2-dist && 
@@ -844,11 +839,12 @@ void initialise_state(
         state->rho[ii*mesh->local_nx+jj] = 1.0;
         state->e[ii*mesh->local_nx+jj] = 2.5;
       }
-#endif // if 0
+#if 0
       if(jj+mesh->x_off <= (mesh->global_nx/2+PAD)) {
         state->rho[ii*mesh->local_nx+jj] = 1.0;
         state->e[ii*mesh->local_nx+jj] = 2.5;
       }
+#endif // if 0
 #if 0
       if(ii <= mesh->local_ny/2) {
         state->rho[ii*mesh->local_nx+jj] = 1.0;
@@ -884,16 +880,16 @@ void initialise_mesh(
 
   // Simple uniform rectilinear initialisation
   for(int ii = 0; ii < mesh->local_ny+1; ++ii) {
-    mesh->edgedy[ii] = 10.0 / (mesh->global_ny-2*PAD);
+    mesh->edgedy[ii] = 10.0 / (mesh->global_ny);
   }
   for(int ii = 0; ii < mesh->local_ny; ++ii) {
-    mesh->celldy[ii] = 10.0 / (mesh->global_ny-2*PAD);
+    mesh->celldy[ii] = 10.0 / (mesh->global_ny);
   }
   for(int ii = 0; ii < mesh->local_nx+1; ++ii) {
-    mesh->edgedx[ii] = 10.0 / (mesh->global_nx-2*PAD);
+    mesh->edgedx[ii] = 10.0 / (mesh->global_nx);
   }
   for(int ii = 0; ii < mesh->local_nx; ++ii) {
-    mesh->celldx[ii] = 10.0 / (mesh->global_nx-2*PAD);
+    mesh->celldx[ii] = 10.0 / (mesh->global_nx);
   }
 
   mesh->north_buffer_out 
