@@ -10,11 +10,11 @@ MULTI_LINKER     = mpicc
 MULTI_FLAGS      = $(CFLAGS_$(COMPILER))
 MULTI_LDFLAGS    =
 MULTI_BUILD_DIR  = ../obj
-MULTI_SHARED_DIR = ../shared
+MULTI_DIR 			 = ../
 
 SRC  			 = $(wildcard *.c)
-SRC 			+= $(wildcard $(MULTI_SHARED_DIR)/*.c)
-SRC_CLEAN  = $(subst $(MULTI_SHARED_DIR)/,,$(SRC))
+SRC 			+= $(wildcard $(MULTI_DIR)/*.c)
+SRC_CLEAN  = $(subst $(MULTI_DIR)/,,$(SRC))
 OBJS 			 = $(patsubst %.c, $(MULTI_BUILD_DIR)/$(KERNELS)/%.o, $(SRC_CLEAN))
 
 wet: make_build_dir $(OBJS) Makefile
@@ -24,7 +24,7 @@ wet: make_build_dir $(OBJS) Makefile
 $(MULTI_BUILD_DIR)/$(KERNELS)/%.o: %.c Makefile 
 	$(MULTI_COMPILER) $(MULTI_FLAGS) $(OPTIONS) -c $< -o $@
 
-$(MULTI_BUILD_DIR)/$(KERNELS)/%.o: ../shared/%.c Makefile 
+$(MULTI_BUILD_DIR)/$(KERNELS)/%.o: $(MULTI_DIR)/%.c Makefile 
 	$(MULTI_COMPILER) $(MULTI_FLAGS) $(OPTIONS) -c $< -o $@
 
 make_build_dir:

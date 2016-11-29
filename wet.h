@@ -1,15 +1,12 @@
-#include "../shared/shared.h"
+#include "../shared.h"
+#include "../mesh.h"
 
 // Controllable parameters for the application
 #define GAM 1.4
-#define MAX_DT 0.04
 #define C_Q 2.5 // Suggested between 1.0 and 2.0
 #define C_T 0.5
 #define C_M (1.5/C_T)
-#define VISIT_STEP 10
 #define SIM_END 2.5
-
-#define NVARS_TO_COMM 4 // rho, e, rho_u, rho_v
 
 enum { NO_INVERT, INVERT_X, INVERT_Y };
 
@@ -102,22 +99,8 @@ void handle_boundary(
     const int nx, const int ny, Mesh* mesh, 
     double* arr, const int invert, const int pack);
 
-// Initialise the state for the problem
-void initialise_state(
-    State* state, Mesh* mesh);
-
-// Initialise the mesh describing variables
-void initialise_mesh(
-    Mesh* mesh);
-
 // Write out data for visualisation in visit
 // Prints some conservation values
 void print_conservation(
     const int nx, const int ny, State* state, Mesh* mesh);
-
-// Deallocate all of the state memory
-void finalise_state(State* state);
-
-// Deallocate all of the mesh memory
-void finalise_mesh(Mesh* mesh);
 
