@@ -7,8 +7,6 @@
 #define C_Q 2.5 // Suggested between 1.0 and 2.0
 #define C_M (1.5/C_T)
 
-enum { NO_INVERT, INVERT_X, INVERT_Y };
-
 // Constitutes an individual solve of a mesh
 void solve_hydro(
     Mesh* mesh, int first_step, double* P, double* rho, double* rho_old, 
@@ -60,11 +58,6 @@ void advect_energy(
     double* e, double* F_x, double* F_y, 
     const double* u, const double* v, const double* rho_old, const double* rho,
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy);
-
-// Enforce reflective boundary conditions on the problem state
-void handle_boundary(
-    const int nx, const int ny, Mesh* mesh, 
-    double* arr, const int invert, const int pack);
 
 // Write out data for visualisation in visit
 // Prints some conservation values
