@@ -1,46 +1,13 @@
 #include "../shared.h"
 #include "../mesh.h"
+#include "../state.h"
 
 // Controllable parameters for the application
 #define GAM 1.4
 #define C_Q 2.5 // Suggested between 1.0 and 2.0
-#define C_T 0.5
 #define C_M (1.5/C_T)
-#define SIM_END 2.5
 
 enum { NO_INVERT, INVERT_X, INVERT_Y };
-
-/// Problem state
-typedef struct
-{
-  // Density (cell centered)
-  double* rho;
-  double* rho_old;
-
-  // Pressure and internal energy, (cell centered)
-  double* P;
-  double* e;
-
-  // Momenta (edge centered)
-  double* rho_u;
-  double* rho_v;
-
-  // Fluid velocities (edge centered)
-  double* v;
-  double* u;
-
-  // Mass fluxes, stored to avoid repetetive recomputation
-  double* F_x;
-  double* F_y;
-  double* uF_x;
-  double* uF_y;
-  double* vF_x;
-  double* vF_y;
-
-  // Interpolated velocity values
-  double* Qxx;
-  double* Qyy;
-} State;
 
 // Constitutes an individual solve of a mesh
 void solve_hydro(

@@ -10,7 +10,7 @@ MULTI_LINKER     = mpicc
 MULTI_FLAGS      = $(CFLAGS_$(COMPILER))
 MULTI_LDFLAGS    =
 MULTI_BUILD_DIR  = ../obj
-MULTI_DIR 			 = ../
+MULTI_DIR 			 = ..
 
 SRC  			 = $(wildcard *.c)
 SRC 			+= $(wildcard $(MULTI_DIR)/*.c)

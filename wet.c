@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "wet.h"
+#include "../comms.h"
 
 #define ind0 (ii*nx + jj)
 #define ind1 (ii*(nx+1) + jj)
@@ -103,13 +104,7 @@ void set_timestep(
   }
   STOP_PROFILING(&compute_profile, __func__);
 
-  double global_min_dt = mpi_all_min(local_min_dt);
-
-#ifdef MPI
-  START_PROFILING(&comms_profile);
-  MPI_Allreduce(&local_min_dt, &global_min_dt, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
-  STOP_PROFILING(&comms_profile, "reductions");
-#endif
+  double global_min_dt = reduce_all_min(local_min_dt);
 
   // Ensure that the timestep does not jump too far from one step to the next
   const double final_min_dt = min(global_min_dt, C_M*mesh->dt_h);

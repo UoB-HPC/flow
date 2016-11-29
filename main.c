@@ -4,6 +4,7 @@
 #include "wet.h"
 #include "../mesh.h"
 #include "../state.h"
+#include "../comms.h"
 
 #if 0
 extern struct Profile compute_profile;
