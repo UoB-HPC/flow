@@ -1,19 +1,36 @@
+# User defined parameters
+KERNELS 	  	= omp3
+COMPILER    	= INTEL
+CFLAGS_INTEL	= -O3 -g -qopenmp -no-prec-div -xhost -std=gnu99
+OPTIONS		  	= -DENABLE_PROFILING -DMPI -DDEBUG
 
-MPI     = yes
-OPTIONS = -g -DENABLE_PROFILING -qopt-report=5 
-CFLAGS  = -O3 -std=gnu99 -xhost -qopenmp -no-prec-div
-LDFLAGS = #-lrt
+# Default compiler
+MULTI_COMPILER   = mpicc
+MULTI_LINKER     = mpicc
+MULTI_FLAGS      = $(CFLAGS_$(COMPILER))
+MULTI_LDFLAGS    =
+MULTI_BUILD_DIR  = ../obj
+MULTI_SHARED_DIR = ../shared
 
-ifeq ($(MPI), yes)
-	CC = mpicc
-	OPTIONS += -DMPI
-else
-	CC = icc
-endif
+SRC  			 = $(wildcard *.c)
+SRC 			+= $(wildcard $(MULTI_SHARED_DIR)/*.c)
+SRC_CLEAN  = $(subst $(MULTI_SHARED_DIR)/,,$(SRC))
+OBJS 			 = $(patsubst %.c, $(MULTI_BUILD_DIR)/$(KERNELS)/%.o, $(SRC_CLEAN))
 
-all:
-	$(CC) $(CFLAGS) $(OPTIONS) $(LDFLAGS) ../shared.c main.c profiler.c -o wet.exe
+wet: make_build_dir $(OBJS) Makefile
+	$(MULTI_LINKER) $(MULTI_FLAGS) $(OBJS) $(MULTI_LDFLAGS) -o wet.exe
+
+# Rule to make controlling code
+$(MULTI_BUILD_DIR)/$(KERNELS)/%.o: %.c Makefile 
+	$(MULTI_COMPILER) $(MULTI_FLAGS) $(OPTIONS) -c $< -o $@
+
+$(MULTI_BUILD_DIR)/$(KERNELS)/%.o: ../shared/%.c Makefile 
+	$(MULTI_COMPILER) $(MULTI_FLAGS) $(OPTIONS) -c $< -o $@
+
+make_build_dir:
+	@mkdir -p $(MULTI_BUILD_DIR)/
+	@mkdir -p $(MULTI_BUILD_DIR)/$(KERNELS)
 
 clean:
-	rm -rf wet.exe *.bov *.dat
+	rm -rf $(MULTI_BUILD_DIR)/* wet.exe *.vtk *.bov *.dat
 
