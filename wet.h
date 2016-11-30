@@ -41,7 +41,8 @@ void shock_heating_and_work(
 // Perform advection with monotonicity improvement
 void advect_mass_and_energy(
     const int nx, const int ny, Mesh* mesh, const int tt, const double dt_h, 
-    double* rho, double* rho_old, double* F_x, double* F_y, const double* u, const double* v, 
+    double* rho, double* e, double* rho_old, double* F_x, double* F_y, 
+    double* eF_x, double* eF_y, const double* u, const double* v, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy);
 
 // Calculate the flux in the x direction
@@ -56,19 +57,24 @@ void y_mass_and_energy_flux(
     const double* v, double* F_y, const double* celldx, const double* edgedx, 
     const double* celldy, const double* edgedy);
 
+void x_energy_flux(
+    const int nx, const int ny, const double dt_h, double* rho, 
+    const double* u, double* e, const double* rho_old, double* F_x, double* eF_y,
+    const double* celldx, const double* edgedx, 
+    const double* celldy, const double* edgedy);
+
+void y_energy_flux(
+    const int nx, const int ny, const double dt_h, double* rho, 
+    const double* v, double* e, const double* rho_old, double* F_y, double* eF_y, 
+    const double* celldx, const double* edgedx, 
+    const double* celldy, const double* edgedy);
+
 // Advect momentum according to the velocity
 void advect_momentum(
     const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
     double* u, double* v, double* slope_x, double* slope_y, double* mF_x, 
     double* mF_y, double* rho_u, double* rho_v, const double* rho, 
     const double* F_x, const double* F_y, 
-    const double* edgedx, const double* edgedy, const double* celldx, const double* celldy);
-
-// Perform advection of internal energy
-void advect_energy(
-    const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
-    double* e, double* F_x, double* F_y, 
-    const double* u, const double* v, const double* rho_old, const double* rho,
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy);
 
 // Write out data for visualisation in visit

@@ -40,18 +40,13 @@ void solve_hydro(
 
   // Perform advection
   advect_mass_and_energy(
-      mesh->local_nx, mesh->local_ny, mesh, tt, mesh->dt_h, rho, rho_old, F_x, F_y, 
-      u, v, mesh->edgedx, mesh->edgedy, mesh->celldx, mesh->celldy);
+      mesh->local_nx, mesh->local_ny, mesh, tt, mesh->dt_h, rho, e, rho_old, F_x, F_y, 
+      uF_x, uF_y, u, v, mesh->edgedx, mesh->edgedy, mesh->celldx, mesh->celldy);
 
   advect_momentum(
       mesh->local_nx, mesh->local_ny, mesh, mesh->dt_h, mesh->dt, u, v, uF_x, 
       uF_y, vF_x, vF_y, rho_u, rho_v, 
       rho, F_x, F_y, mesh->edgedx, mesh->edgedy, mesh->celldx, mesh->celldy);
-
-  advect_energy(
-      mesh->local_nx, mesh->local_ny, mesh, mesh->dt_h, mesh->dt, e, 
-      F_x, F_y, u, v, rho_old, rho,
-      mesh->edgedx, mesh->edgedy, mesh->celldx, mesh->celldy);
 }
 
 // Calculate the pressure from GAMma law equation of state
@@ -239,7 +234,8 @@ void shock_heating_and_work(
 // Perform advection with monotonicity improvement
 void advect_mass_and_energy(
     const int nx, const int ny, Mesh* mesh, const int tt, const double dt_h, 
-    double* rho, double* rho_old, double* F_x, double* F_y, const double* u, const double* v, 
+    double* rho, double* e, double* rho_old, double* F_x, double* F_y, 
+    double* eF_x, double* eF_y, const double* u, const double* v, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
 #pragma omp parallel for
@@ -263,6 +259,132 @@ void advect_mass_and_energy(
   }
 
   handle_boundary(nx, ny, mesh, rho, NO_INVERT, PACK);
+
+  if(tt % 2) {
+    x_energy_flux(
+        nx, ny, dt_h, rho, u, e, rho_old, F_x, eF_x, celldx, edgedx, celldy, edgedy);
+
+    // Calculate the new energy values
+#pragma omp parallel for
+    for(int ii = PAD; ii < ny-PAD; ++ii) { 
+#pragma omp simd
+      for(int jj = PAD; jj < nx-PAD; ++jj) {
+        e[ind0] = (rho[ind0] == 0.0) ? 0.0 : 
+          (rho_old[ind0]*e[ind0] - (dt_h/(celldx[jj]*celldy[ii]))*
+           (eF_x[ind1+1] - eF_x[ind1]))/rho_old[ind0];
+      }
+    }
+
+    y_energy_flux(                        
+        nx, ny, dt_h, rho, v, e, rho_old, F_y, eF_y, celldx, edgedx, celldy, edgedy);
+
+    // Calculate the new energy values
+#pragma omp parallel for
+    for(int ii = PAD; ii < ny-PAD; ++ii) { 
+#pragma omp simd
+      for(int jj = PAD; jj < nx-PAD; ++jj) {
+        e[ind0] = (rho[ind0] == 0.0) ? 0.0 : 
+          (rho_old[ind0]*e[ind0] - (dt_h/(celldx[jj]*celldy[ii]))*
+           (eF_y[ind0+nx] - eF_y[ind0]))/rho[ind0];
+      }
+    }
+  }                                       
+  else {                                  
+    y_energy_flux(                        
+        nx, ny, dt_h, rho, v, e, rho_old, F_y, eF_y, celldx, edgedx, celldy, edgedy);
+
+    // Calculate the new energy values
+#pragma omp parallel for
+    for(int ii = PAD; ii < ny-PAD; ++ii) { 
+#pragma omp simd
+      for(int jj = PAD; jj < nx-PAD; ++jj) {
+        e[ind0] = (rho[ind0] == 0.0) ? 0.0 : 
+          (rho_old[ind0]*e[ind0] - (dt_h/(celldx[jj]*celldy[ii]))*
+           (eF_y[ind0+nx] - eF_y[ind0]))/rho_old[ind0];
+      }
+    }
+
+    x_energy_flux(                        
+        nx, ny, dt_h, rho, u, e, rho_old, F_x, eF_x, celldx, edgedx, celldy, edgedy);
+
+    // Calculate the new energy values
+#pragma omp parallel for
+    for(int ii = PAD; ii < ny-PAD; ++ii) { 
+#pragma omp simd
+      for(int jj = PAD; jj < nx-PAD; ++jj) {
+        e[ind0] = (rho[ind0] == 0.0) ? 0.0 : 
+          (rho_old[ind0]*e[ind0] - (dt_h/(celldx[jj]*celldy[ii]))*
+           (eF_x[ind1+1] - eF_x[ind1]))/rho[ind0];
+      }
+    }
+  }
+
+  handle_boundary(nx, ny, mesh, e, NO_INVERT, PACK);
+}
+
+void x_energy_flux(
+    const int nx, const int ny, const double dt_h, double* rho, 
+    const double* u, double* e, const double* rho_old, double* F_x, double* eF_x,
+    const double* celldx, const double* edgedx, 
+    const double* celldy, const double* edgedy)
+{
+  START_PROFILING(&compute_profile);
+  // Calculate the zone edge centered energies, and flux
+#pragma omp parallel for
+  for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
+#pragma omp simd
+    for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
+      // Use MC limiter to get slope of energy
+      const double invdx = 1.0/edgedx[jj];
+      const double a_x_0 = 0.5*invdx*(e[ind0]-e[ind0-2]);
+      const double b_x_0 = 2.0*invdx*(e[ind0-1]-e[ind0-2]);
+      const double c_x_0 = 2.0*invdx*(e[ind0]-e[ind0-1]);
+      const double a_x_1 = 0.5*invdx*(e[ind0+1]-e[ind0-1]);
+      const double b_x_1 = 2.0*invdx*(e[ind0]-e[ind0-1]);
+      const double c_x_1 = 2.0*invdx*(e[ind0+1]-e[ind0]);
+
+      // Calculate the interpolated densities
+      const double edge_e_x = (u[ind1] > 0.0)
+        ? e[ind0-1] + 0.5*minmod(minmod(a_x_0, b_x_0), c_x_0)*(celldx[jj-1] - u[ind1]*dt_h)
+        : e[ind0] - 0.5*minmod(minmod(a_x_1, b_x_1), c_x_1)*(celldx[jj] + u[ind1]*dt_h);
+
+      // Update the fluxes to now include the contribution from energy
+      eF_x[ind1] = edgedy[ii]*edge_e_x*F_x[ind1]; 
+    }
+  }
+
+
+  STOP_PROFILING(&compute_profile, __func__);
+}
+
+void y_energy_flux(
+    const int nx, const int ny, const double dt_h, double* rho, 
+    const double* v, double* e, const double* rho_old, double* F_y, double* eF_y, 
+    const double* celldx, const double* edgedx, 
+    const double* celldy, const double* edgedy) 
+{
+  // Calculate the zone edge centered energies, and flux
+#pragma omp parallel for
+  for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
+#pragma omp simd
+    for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
+      // Use MC limiter to get slope of energy
+      const double invdy = 1.0/edgedy[ii];
+      const double a_y_0 = 0.5*invdy*(e[ind0]-e[ind0-2*nx]);
+      const double b_y_0 = 2.0*invdy*(e[ind0-nx]-e[ind0-2*nx]);
+      const double c_y_0 = 2.0*invdy*(e[ind0]-e[ind0-nx]);
+      const double a_y_1 = 0.5*invdy*(e[ind0+nx]-e[ind0-nx]);
+      const double b_y_1 = 2.0*invdy*(e[ind0]-e[ind0-nx]);
+      const double c_y_1 = 2.0*invdy*(e[ind0+nx]-e[ind0]);
+
+      const double edge_e_y = (v[ind0] > 0.0)
+        ? e[ind0-nx] + 0.5*minmod(minmod(a_y_0, b_y_0), c_y_0)*(celldy[ii-1] - v[ind0]*dt_h)
+        : e[ind0] - 0.5*minmod(minmod(a_y_1, b_y_1), c_y_1)*(celldy[ii] + v[ind0]*dt_h);
+
+      // Update the fluxes to now include the contribution from energy
+      eF_y[ind0] = edgedx[jj]*edge_e_y*F_y[ind0]; 
+    }
+  }
 }
 
 // Calculate the flux in the x direction
@@ -464,89 +586,6 @@ void advect_momentum(
     }
   }
   STOP_PROFILING(&compute_profile, __func__);
-}
-
-// Perform advection of internal energy
-void advect_energy(
-    const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
-    double* e, double* F_x, double* F_y, const double* u, const double* v, 
-    const double* rho_old, const double* rho, const double* edgedx, 
-    const double* edgedy, const double* celldx, const double* celldy)
-{
-  START_PROFILING(&compute_profile);
-
-  // Calculate the zone edge centered energies, and flux
-#pragma omp parallel for
-  for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
-#pragma omp simd
-    for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
-      // Use MC limiter to get slope of energy
-      const double invdx = 1.0/edgedx[jj];
-      const double a_x_0 = 0.5*invdx*(e[ind0]-e[ind0-2]);
-      const double b_x_0 = 2.0*invdx*(e[ind0-1]-e[ind0-2]);
-      const double c_x_0 = 2.0*invdx*(e[ind0]-e[ind0-1]);
-      const double a_x_1 = 0.5*invdx*(e[ind0+1]-e[ind0-1]);
-      const double b_x_1 = 2.0*invdx*(e[ind0]-e[ind0-1]);
-      const double c_x_1 = 2.0*invdx*(e[ind0+1]-e[ind0]);
-
-      // Calculate the interpolated densities
-      const double edge_e_x = (u[ind1] > 0.0)
-        ? e[ind0-1] + 0.5*minmod(minmod(a_x_0, b_x_0), c_x_0)*(celldx[jj-1] - u[ind1]*dt)
-        : e[ind0] - 0.5*minmod(minmod(a_x_1, b_x_1), c_x_1)*(celldx[jj] + u[ind1]*dt);
-
-      // Update the fluxes to now include the contribution from energy
-      F_x[ind1] = edgedy[ii]*edge_e_x*F_x[ind1]; 
-    }
-  }
-
-  // Calculate the new energy values
-#pragma omp parallel for
-  for(int ii = PAD; ii < ny-PAD; ++ii) { 
-#pragma omp simd
-    for(int jj = PAD; jj < nx-PAD; ++jj) {
-      e[ind0] = (rho[ind0] == 0.0) ? 0.0 : 
-        (rho_old[ind0]*e[ind0] - (dt_h/(celldx[jj]*celldy[ii]))*
-         (F_x[ind1+1] - F_x[ind1]))/rho_old[ind0];
-    }
-  }
-
-  // Calculate the zone edge centered energies, and flux
-#pragma omp parallel for
-  for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
-#pragma omp simd
-    for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
-      // Use MC limiter to get slope of energy
-      const double invdy = 1.0/edgedy[ii];
-      const double a_y_0 = 0.5*invdy*(e[ind0]-e[ind0-2*nx]);
-      const double b_y_0 = 2.0*invdy*(e[ind0-nx]-e[ind0-2*nx]);
-      const double c_y_0 = 2.0*invdy*(e[ind0]-e[ind0-nx]);
-      const double a_y_1 = 0.5*invdy*(e[ind0+nx]-e[ind0-nx]);
-      const double b_y_1 = 2.0*invdy*(e[ind0]-e[ind0-nx]);
-      const double c_y_1 = 2.0*invdy*(e[ind0+nx]-e[ind0]);
-
-      const double edge_e_y = (v[ind0] > 0.0)
-        ? e[ind0-nx] + 0.5*minmod(minmod(a_y_0, b_y_0), c_y_0)*(celldy[ii-1] - v[ind0]*dt)
-        : e[ind0] - 0.5*minmod(minmod(a_y_1, b_y_1), c_y_1)*(celldy[ii] + v[ind0]*dt);
-
-      // Update the fluxes to now include the contribution from energy
-      F_y[ind0] = edgedx[jj]*edge_e_y*F_y[ind0]; 
-    }
-  }
-
-  // Calculate the new energy values
-#pragma omp parallel for
-  for(int ii = PAD; ii < ny-PAD; ++ii) { 
-#pragma omp simd
-    for(int jj = PAD; jj < nx-PAD; ++jj) {
-      e[ind0] = (rho[ind0] == 0.0) ? 0.0 : 
-        (rho_old[ind0]*e[ind0] - (dt_h/(celldx[jj]*celldy[ii]))*
-         (F_y[ind0+nx] - F_y[ind0]))/rho[ind0];
-    }
-  }
-
-  STOP_PROFILING(&compute_profile, __func__);
-
-  handle_boundary(nx, ny, mesh, e, NO_INVERT, PACK);
 }
 
 // Prints some conservation values
