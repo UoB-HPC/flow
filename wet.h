@@ -48,33 +48,38 @@ void advect_mass_and_energy(
 // Calculate the flux in the x direction
 void x_mass_and_energy_flux(
     const int nx, const int ny, Mesh* mesh, const double dt_h, double* rho, 
-    const double* u, double* F_x, const double* celldx, const double* edgedx, 
-    const double* celldy, const double* edgedy);
+    double* e, const double* u, double* F_x, double* eF_x, const double* celldx, 
+    const double* edgedx, const double* celldy, const double* edgedy);
 
 // Calculate the flux in the y direction
 void y_mass_and_energy_flux(
     const int nx, const int ny, Mesh* mesh, const double dt_h, double* rho, 
-    const double* v, double* F_y, const double* celldx, const double* edgedx, 
-    const double* celldy, const double* edgedy);
-
-void x_energy_flux(
-    const int nx, const int ny, const double dt_h, double* rho, 
-    const double* u, double* e, const double* rho_old, double* F_x, double* eF_y,
-    const double* celldx, const double* edgedx, 
-    const double* celldy, const double* edgedy);
-
-void y_energy_flux(
-    const int nx, const int ny, const double dt_h, double* rho, 
-    const double* v, double* e, const double* rho_old, double* F_y, double* eF_y, 
-    const double* celldx, const double* edgedx, 
-    const double* celldy, const double* edgedy);
+    double* e, const double* v, double* F_y, double* eF_y, const double* celldx, 
+    const double* edgedx, const double* celldy, const double* edgedy);
 
 // Advect momentum according to the velocity
 void advect_momentum(
+    const int nx, const int ny, const int tt, Mesh* mesh, const double dt_h, 
+    const double dt, double* u, double* v, double* uF_x, double* uF_y, 
+    double* vF_x, double* vF_y, double* rho_u, double* rho_v, 
+    const double* rho, const double* F_x, const double* F_y, 
+    const double* edgedx, const double* edgedy, const double* celldx, const double* celldy);
+
+void ux_momentum_flux(
     const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
-    double* u, double* v, double* slope_x, double* slope_y, double* mF_x, 
-    double* mF_y, double* rho_u, double* rho_v, const double* rho, 
-    const double* F_x, const double* F_y, 
+    double* u, double* uF_x, double* rho_u, const double* rho, const double* F_x, 
+    const double* edgedx, const double* edgedy, const double* celldx, const double* celldy);
+void uy_momentum_flux(
+    const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
+    double* u, double* uF_y, double* rho_u, const double* rho, const double* F_y, 
+    const double* edgedx, const double* edgedy, const double* celldx, const double* celldy);
+void vx_momentum_flux(
+    const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
+    double* v, double* vF_x, double* rho_v, const double* rho, const double* F_x, 
+    const double* edgedx, const double* edgedy, const double* celldx, const double* celldy);
+void vy_momentum_flux(
+    const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
+    double* v, double* vF_y, double* rho_v, const double* rho, const double* F_y, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy);
 
 // Write out data for visualisation in visit
