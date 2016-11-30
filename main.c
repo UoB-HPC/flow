@@ -36,8 +36,12 @@ int main(int argc, char** argv)
       mesh.x_off, mesh.y_off, &state);
 
   set_timestep(
-      mesh.local_nx, mesh.local_ny, state.Qxx, state.Qyy, state.rho, state.u, 
-      state.v, state.e, &mesh, 0, mesh.edgedx, mesh.edgedy, mesh.celldx, mesh.celldy);
+      mesh.local_nx, mesh.local_ny, state.Qxx, state.Qyy, state.rho, 
+      state.e, &mesh, 0, mesh.celldx, mesh.celldy);
+
+  write_all_ranks_to_visit(
+      mesh.global_nx+2*PAD, mesh.global_ny+2*PAD, mesh.local_nx, mesh.local_ny, mesh.x_off, 
+      mesh.y_off, mesh.rank, mesh.nranks, mesh.neighbours, state.rho, "initial_density", 0, 0.0);
 
   // Prepare for solve
   struct Profile wallclock = {0};
@@ -53,23 +57,23 @@ int main(int argc, char** argv)
     START_PROFILING(&wallclock);
 
     solve_hydro(
-        &mesh, tt == 0, state.P, state.rho, state.rho_old, state.e, state.u, 
+        &mesh, tt, state.P, state.rho, state.rho_old, state.e, state.u, 
         state.v, state.rho_u, state.rho_v, state.Qxx, state.Qyy, state.F_x, 
         state.F_y, state.uF_x, state.uF_y, state.vF_x, state.vF_y);
 
     STOP_PROFILING(&wallclock, "wallclock");
+
+    print_conservation(mesh.local_nx, mesh.local_ny, &state, &mesh);
+
+    if(mesh.rank == MASTER) {
+      printf("simulation time: %.4lf(s)\n", elapsed_sim_time);
+    }
 
     elapsed_sim_time += mesh.dt;
     if(elapsed_sim_time >= SIM_END) {
       if(mesh.rank == MASTER)
         printf("reached end of simulation time\n");
       break;
-    }
-
-    print_conservation(mesh.local_nx, mesh.local_ny, &state, &mesh);
-
-    if(mesh.rank == MASTER) {
-      printf("simulation time: %.4lf(s)\n", elapsed_sim_time);
     }
   }
 
@@ -89,16 +93,16 @@ int main(int argc, char** argv)
 
   write_all_ranks_to_visit(
       mesh.global_nx+2*PAD, mesh.global_ny+2*PAD, mesh.local_nx, mesh.local_ny, mesh.x_off, 
-      mesh.y_off, mesh.rank, mesh.nranks, state.rho, "density", 0, elapsed_sim_time);
+      mesh.y_off, mesh.rank, mesh.nranks, mesh.neighbours, state.rho, "density", 0, elapsed_sim_time);
   write_all_ranks_to_visit(
       mesh.global_nx+2*PAD, mesh.global_ny+2*PAD, mesh.local_nx, mesh.local_ny, mesh.x_off, 
-      mesh.y_off, mesh.rank, mesh.nranks, state.e, "energy", 0, elapsed_sim_time);
+      mesh.y_off, mesh.rank, mesh.nranks, mesh.neighbours, state.e, "energy", 0, elapsed_sim_time);
   write_all_ranks_to_visit(
       mesh.global_nx+1+2*PAD, mesh.global_ny+2*PAD, mesh.local_nx+1, mesh.local_ny, mesh.x_off, 
-      mesh.y_off, mesh.rank, mesh.nranks, state.u, "u", 0, elapsed_sim_time);
+      mesh.y_off, mesh.rank, mesh.nranks, mesh.neighbours, state.u, "u", 0, elapsed_sim_time);
   write_all_ranks_to_visit(
       mesh.global_nx+2*PAD, mesh.global_ny+1+2*PAD, mesh.local_nx, mesh.local_ny+1, mesh.x_off, 
-      mesh.y_off, mesh.rank, mesh.nranks, state.v, "v", 0, elapsed_sim_time);
+      mesh.y_off, mesh.rank, mesh.nranks, mesh.neighbours, state.v, "v", 0, elapsed_sim_time);
 
   finalise_state(&state);
   finalise_mesh(&mesh);

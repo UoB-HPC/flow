@@ -9,11 +9,14 @@
 
 // Solve a single timestep on the given mesh
 void solve_hydro(
-    Mesh* mesh, int first_step, double* P, double* rho, double* rho_old, 
+    Mesh* mesh, int tt, double* P, double* rho, double* rho_old, 
     double* e, double* u, double* v, double* rho_u, double* rho_v, 
     double* Qxx, double* Qyy, double* F_x, double* F_y, double* uF_x, 
     double* uF_y, double* vF_x, double* vF_y)
 {
+  if(mesh->rank == MASTER)
+    printf("dt %.12e dt_h %.12e\n", mesh->dt, mesh->dt_h);
+
   equation_of_state(
       mesh->local_nx, mesh->local_ny, P, rho, e);
 
@@ -27,21 +30,17 @@ void solve_hydro(
       u, v, rho_u, rho_v, rho, 
       mesh->edgedx, mesh->edgedy, mesh->celldx, mesh->celldy);
 
-  set_timestep(
-      mesh->local_nx, mesh->local_ny, Qxx, Qyy, rho, 
-      u, v, e, mesh, first_step, 
-      mesh->edgedx, mesh->edgedy, mesh->celldx, mesh->celldy);
-
-  if(mesh->rank == MASTER)
-    printf("dt %.12e dt_h %.12e\n", mesh->dt, mesh->dt_h);
-
   shock_heating_and_work(
       mesh->local_nx, mesh->local_ny, mesh, mesh->dt_h, e, P, u, 
       v, rho, Qxx, Qyy, mesh->celldx, mesh->celldy);
 
+  set_timestep(
+      mesh->local_nx, mesh->local_ny, Qxx, Qyy, rho, 
+      e, mesh, tt == 0, mesh->celldx, mesh->celldy);
+
   // Perform advection
-  advect_mass(
-      mesh->local_nx, mesh->local_ny, mesh, mesh->dt_h, rho, rho_old, F_x, F_y, 
+  advect_mass_and_energy(
+      mesh->local_nx, mesh->local_ny, mesh, tt, mesh->dt_h, rho, rho_old, F_x, F_y, 
       u, v, mesh->edgedx, mesh->edgedy, mesh->celldx, mesh->celldy);
 
   advect_momentum(
@@ -76,8 +75,8 @@ void equation_of_state(
 // Calculates the timestep from the current state
 void set_timestep(
     const int nx, const int ny, double* Qxx, double* Qyy, const double* rho, 
-    const double* u, const double* v, const double* e, Mesh* mesh, const int first_step,
-    const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
+    const double* e, Mesh* mesh, const int first_step,
+    const double* celldx, const double* celldy)
 {
   double local_min_dt = MAX_DT;
 
@@ -87,18 +86,11 @@ void set_timestep(
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
 #pragma omp simd 
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
-      double thread_min_dt = 1.0;
-
-      // Constrain based on the artificial viscous stresses
-      const double xmask = (Qxx[ind0] != 0.0) ? 0.0 : MAX_DT;
-      thread_min_dt = min(thread_min_dt, xmask+0.25*edgedx[jj]*sqrt(rho[ind0]/Qxx[ind0]));
-      const double ymask = (Qyy[ind0] != 0.0) ? 0.0 : MAX_DT;
-      thread_min_dt = min(thread_min_dt, ymask+0.25*edgedy[ii]*sqrt(rho[ind0]/Qyy[ind0]));
-
       // Constrain based on the sound speed within the system
       const double c_s = sqrt(GAM*(GAM - 1.0)*e[ind0]);
-      thread_min_dt = min(thread_min_dt, (celldx[jj]/(fabs(u[ind1]) + c_s)));
-      thread_min_dt = min(thread_min_dt, (celldy[ii]/(fabs(v[ind0]) + c_s)));
+      const double thread_min_dt_x = celldx[jj]/sqrt(c_s*c_s + 2.0*Qxx[ind0]/rho[ind0]);
+      const double thread_min_dt_y = celldy[ii]/sqrt(c_s*c_s + 2.0*Qyy[ind0]/rho[ind0]);
+      const double thread_min_dt = min(thread_min_dt_x, thread_min_dt_y);
       local_min_dt = min(local_min_dt, thread_min_dt);
     }
   }
@@ -157,14 +149,21 @@ void artificial_viscosity(
   START_PROFILING(&compute_profile);
 
   // Calculate the artificial viscous stresses
+  // PLPC Hydro Paper
 #pragma omp parallel for 
   for(int ii = PAD-1; ii < ny-PAD; ++ii) {
 #pragma omp simd
     for(int jj = PAD-1; jj < nx-PAD; ++jj) {
       const double u_i = min(0.0, u[ind1+1] - u[ind1]);
+      const double u_ii = 0.5*(
+          fabs(min(0.0, (u[ind1+2]-u[ind1+1])) - min(0.0, (u[ind1+1]-u[ind1]))) + 
+          fabs(min(0.0, (u[ind1+1]-u[ind1])) - min(0.0, (u[ind1]-u[ind1-1]))));
       const double v_i = min(0.0, v[ind0+nx] - v[ind0]);
-      Qxx[ind0] = C_Q*rho[ind0]*u_i*u_i;
-      Qyy[ind0] = C_Q*rho[ind0]*v_i*v_i;
+      const double v_ii = 0.5*(
+          fabs(min(0.0, (v[ind0+2*nx]-v[ind0+nx])) - min(0.0, (v[ind0+nx]-v[ind0]))) + 
+          fabs(min(0.0, (v[ind0+nx]-v[ind0])) - min(0.0, (v[ind0]-v[ind0-nx]))));
+      Qxx[ind0] = -C_Q*rho[ind0]*u_i*u_ii;
+      Qyy[ind0] = -C_Q*rho[ind0]*v_i*v_ii;
     }
   }
 
@@ -238,58 +237,114 @@ void shock_heating_and_work(
 }
 
 // Perform advection with monotonicity improvement
-void advect_mass(
-    const int nx, const int ny, Mesh* mesh, const double dt_h, double* rho, 
-    double* rho_old, double* F_x, double* F_y, const double* u, const double* v, 
+void advect_mass_and_energy(
+    const int nx, const int ny, Mesh* mesh, const int tt, const double dt_h, 
+    double* rho, double* rho_old, double* F_x, double* F_y, const double* u, const double* v, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
-  // Store the current value of rho
-  START_PROFILING(&compute_profile);
-
 #pragma omp parallel for
   for(int ii = 0; ii < nx*ny; ++ii) {
     rho_old[ii] = rho[ii];
   }
 
+  // Perform the dimensional splitting on the mass flux, with a the alternating
+  // fix for asymmetries
+  if(tt % 2) {
+    x_mass_and_energy_flux(
+        nx, ny, mesh, dt_h, rho, u, F_x, celldx, edgedx, celldy, edgedy);
+    y_mass_and_energy_flux(
+        nx, ny, mesh, dt_h, rho, v, F_y, celldx, edgedx, celldy, edgedy);
+  }
+  else {
+    y_mass_and_energy_flux(
+        nx, ny, mesh, dt_h, rho, v, F_y, celldx, edgedx, celldy, edgedy);
+    x_mass_and_energy_flux(
+        nx, ny, mesh, dt_h, rho, u, F_x, celldx, edgedx, celldy, edgedy);
+  }
+
+  handle_boundary(nx, ny, mesh, rho, NO_INVERT, PACK);
+}
+
+// Calculate the flux in the x direction
+void x_mass_and_energy_flux(
+    const int nx, const int ny, Mesh* mesh, const double dt_h, double* rho, 
+    const double* u, double* F_x, const double* celldx, const double* edgedx, 
+    const double* celldy, const double* edgedy)
+{
   // Compute the mass fluxes along the x edges
   // In the ghost cells flux is left as 0.0
+  START_PROFILING(&compute_profile);
 #pragma omp parallel for
   for(int ii = PAD; ii < ny-PAD; ++ii) {
 #pragma omp simd
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
-      const double rho_x_diff = (rho[ind0]-rho[ind0-1]);
-      const double rho_y_diff = (rho[ind0]-rho[ind0-nx]);
+      const double rho_diff = (rho[ind0]-rho[ind0-1]);
 
       // Van leer limiter
-      double limiterx = 0.0;
-      if(rho_x_diff) {
+      double limiter = 0.0;
+      if(rho_diff) {
         const double smoothness = (u[ind1] >= 0.0) 
-          ? (rho[ind0-1]-rho[ind0-2])/rho_x_diff
-          : (rho[ind0+1]-rho[ind0])/rho_x_diff;
-        limiterx = (smoothness + fabs(smoothness))/(1.0+fabs(smoothness));
-      }
-
-      // Van leer limiter
-      double limitery = 0.0;
-      if(rho_y_diff) {
-        const double smoothness = (v[ind0] >= 0.0) 
-          ? (rho[ind0-nx]-rho[ind0-2*nx])/rho_y_diff
-          : (rho[ind0+nx]-rho[ind0])/rho_y_diff;
-        limitery = (smoothness + fabs(smoothness))/(1.0+fabs(smoothness));
+          ? (rho[ind0-1]-rho[ind0-2])/rho_diff
+          : (rho[ind0+1]-rho[ind0])/rho_diff;
+        limiter = (smoothness + fabs(smoothness))/(1.0+fabs(smoothness));
       }
 
       // Calculate the flux
-      const double rho_x_upwind = (u[ind1] >= 0.0) ? rho[ind0-1] : rho[ind0];
-      F_x[ind1] = (u[ind1]*rho_x_upwind+
-          0.5*fabs(u[ind1])*(1.0-fabs((u[ind1]*dt_h)/celldx[jj]))*limiterx*rho_x_diff);
-      const double rho_y_upwind = (v[ind0] >= 0.0) ? rho[ind0-nx] : rho[ind0];
-      F_y[ind0] = (v[ind0]*rho_y_upwind+
-          0.5*fabs(v[ind0])*(1.0-fabs((v[ind0]*dt_h)/celldy[ii]))*limitery*rho_y_diff);
+      const double rho_upwind = (u[ind1] >= 0.0) ? rho[ind0-1] : rho[ind0];
+      F_x[ind1] = (u[ind1]*rho_upwind+
+          0.5*fabs(u[ind1])*(1.0-fabs((u[ind1]*dt_h)/celldx[jj]))*limiter*rho_diff);
     }
   }
-  STOP_PROFILING(&compute_profile, "advect_mass");
+  STOP_PROFILING(&compute_profile, "advect_mass_and_energy");
 
   handle_boundary(nx+1, ny, mesh, F_x, INVERT_X, PACK);
+
+  // Calculate the new density values
+  START_PROFILING(&compute_profile);
+#pragma omp parallel for
+  for(int ii = PAD; ii < ny-PAD; ++ii) {
+#pragma omp simd
+    for(int jj = PAD; jj < nx-PAD; ++jj) {
+      rho[ind0] -= dt_h*
+        (edgedx[jj+1]*F_x[ind1+1] - edgedx[jj]*F_x[ind1])/ 
+        (celldx[jj]*celldy[ii]);
+    }
+  }
+  STOP_PROFILING(&compute_profile, "advect_mass_and_energy");
+}
+
+// Calculate the flux in the y direction
+void y_mass_and_energy_flux(
+    const int nx, const int ny, Mesh* mesh, const double dt_h, double* rho, 
+    const double* v, double* F_y, const double* celldx, const double* edgedx, 
+    const double* celldy, const double* edgedy)
+{
+  // Compute the mass flux along the y edges
+  // In the ghost cells flux is left as 0.0
+  START_PROFILING(&compute_profile);
+#pragma omp parallel for
+  for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
+#pragma omp simd
+    for(int jj = PAD; jj < nx-PAD; ++jj) {
+      const double rho_diff = (rho[ind0]-rho[ind0-nx]);
+
+      // Van leer limiter
+      double limiter = 0.0;
+      if(rho_diff) {
+        const double smoothness = (v[ind0] >= 0.0) 
+          ? (rho[ind0-nx]-rho[ind0-2*nx])/rho_diff
+          : (rho[ind0+nx]-rho[ind0])/rho_diff;
+        limiter = (smoothness + fabs(smoothness))/(1.0+fabs(smoothness));
+      }
+
+      // Calculate the flux
+      const double rho_upwind = (v[ind0] >= 0.0) ? rho[ind0-nx] : rho[ind0];
+      F_y[ind0] = (v[ind0]*rho_upwind+
+          0.5*fabs(v[ind0])*(1.0-fabs((v[ind0]*dt_h)/celldx[jj]))*limiter*rho_diff);
+    }
+  }
+  STOP_PROFILING(&compute_profile, "advect_mass_and_energy");
+
   handle_boundary(nx, ny+1, mesh, F_y, INVERT_Y, PACK);
 
   // Calculate the new density values
@@ -299,13 +354,11 @@ void advect_mass(
 #pragma omp simd
     for(int jj = PAD; jj < nx-PAD; ++jj) {
       rho[ind0] -= dt_h*
-        (edgedy[ii+1]*F_x[ind1+1] - edgedy[ii]*F_x[ind1]+
-         edgedx[jj+1]*F_y[ind0+nx] - edgedx[jj]*F_y[ind0])/
+        (edgedy[ii+1]*F_y[ind0+nx] - edgedy[ii]*F_y[ind0])/
         (celldx[jj]*celldy[ii]);
     }
   }
-  STOP_PROFILING(&compute_profile, "advect_mass");
-  handle_boundary(nx, ny, mesh, rho, NO_INVERT, PACK);
+  STOP_PROFILING(&compute_profile, "advect_mass_and_energy");
 }
 
 // Advect momentum according to the velocity

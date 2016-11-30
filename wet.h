@@ -4,12 +4,12 @@
 
 // Controllable parameters for the application
 #define GAM 1.4
-#define C_Q 2.5 // Suggested between 1.0 and 2.0
+#define C_Q 2.0
 #define C_M (1.5/C_T)
 
 // Constitutes an individual solve of a mesh
 void solve_hydro(
-    Mesh* mesh, int first_step, double* P, double* rho, double* rho_old, 
+    Mesh* mesh, int tt, double* P, double* rho, double* rho_old, 
     double* e, double* u, double*v , double* rho_u, double* rho_v, 
     double* Qxx, double* Qyy, double* F_x, double* F_y, double* uF_x, 
     double* uF_y, double* vF_x, double* vF_y);
@@ -19,8 +19,8 @@ void equation_of_state(
 
 void set_timestep(
     const int nx, const int ny, double* Qxx, double* Qyy, const double* rho, 
-    const double* u, const double* v, const double* e, Mesh* mesh, const int first_step,
-    const double* edgedx, const double* edgedy, const double* celldx, const double* celldy);
+    const double* e, Mesh* mesh, const int first_step,
+    const double* celldx, const double* celldy);
 
 void lagrangian_step(
     const int nx, const int ny, Mesh* mesh, const double dt, double* rho_u, 
@@ -39,10 +39,22 @@ void shock_heating_and_work(
     const double* Qxx, const double* Qyy, const double* celldx, const double* celldy);
 
 // Perform advection with monotonicity improvement
-void advect_mass(
-    const int nx, const int ny, Mesh* mesh, const double dt_h, double* rho, 
-    double* rho_old, double* F_x, double* F_y, const double* u, const double* v, 
+void advect_mass_and_energy(
+    const int nx, const int ny, Mesh* mesh, const int tt, const double dt_h, 
+    double* rho, double* rho_old, double* F_x, double* F_y, const double* u, const double* v, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy);
+
+// Calculate the flux in the x direction
+void x_mass_and_energy_flux(
+    const int nx, const int ny, Mesh* mesh, const double dt_h, double* rho, 
+    const double* u, double* F_x, const double* celldx, const double* edgedx, 
+    const double* celldy, const double* edgedy);
+
+// Calculate the flux in the y direction
+void y_mass_and_energy_flux(
+    const int nx, const int ny, Mesh* mesh, const double dt_h, double* rho, 
+    const double* v, double* F_y, const double* celldx, const double* edgedx, 
+    const double* celldy, const double* edgedy);
 
 // Advect momentum according to the velocity
 void advect_momentum(

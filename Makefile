@@ -5,8 +5,8 @@ CFLAGS_INTEL	= -O3 -g -qopenmp -no-prec-div -xhost -std=gnu99
 OPTIONS		  	= -DENABLE_PROFILING -DMPI -DDEBUG
 
 # Default compiler
-MULTI_COMPILER   = mpiicc
-MULTI_LINKER     = mpiicc
+MULTI_COMPILER   = mpicc
+MULTI_LINKER     = mpicc
 MULTI_FLAGS      = $(CFLAGS_$(COMPILER))
 MULTI_LDFLAGS    =
 MULTI_BUILD_DIR  = ../obj
