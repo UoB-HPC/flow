@@ -482,13 +482,41 @@ void advect_energy(
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
       // Use MC limiter to get slope of energy
       const double invdx = 1.0/edgedx[jj];
-      const double invdy = 1.0/edgedy[ii];
       const double a_x_0 = 0.5*invdx*(e[ind0]-e[ind0-2]);
       const double b_x_0 = 2.0*invdx*(e[ind0-1]-e[ind0-2]);
       const double c_x_0 = 2.0*invdx*(e[ind0]-e[ind0-1]);
       const double a_x_1 = 0.5*invdx*(e[ind0+1]-e[ind0-1]);
       const double b_x_1 = 2.0*invdx*(e[ind0]-e[ind0-1]);
       const double c_x_1 = 2.0*invdx*(e[ind0+1]-e[ind0]);
+
+      // Calculate the interpolated densities
+      const double edge_e_x = (u[ind1] > 0.0)
+        ? e[ind0-1] + 0.5*minmod(minmod(a_x_0, b_x_0), c_x_0)*(celldx[jj-1] - u[ind1]*dt)
+        : e[ind0] - 0.5*minmod(minmod(a_x_1, b_x_1), c_x_1)*(celldx[jj] + u[ind1]*dt);
+
+      // Update the fluxes to now include the contribution from energy
+      F_x[ind1] = edgedy[ii]*edge_e_x*F_x[ind1]; 
+    }
+  }
+
+  // Calculate the new energy values
+#pragma omp parallel for
+  for(int ii = PAD; ii < ny-PAD; ++ii) { 
+#pragma omp simd
+    for(int jj = PAD; jj < nx-PAD; ++jj) {
+      e[ind0] = (rho[ind0] == 0.0) ? 0.0 : 
+        (rho_old[ind0]*e[ind0] - (dt_h/(celldx[jj]*celldy[ii]))*
+         (F_x[ind1+1] - F_x[ind1]))/rho_old[ind0];
+    }
+  }
+
+  // Calculate the zone edge centered energies, and flux
+#pragma omp parallel for
+  for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
+#pragma omp simd
+    for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
+      // Use MC limiter to get slope of energy
+      const double invdy = 1.0/edgedy[ii];
       const double a_y_0 = 0.5*invdy*(e[ind0]-e[ind0-2*nx]);
       const double b_y_0 = 2.0*invdy*(e[ind0-nx]-e[ind0-2*nx]);
       const double c_y_0 = 2.0*invdy*(e[ind0]-e[ind0-nx]);
@@ -496,16 +524,11 @@ void advect_energy(
       const double b_y_1 = 2.0*invdy*(e[ind0]-e[ind0-nx]);
       const double c_y_1 = 2.0*invdy*(e[ind0+nx]-e[ind0]);
 
-      // Calculate the interpolated densities
-      const double edge_e_x = (u[ind1] > 0.0)
-        ? e[ind0-1] + 0.5*minmod(minmod(a_x_0, b_x_0), c_x_0)*(celldx[jj-1] - u[ind1]*dt)
-        : e[ind0] - 0.5*minmod(minmod(a_x_1, b_x_1), c_x_1)*(celldx[jj] + u[ind1]*dt);
       const double edge_e_y = (v[ind0] > 0.0)
         ? e[ind0-nx] + 0.5*minmod(minmod(a_y_0, b_y_0), c_y_0)*(celldy[ii-1] - v[ind0]*dt)
         : e[ind0] - 0.5*minmod(minmod(a_y_1, b_y_1), c_y_1)*(celldy[ii] + v[ind0]*dt);
 
       // Update the fluxes to now include the contribution from energy
-      F_x[ind1] = edgedy[ii]*edge_e_x*F_x[ind1]; 
       F_y[ind0] = edgedx[jj]*edge_e_y*F_y[ind0]; 
     }
   }
@@ -517,7 +540,7 @@ void advect_energy(
     for(int jj = PAD; jj < nx-PAD; ++jj) {
       e[ind0] = (rho[ind0] == 0.0) ? 0.0 : 
         (rho_old[ind0]*e[ind0] - (dt_h/(celldx[jj]*celldy[ii]))*
-         (F_x[ind1+1] - F_x[ind1] + F_y[ind0+nx] - F_y[ind0]))/rho[ind0];
+         (F_y[ind0+nx] - F_y[ind0]))/rho[ind0];
     }
   }
 
