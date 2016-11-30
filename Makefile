@@ -5,15 +5,15 @@ CFLAGS_INTEL	= -O3 -g -qopenmp -no-prec-div -xhost -std=gnu99
 OPTIONS		  	= -DENABLE_PROFILING -DMPI -DDEBUG
 
 # Default compiler
-MULTI_COMPILER   = mpicc
-MULTI_LINKER     = mpicc
+MULTI_COMPILER   = mpiicc
+MULTI_LINKER     = mpiicc
 MULTI_FLAGS      = $(CFLAGS_$(COMPILER))
 MULTI_LDFLAGS    =
 MULTI_BUILD_DIR  = ../obj
 MULTI_DIR 			 = ..
 
 SRC  			 = $(wildcard *.c)
-SRC 			+= $(wildcard $(MULTI_DIR)/*.c)
+SRC 			+= $(subst main.c,, $(wildcard $(MULTI_DIR)/*.c))
 SRC_CLEAN  = $(subst $(MULTI_DIR)/,,$(SRC))
 OBJS 			 = $(patsubst %.c, $(MULTI_BUILD_DIR)/$(KERNELS)/%.o, $(SRC_CLEAN))
 
