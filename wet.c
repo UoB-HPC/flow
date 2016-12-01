@@ -305,9 +305,9 @@ void x_mass_and_energy_flux(
       const double c_x_1 = 2.0*invdx*(e[ind0+1]-e[ind0]);
 
       // Calculate the interpolated densities
-      const double edge_e_x = (u[ind1] > 0.0)
-        ? e[ind0-1] + 0.5*minmod(minmod(a_x_0, b_x_0), c_x_0)*(celldx[jj-1] - u[ind1]*dt_h)
-        : e[ind0] - 0.5*minmod(minmod(a_x_1, b_x_1), c_x_1)*(celldx[jj] + u[ind1]*dt_h);
+      const double edge_e_x = (u_tc > 0.0)
+        ? e[ind0-1] + 0.5*minmod(minmod(a_x_0, b_x_0), c_x_0)*(celldx[jj-1] - u_tc*dt_h)
+        : e[ind0] - 0.5*minmod(minmod(a_x_1, b_x_1), c_x_1)*(celldx[jj] + u_tc*dt_h);
 
       // Update the fluxes to now include the contribution from energy
       eF_x[ind1] = edgedy[ii]*edge_e_x*F_x[ind1]; 
@@ -391,9 +391,9 @@ void y_mass_and_energy_flux(
       const double b_y_1 = 2.0*invdy*(e[ind0]-e[ind0-nx]);
       const double c_y_1 = 2.0*invdy*(e[ind0+nx]-e[ind0]);
 
-      const double edge_e_y = (v[ind0] > 0.0)
-        ? e[ind0-nx] + 0.5*minmod(minmod(a_y_0, b_y_0), c_y_0)*(celldy[ii-1] - v[ind0]*dt_h)
-        : e[ind0] - 0.5*minmod(minmod(a_y_1, b_y_1), c_y_1)*(celldy[ii] + v[ind0]*dt_h);
+      const double edge_e_y = (v_tc > 0.0)
+        ? e[ind0-nx] + 0.5*minmod(minmod(a_y_0, b_y_0), c_y_0)*(celldy[ii-1] - v_tc*dt_h)
+        : e[ind0] - 0.5*minmod(minmod(a_y_1, b_y_1), c_y_1)*(celldy[ii] + v_tc*dt_h);
 
       // Update the fluxes to now include the contribution from energy
       eF_y[ind0] = edgedx[jj]*edge_e_y*F_y[ind0]; 
