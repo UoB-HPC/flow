@@ -282,13 +282,10 @@ void x_mass_and_energy_flux(
         : (u[ind1]-u[ind1-1])/(2.0*celldx[jj]);
 
       const double du_upwind = (u[ind1+1]-u[ind1-1])/(2.0*celldx[jj]);
-      const double u_upwind_r = 
+      const double u_upwind = 
         (samesign(u[ind1+1], u[ind1]) && samesign(u[ind1], u[ind1-1]) &&
           samesign(du, du_upwind)) ? du_upwind : 0.0;
-
-      const double u_tc = (u[ind1] > 0.0) 
-        ? u[ind1]-0.5*u[ind1]*dt*u_upwind_r
-        : u[ind1]-0.5*u[ind1]*dt*u_upwind_r;
+      const double u_tc = u[ind1]-0.5*u[ind1]*dt*u_upwind;
 
       // Calculate the flux
       const double rho_upwind = (u_tc >= 0.0) ? rho[ind0-1] : rho[ind0];
@@ -369,13 +366,11 @@ void y_mass_and_energy_flux(
         : (v[ind0]-v[ind0-nx])/(2.0*celldx[jj]);
 
       const double du_upwind = (v[ind0+nx]-v[ind0-nx])/(2.0*celldx[jj]);
-      const double u_upwind_r = 
+      const double u_upwind = 
         (samesign(v[ind0+nx], v[ind0]) && samesign(v[ind0], v[ind0-nx]) &&
           samesign(du, du_upwind)) ? du_upwind : 0.0;
 
-      const double v_tc = (v[ind0] > 0.0) 
-        ? v[ind0]-0.5*v[ind0]*dt*u_upwind_r
-        : v[ind0]-0.5*v[ind0]*dt*u_upwind_r;
+      const double v_tc = v[ind0]-0.5*v[ind0]*dt*u_upwind;
 
       // Calculate the flux
       const double rho_upwind = (v_tc >= 0.0) ? rho[ind0-nx] : rho[ind0];
@@ -433,27 +428,6 @@ void advect_momentum(
     const double* rho, const double* F_x, const double* F_y, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
-#if 0
-  // Update the momenta by the artificial viscous stresses
-#pragma omp parallel for
-  for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
-#pragma omp simd
-    for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
-      // Calculate the zone edge centered density
-      const double rho_edge_x = 
-        (rho[ind0]*celldx[jj]*celldy[ii] + rho[ind0-1]*celldx[jj-1]*celldy[ii]) / 
-        (2.0*edgedx[jj]*celldy[ii]);
-      const double rho_edge_y = 
-        (rho[ind0]*celldx[jj]*celldy[ii] + rho[ind0-nx]*celldx[jj]*celldy[ii-1]) / 
-        (2.0*celldx[jj]*edgedy[ii]);
-
-      // Find the velocities from the momenta and edge centered mass densities
-      u[ind1] = (rho_edge_x == 0.0) ? 0.0 : rho_u[ind1] / rho_edge_x;
-      v[ind0] = (rho_edge_y == 0.0) ? 0.0 : rho_v[ind0] / rho_edge_y;
-    }
-  }
-#endif // if 0
-
   if(tt % 2) {
     ux_momentum_flux(
         nx, ny, mesh, dt_h, dt, u, v, uF_x, rho_u, rho, F_x, edgedx, edgedy, celldx, celldy);
