@@ -446,209 +446,183 @@ void advect_momentum(
     const double* rho, const double* F_x, const double* F_y, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
+  double* u_new = (double*)malloc(sizeof(double)*(nx+1)*(ny+1));
+  double* v_new = (double*)malloc(sizeof(double)*(nx+1)*(ny+1));
+
+  if(tt % 2 == 0) {
+    ux_momentum_flux(
+        nx, ny, mesh, dt_h, dt, u, v, uF_x, rho_u, rho, F_x, edgedx, edgedy, celldx, celldy);
+
+#pragma omp parallel for
+    for(int ii = PAD; ii < ny-PAD; ++ii) {
+#pragma omp simd
+      for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
+        rho_u[ind1] -= dt_h*(uF_x[ind0] - uF_x[ind0-1])/(edgedx[jj]*celldy[ii]);
+        const double rho_edge_x = 
+          (rho[ind0]*celldx[jj]*celldy[ii] + rho[ind0-1]*celldx[jj - 1]*celldy[ii])/ 
+          (2.0*edgedx[jj]*celldy[ii]);
+        u_new[ind1] = (rho_edge_x == 0.0) ? 0.0 : rho_u[ind1] / rho_edge_x;
+      }
+    }
+
+    handle_boundary(nx+1, ny, mesh, u_new, INVERT_X, PACK);
+
+    uy_momentum_flux(
+        nx, ny, mesh, dt_h, dt, u_new, v, uF_y, rho_u, rho, F_y, edgedx, edgedy, celldx, celldy);
+
+    // Calculate the axial momentum
+#pragma omp parallel for
+    for(int ii = PAD; ii < ny-PAD; ++ii) {
+#pragma omp simd
+      for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
+        rho_u[ind1] -= dt_h*(uF_y[ind1+(nx+1)] - uF_y[ind1])/(celldx[jj]*edgedy[ii]);
+      }
+    }
+
+    vx_momentum_flux(
+        nx, ny, mesh, dt_h, dt, u, v, vF_x, rho_v, rho, F_x, edgedx, edgedy, celldx, celldy);
+
+#pragma omp parallel for
+    for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
+#pragma omp simd
+      for(int jj = PAD; jj < nx-PAD; ++jj) {
+        rho_v[ind0] -= dt_h*(vF_x[ind1+1] - vF_x[ind1])/(edgedx[jj]*celldy[ii]);
+        const double rho_edge_y = 
+          (rho[ind0]*celldx[jj]*celldy[ii] + rho[ind0-nx]*celldx[jj]*celldy[ii - 1])/ 
+          (2.0*celldx[jj]*edgedy[ii]);
+        v_new[ind0] = (rho_edge_y == 0.0) ? 0.0 : rho_v[ind0] / rho_edge_y;
+      }
+    }
+
+    handle_boundary(nx, ny+1, mesh, v_new, INVERT_Y, PACK);
+
+    vy_momentum_flux(
+        nx, ny, mesh, dt_h, dt, u, v_new, vF_y, rho_v, rho, F_y, edgedx, edgedy, celldx, celldy);
+
+    START_PROFILING(&compute_profile);
+#pragma omp parallel for
+    for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
+#pragma omp simd
+      for(int jj = PAD; jj < nx-PAD; ++jj) {
+        rho_v[ind0] -= dt_h*(vF_y[ind0] - vF_y[ind0-nx])/(celldx[jj]*edgedy[ii]);
+      }
+    }
+  }
+  else {
+    uy_momentum_flux(
+        nx, ny, mesh, dt_h, dt, u, v, uF_y, rho_u, rho, F_y, edgedx, edgedy, celldx, celldy);
+
+    // Calculate the axial momentum
+#pragma omp parallel for
+    for(int ii = PAD; ii < ny-PAD; ++ii) {
+#pragma omp simd
+      for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
+        rho_u[ind1] -= dt_h*(uF_y[ind1+(nx+1)] - uF_y[ind1])/(celldx[jj]*edgedy[ii]);
+        const double rho_edge_x = 
+          (rho[ind0]*celldx[jj]*celldy[ii] + rho[ind0-1]*celldx[jj - 1]*celldy[ii])/ 
+          (2.0*edgedx[jj]*celldy[ii]);
+        u_new[ind1] = (rho_edge_x == 0.0) ? 0.0 : rho_u[ind1] / rho_edge_x;
+      }
+    }
+    handle_boundary(nx+1, ny, mesh, u_new, INVERT_X, PACK);
+
+    ux_momentum_flux(
+        nx, ny, mesh, dt_h, dt, u, v, uF_x, rho_u, rho, F_x, edgedx, edgedy, celldx, celldy);
+
+#pragma omp parallel for
+    for(int ii = PAD; ii < ny-PAD; ++ii) {
+#pragma omp simd
+      for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
+        rho_u[ind1] -= dt_h*(uF_x[ind0] - uF_x[ind0-1])/(edgedx[jj]*celldy[ii]);
+      }
+    }
+
+    vy_momentum_flux(
+        nx, ny, mesh, dt_h, dt, u, v, vF_y, rho_v, rho, F_y, edgedx, edgedy, celldx, celldy);
+
+#pragma omp parallel for
+    for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
+#pragma omp simd
+      for(int jj = PAD; jj < nx-PAD; ++jj) {
+        rho_v[ind0] -= dt_h*(vF_y[ind0] - vF_y[ind0-nx])/(celldx[jj]*edgedy[ii]);
+        const double rho_edge_y = 
+          (rho[ind0]*celldx[jj]*celldy[ii] + rho[ind0-nx]*celldx[jj]*celldy[ii - 1])/ 
+          (2.0*celldx[jj]*edgedy[ii]);
+        v[ind0] = (rho_edge_y == 0.0) ? 0.0 : rho_v[ind0] / rho_edge_y;
+      }
+    }
+
+    handle_boundary(nx, ny+1, mesh, v_new, INVERT_Y, PACK);
+
+    vx_momentum_flux(
+        nx, ny, mesh, dt_h, dt, u, v, vF_x, rho_v, rho, F_x, edgedx, edgedy, celldx, celldy);
+
+#pragma omp parallel for
+    for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
+#pragma omp simd
+      for(int jj = PAD; jj < nx-PAD; ++jj) {
+        rho_v[ind0] -= dt_h*(vF_x[ind1+1] - vF_x[ind1])/(edgedx[jj]*celldy[ii]);
+      }
+    }
+  }
+
+  free(u_new);
+  free(v_new);
+}
+
+void ux_momentum_flux(
+    const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
+    double* u, double* v, double* uF_x, double* rho_u, const double* rho, const double* F_x, 
+    const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
+{
   // Calculate the cell centered x momentum fluxes in the x direction
 #pragma omp parallel for
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
 #pragma omp simd
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
       const double invdx = 1.0/edgedx[jj];
-      const double invdy = 1.0/edgedy[ii];
-
-      // Construct all required slopes for the stencil to interpolate the
-      // velocities at the cell centers
       const double S_L_0 = invdx*(u[ind1] - u[ind1-1]);
       const double S_C_0 = invdx*(u[ind1+1] - u[ind1]);
       const double S_R_0 = invdx*(u[ind1+2] - u[ind1+1]);
-      const double S_D_1 = invdy*(v[ind0] - v[ind0-nx]);
-      const double S_C_1 = invdy*(v[ind0+nx] - v[ind0]);
-      const double S_U_1 = invdy*(v[ind0+2*nx] - v[ind0+nx]);
-
-      // Construct the fluxes
       const double f_x = edgedy[ii]*0.5*(F_x[ind1] + F_x[ind1+1]); 
-      const double f_y = edgedx[jj]*0.5*(F_y[ind0] + F_y[ind0-1]);
       const double u_cell_x = 0.5*(u[ind1]+u[ind1+1]);
-      const double v_cell_y = 0.5*(v[ind0]+v[ind0-nx]);
-
-      // Construct the fluxes from the slopes
       uF_x[ind0] = f_x*((u_cell_x >= 0.0) 
           ? u[ind1] + 0.5*minmod(S_L_0, S_C_0)*(edgedx[jj]+u_cell_x*dt)
           : u[ind1+1] - 0.5*minmod(S_C_0, S_R_0)*(edgedx[jj]-u_cell_x*dt));
+    }
+  }
+
+  handle_boundary(nx, ny, mesh, uF_x, NO_INVERT, PACK);
+}
+
+void uy_momentum_flux(
+    const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
+    double* u, double* v, double* uF_y, double* rho_u, const double* rho, 
+    const double* F_y, 
+    const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
+{
+#pragma omp parallel for
+  for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
+#pragma omp simd
+    for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
+      const double invdy = 1.0/edgedy[ii];
+      const double S_D_1 = invdy*(u[ind1-(nx+1)] - u[ind1-2*(nx+1)]);
+      const double S_C_1 = invdy*(u[ind1] - u[ind1-(nx+1)]);
+      const double S_U_1 = invdy*(u[ind1+(nx+1)] - u[ind1]);
+      const double f_y = edgedx[jj]*0.5*(F_y[ind0] + F_y[ind0-1]);
+      const double v_cell_y = 0.5*(v[ind0]+v[ind0-1]);
       uF_y[ind1] = f_y*((v_cell_y >= 0.0)
           ? u[ind1-(nx+1)] + 0.5*minmod(S_D_1, S_C_1)*(edgedy[ii]+v_cell_y*dt)
           : u[ind1] - 0.5*minmod(S_C_1, S_U_1)*(edgedy[ii]-v_cell_y*dt));
     }
   }
-  STOP_PROFILING(&compute_profile, __func__);
-
-  handle_boundary(nx, ny, mesh, uF_x, NO_INVERT, PACK);
-  handle_boundary(nx+1, ny+1, mesh, uF_y, NO_INVERT, PACK);
-
-  // Calculate the axial momentum
-  START_PROFILING(&compute_profile);
-#pragma omp parallel for
-  for(int ii = PAD; ii < ny-PAD; ++ii) {
-#pragma omp simd
-    for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
-      rho_u[ind1] -= dt_h*
-        ((uF_x[ind0] - uF_x[ind0-1])/(edgedx[jj]*celldy[ii]) +
-         (uF_y[ind1+(nx+1)] - uF_y[ind1])/(celldx[jj]*edgedy[ii]));
-    }
-  }
-
-  /// ny DIMENSION ADVECTION
-  // Calculate the corner centered y momentum fluxes in the x direction
-  // Calculate the cell centered y momentum fluxes in the y direction
-#pragma omp parallel for
-  for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
-#pragma omp simd
-    for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
-      const double invdx = 1.0/edgedx[jj];
-      const double invdy = 1.0/edgedy[ii];
-
-      const double S_L_0 = invdx*(v[ind0-1] - v[ind0-2]);
-      const double S_C_0 = invdx*(v[ind0] - v[ind0-1]);
-      const double S_R_0 = invdx*(v[ind0+1] - v[ind0]);
-      const double S_D_1 = invdy*(u[ind1-(nx+1)] - u[ind1-2*(nx+1)]);
-      const double S_C_1 = invdy*(u[ind1] - u[ind1-(nx+1)]);
-      const double S_U_1 = invdy*(u[ind1+(nx+1)] - u[ind1]);
-
-      const double f_x = celldy[ii]*0.5*(F_x[ind1] + F_x[ind1-(nx+1)]);
-      const double f_y = celldx[jj]*0.5*(F_y[ind0] + F_y[ind0+nx]);
-      const double u_cell_x = 0.5*(u[ind1]+u[ind1-1]);
-      const double v_cell_y = 0.5*(v[ind0]+v[ind0+nx]);
-
-      vF_x[ind1] = f_x*((u_cell_x >= 0.0) 
-          ? v[ind0-1] + 0.5*minmod(S_L_0, S_C_0)*(edgedx[jj]+u_cell_x*dt)
-          : v[ind0] - 0.5*minmod(S_C_0, S_R_0)*(edgedx[jj]-u_cell_x*dt));
-      vF_y[ind0] = f_y*((v_cell_y >= 0.0)
-          ? v[ind0] + 0.5*minmod(S_D_1, S_C_1)*(edgedy[ii]+v_cell_y*dt)
-          : v[ind0+nx] - 0.5*minmod(S_C_1, S_U_1)*(edgedy[ii]-v_cell_y*dt));
-    }
-  }
-  STOP_PROFILING(&compute_profile, __func__);
-
-  handle_boundary(nx+1, ny+1, mesh, vF_x, NO_INVERT, PACK);
-  handle_boundary(nx, ny, mesh, vF_y, NO_INVERT, PACK);
-
-  START_PROFILING(&compute_profile);
-#pragma omp parallel for
-  for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
-#pragma omp simd
-    for(int jj = PAD; jj < nx-PAD; ++jj) {
-      rho_v[ind0] -= dt_h*(
-          (vF_x[ind1+1] - vF_x[ind1])/(edgedx[jj]*celldy[ii]) +
-          (vF_y[ind0] - vF_y[ind0-nx])/(celldx[jj]*edgedy[ii]));
-    }
-  }
-  STOP_PROFILING(&compute_profile, __func__);
-
-#if 0
-  if(tt % 2) {
-    ux_momentum_flux(
-        nx, ny, mesh, dt_h, dt, u, uF_x, rho_u, rho, F_x, edgedx, edgedy, celldx, celldy);
-    uy_momentum_flux(
-        nx, ny, mesh, dt_h, dt, u, uF_y, rho_u, rho, F_y, edgedx, edgedy, celldx, celldy);
-    vx_momentum_flux(
-        nx, ny, mesh, dt_h, dt, v, vF_x, rho_v, rho, F_x, edgedx, edgedy, celldx, celldy);
-    vy_momentum_flux(
-        nx, ny, mesh, dt_h, dt, v, vF_y, rho_v, rho, F_y, edgedx, edgedy, celldx, celldy);
-  }
-  else {
-    uy_momentum_flux(
-        nx, ny, mesh, dt_h, dt, u, uF_y, rho_u, rho, F_y, edgedx, edgedy, celldx, celldy);
-    ux_momentum_flux(
-        nx, ny, mesh, dt_h, dt, u, uF_x, rho_u, rho, F_x, edgedx, edgedy, celldx, celldy);
-    vy_momentum_flux(
-        nx, ny, mesh, dt_h, dt, v, vF_y, rho_v, rho, F_y, edgedx, edgedy, celldx, celldy);
-    vx_momentum_flux(
-        nx, ny, mesh, dt_h, dt, v, vF_x, rho_v, rho, F_x, edgedx, edgedy, celldx, celldy);
-  }
-#endif // if 0
-}
-
-void ux_momentum_flux(
-    const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
-    double* u, double* uF_x, double* rho_u, const double* rho, const double* F_x, 
-    const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
-{
-  // Calculate the cell centered x momentum fluxes in the x direction
-#pragma omp parallel for
-  for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
-#pragma omp simd
-    for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
-      const double invdx = 1.0/edgedx[jj];
-      const double S_L_0 = invdx*(u[ind1] - u[ind1-1]);
-      const double S_C_0 = invdx*(u[ind1+1] - u[ind1]);
-      const double S_R_0 = invdx*(u[ind1+2] - u[ind1+1]);
-      const double f_x = edgedy[ii]*0.5*(F_x[ind1] + F_x[ind1+1]); 
-      const double u_cell_x = 0.5*(u[ind1]+u[ind1+1]);
-      uF_x[ind0] = f_x*((u_cell_x >= 0.0) 
-          ? u[ind1] + 0.5*minmod(S_L_0, S_C_0)*(edgedx[jj]+u_cell_x*dt)
-          : u[ind1+1] - 0.5*minmod(S_C_0, S_R_0)*(edgedx[jj]-u_cell_x*dt));
-    }
-  }
-
-  handle_boundary(nx, ny, mesh, uF_x, NO_INVERT, PACK);
-
-#pragma omp parallel for
-  for(int ii = PAD; ii < ny-PAD; ++ii) {
-#pragma omp simd
-    for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
-      rho_u[ind1] -= dt_h*(uF_x[ind0] - uF_x[ind0-1])/(edgedx[jj]*celldy[ii]);
-
-      const double rho_edge_x = 
-        (rho[ind0]*celldx[jj]*celldy[ii] + rho[ind0-1]*celldx[jj - 1]*celldy[ii])/ 
-        (2.0*edgedx[jj]*celldy[ii]);
-      u[ind1] = (rho_edge_x == 0.0) ? 0.0 : rho_u[ind1] / rho_edge_x;
-    }
-  }
-
-  handle_boundary(nx+1, ny, mesh, u, NO_INVERT, PACK);
-}
-
-void uy_momentum_flux(
-    const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
-    double* u, double* uF_y, double* rho_u, const double* rho, const double* F_y, 
-    const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
-{
-#pragma omp parallel for
-  for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
-#pragma omp simd
-    for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
-      const double invdy = 1.0/edgedy[ii];
-      const double S_D_1 = invdy*(u[ind1-(nx+1)] - u[ind1-2*(nx+1)]);
-      const double S_C_1 = invdy*(u[ind1] - u[ind1-(nx+1)]);
-      const double S_U_1 = invdy*(u[ind1+(nx+1)] - u[ind1]);
-      const double f_y = edgedx[jj]*0.5*(F_y[ind0] + F_y[ind0-1]);
-      const double u_cell_y = 0.5*(u[ind1]+u[ind1-(nx+1)]);
-      uF_y[ind1] = f_y*((u_cell_y >= 0.0)
-          ? u[ind1-(nx+1)] + 0.5*minmod(S_D_1, S_C_1)*(edgedy[ii]+u_cell_y*dt)
-          : u[ind1] - 0.5*minmod(S_C_1, S_U_1)*(edgedy[ii]-u_cell_y*dt));
-    }
-  }
 
   handle_boundary(nx+1, ny+1, mesh, uF_y, NO_INVERT, PACK);
-
-  // Calculate the axial momentum
-#pragma omp parallel for
-  for(int ii = PAD; ii < ny-PAD; ++ii) {
-#pragma omp simd
-    for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
-      rho_u[ind1] -= dt_h*(uF_y[ind1+(nx+1)] - uF_y[ind1])/(celldx[jj]*edgedy[ii]);
-
-      const double rho_edge_x = 
-        (rho[ind0]*celldx[jj]*celldy[ii] + rho[ind0-1]*celldx[jj - 1]*celldy[ii])/ 
-        (2.0*edgedx[jj]*celldy[ii]);
-      u[ind1] = (rho_edge_x == 0.0) ? 0.0 : rho_u[ind1] / rho_edge_x;
-    }
-  }
-
-  handle_boundary(nx+1, ny, mesh, u, NO_INVERT, PACK);
 }
 
 void vx_momentum_flux(
     const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
-    double* v, double* vF_x, double* rho_v, const double* rho, const double* F_x, 
+    const double* u, double* v, double* vF_x, double* rho_v, const double* rho, const double* F_x, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
   // Calculate the corner centered y momentum fluxes in the x direction
@@ -662,34 +636,19 @@ void vx_momentum_flux(
       const double S_C_0 = invdx*(v[ind0] - v[ind0-1]);
       const double S_R_0 = invdx*(v[ind0+1] - v[ind0]);
       const double f_x = celldy[ii]*0.5*(F_x[ind1] + F_x[ind1-(nx+1)]);
-      const double v_cell_x = 0.5*(v[ind0]+v[ind0-1]);
-      vF_x[ind1] = f_x*((v_cell_x >= 0.0) 
-          ? v[ind0-1] + 0.5*minmod(S_L_0, S_C_0)*(edgedx[jj]+v_cell_x*dt)
-          : v[ind0] - 0.5*minmod(S_C_0, S_R_0)*(edgedx[jj]-v_cell_x*dt));
+      const double u_cell_x = 0.5*(u[ind1]+u[ind1-(nx+1)]);
+      vF_x[ind1] = f_x*((u_cell_x >= 0.0) 
+          ? v[ind0-1] + 0.5*minmod(S_L_0, S_C_0)*(edgedx[jj]+u_cell_x*dt)
+          : v[ind0] - 0.5*minmod(S_C_0, S_R_0)*(edgedx[jj]-u_cell_x*dt));
     }
   }
 
   handle_boundary(nx+1, ny+1, mesh, vF_x, NO_INVERT, PACK);
-
-#pragma omp parallel for
-  for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
-#pragma omp simd
-    for(int jj = PAD; jj < nx-PAD; ++jj) {
-      rho_v[ind0] -= dt_h*(vF_x[ind1+1] - vF_x[ind1])/(edgedx[jj]*celldy[ii]);
-
-      const double rho_edge_y = 
-        (rho[ind0]*celldx[jj]*celldy[ii] + rho[ind0-nx]*celldx[jj]*celldy[ii - 1])/ 
-        (2.0*celldx[jj]*edgedy[ii]);
-      v[ind0] = (rho_edge_y == 0.0) ? 0.0 : rho_v[ind0] / rho_edge_y;
-    }
-  }
-
-  handle_boundary(nx, ny+1, mesh, v, NO_INVERT, PACK);
 }
 
 void vy_momentum_flux(
     const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
-    double* v, double* vF_y, double* rho_v, const double* rho, const double* F_y, 
+    double* u, double* v, double* vF_y, double* rho_v, const double* rho, const double* F_y, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
 #pragma omp parallel for
@@ -709,22 +668,6 @@ void vy_momentum_flux(
   }
 
   handle_boundary(nx, ny, mesh, vF_y, NO_INVERT, PACK);
-
-  START_PROFILING(&compute_profile);
-#pragma omp parallel for
-  for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
-#pragma omp simd
-    for(int jj = PAD; jj < nx-PAD; ++jj) {
-      rho_v[ind0] -= dt_h*(vF_y[ind0] - vF_y[ind0-nx])/(celldx[jj]*edgedy[ii]);
-
-      const double rho_edge_y = 
-        (rho[ind0]*celldx[jj]*celldy[ii] + rho[ind0-nx]*celldx[jj]*celldy[ii - 1])/ 
-        (2.0*celldx[jj]*edgedy[ii]);
-      v[ind0] = (rho_edge_y == 0.0) ? 0.0 : rho_v[ind0] / rho_edge_y;
-    }
-  }
-
-  handle_boundary(nx, ny+1, mesh, v, NO_INVERT, PACK);
 }
 
 // Prints some conservation values

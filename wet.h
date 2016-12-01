@@ -4,7 +4,7 @@
 
 // Controllable parameters for the application
 #define GAM 1.4
-#define C_Q 2.0
+#define C_Q 3.0
 #define C_M (1.5/C_T)
 
 // Constitutes an individual solve of a mesh
@@ -67,19 +67,24 @@ void advect_momentum(
 
 void ux_momentum_flux(
     const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
-    double* u, double* uF_x, double* rho_u, const double* rho, const double* F_x, 
+    double* u, double* v, double* uF_x, double* rho_u, const double* rho, 
+    const double* F_x, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy);
+
 void uy_momentum_flux(
     const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
-    double* u, double* uF_y, double* rho_u, const double* rho, const double* F_y, 
+    double* u, double* v, double* uF_y, double* rho_u, const double* rho, 
+    const double* F_y, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy);
+
 void vx_momentum_flux(
     const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
-    double* v, double* vF_x, double* rho_v, const double* rho, const double* F_x, 
+    const double* u, double* v, double* vF_x, double* rho_v, const double* rho, const double* F_x, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy);
+
 void vy_momentum_flux(
     const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
-    double* v, double* vF_y, double* rho_v, const double* rho, const double* F_y, 
+    double* u, double* v, double* vF_y, double* rho_v, const double* rho, const double* F_y, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy);
 
 // Write out data for visualisation in visit
