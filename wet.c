@@ -17,14 +17,10 @@ void solve_hydro(
   if(mesh->rank == MASTER)
     printf("dt %.12e dt_h %.12e\n", mesh->dt, mesh->dt_h);
 
-  set_timestep(
-      mesh->local_nx, mesh->local_ny, Qxx, Qyy, rho, 
-      e, mesh, tt == 0, mesh->celldx, mesh->celldy);
-
   equation_of_state(
       mesh->local_nx, mesh->local_ny, P, rho, e);
 
-  lagrangian_step(
+  pressure_acceleration(
       mesh->local_nx, mesh->local_ny, mesh, mesh->dt, rho_u, rho_v, 
       u, v, P, rho, mesh->edgedx, mesh->edgedy, 
       mesh->celldx, mesh->celldy);
@@ -44,7 +40,7 @@ void solve_hydro(
 
   // Perform advection
   advect_mass_and_energy(
-      mesh->local_nx, mesh->local_ny, mesh, tt, mesh->dt_h, rho, e, rho_old, F_x, F_y, 
+      mesh->local_nx, mesh->local_ny, mesh, tt, mesh->dt, mesh->dt_h, rho, e, rho_old, F_x, F_y, 
       uF_x, uF_y, u, v, mesh->edgedx, mesh->edgedy, mesh->celldx, mesh->celldy);
 
   advect_momentum(
@@ -105,7 +101,7 @@ void set_timestep(
 
 // Calculate change in momentum caused by pressure gradients, and then extract
 // the velocities using edge centered density approximations
-void lagrangian_step(
+void pressure_acceleration(
     const int nx, const int ny, Mesh* mesh, const double dt, double* rho_u, 
     double* rho_v, double* u, double* v, const double* P, const double* rho,
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
@@ -212,21 +208,16 @@ void shock_heating_and_work(
   for(int ii = PAD; ii < ny-PAD; ++ii) {
 #pragma omp simd
     for(int jj = PAD; jj < nx-PAD; ++jj) {
-      if(rho[ind0] == 0.0) {
-        e[ind0] = 0.0;
-        continue;
-      }
-
       const double div_vel_x = (u[ind1+1] - u[ind1])/celldx[jj];
       const double div_vel_y = (v[ind0+nx] - v[ind0])/celldy[ii];
       const double div_vel_dt = (div_vel_x + div_vel_y)*dt_h;
+      const double e_q = e[ind0] - dt_h*(Qxx[ind0]*div_vel_x + Qyy[ind0]*div_vel_y)/rho[ind0];
 
       /// A working formulation that is second order in time for Pressure!?
       const double rho_c = rho[ind0]/(1.0 + div_vel_dt);
-      const double e_c = e[ind0] - (P[ind0]*div_vel_dt)/rho[ind0];
+      const double e_c = e_q - (P[ind0]*div_vel_dt)/rho[ind0];
       const double work = 0.5*div_vel_dt*(P[ind0] + (GAM-1.0)*e_c*rho_c)/rho[ind0];
-      const double shock_heating = dt_h*(Qxx[ind0]*div_vel_x + Qyy[ind0]*div_vel_y)/rho[ind0];
-      e[ind0] -= (work + shock_heating);
+      e[ind0] = (rho[ind0] == 0.0) ? 0.0 : e_q-work;
     }
   }
 
@@ -237,8 +228,8 @@ void shock_heating_and_work(
 
 // Perform advection with monotonicity improvement
 void advect_mass_and_energy(
-    const int nx, const int ny, Mesh* mesh, const int tt, const double dt_h, 
-    double* rho, double* e, double* rho_old, double* F_x, double* F_y, 
+    const int nx, const int ny, Mesh* mesh, const int tt, const double dt,
+    const double dt_h, double* rho, double* e, double* rho_old, double* F_x, double* F_y, 
     double* eF_x, double* eF_y, const double* u, const double* v, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
@@ -247,77 +238,26 @@ void advect_mass_and_energy(
     rho_old[ii] = rho[ii];
   }
 
-  // Perform the dimensional splitting on the mass flux, with a the alternating
-  // fix for asymmetries
-  // TODO: The energy calculations can be trivially merged in
-  if(tt % 2) {
+  if(tt % 2 == 0) {
     x_mass_and_energy_flux(
-        nx, ny, mesh, dt_h, rho, e, u, F_x, eF_x, celldx, edgedx, celldy, edgedy);
-
-    // Calculate the new energy values
-#pragma omp parallel for
-    for(int ii = PAD; ii < ny-PAD; ++ii) { 
-#pragma omp simd
-      for(int jj = PAD; jj < nx-PAD; ++jj) {
-        e[ind0] = (rho[ind0] == 0.0) ? 0.0 : 
-          (rho_old[ind0]*e[ind0] - (dt_h/(celldx[jj]*celldy[ii]))*
-           (eF_x[ind1+1] - eF_x[ind1]))/rho_old[ind0];
-      }
-    }
-
+        nx, ny, 1, mesh, dt, dt_h, rho, rho_old, e, u, F_x, eF_x, celldx, edgedx, celldy, edgedy);
     y_mass_and_energy_flux(
-        nx, ny, mesh, dt_h, rho, e, v, F_y, eF_y, celldx, edgedx, celldy, edgedy);
-
-    // Calculate the new energy values
-#pragma omp parallel for
-    for(int ii = PAD; ii < ny-PAD; ++ii) { 
-#pragma omp simd
-      for(int jj = PAD; jj < nx-PAD; ++jj) {
-        e[ind0] = (rho[ind0] == 0.0) ? 0.0 : 
-          (rho_old[ind0]*e[ind0] - (dt_h/(celldx[jj]*celldy[ii]))*
-           (eF_y[ind0+nx] - eF_y[ind0]))/rho[ind0];
-      }
-    }
+        nx, ny, 0, mesh, dt, dt_h, rho, rho_old, e, v, F_y, eF_y, celldx, edgedx, celldy, edgedy);
   }
   else {
     y_mass_and_energy_flux(
-        nx, ny, mesh, dt_h, rho, e, v, F_y, eF_y, celldx, edgedx, celldy, edgedy);
-
-    // Calculate the new energy values
-#pragma omp parallel for
-    for(int ii = PAD; ii < ny-PAD; ++ii) { 
-#pragma omp simd
-      for(int jj = PAD; jj < nx-PAD; ++jj) {
-        e[ind0] = (rho[ind0] == 0.0) ? 0.0 : 
-          (rho_old[ind0]*e[ind0] - (dt_h/(celldx[jj]*celldy[ii]))*
-           (eF_y[ind0+nx] - eF_y[ind0]))/rho_old[ind0];
-      }
-    }
-
+        nx, ny, 1, mesh, dt, dt_h, rho, rho_old, e, v, F_y, eF_y, celldx, edgedx, celldy, edgedy);
     x_mass_and_energy_flux(
-        nx, ny, mesh, dt_h, rho, e, u, F_x, eF_x, celldx, edgedx, celldy, edgedy);
-
-    // Calculate the new energy values
-#pragma omp parallel for
-    for(int ii = PAD; ii < ny-PAD; ++ii) { 
-#pragma omp simd
-      for(int jj = PAD; jj < nx-PAD; ++jj) {
-        e[ind0] = (rho[ind0] == 0.0) ? 0.0 : 
-          (rho_old[ind0]*e[ind0] - (dt_h/(celldx[jj]*celldy[ii]))*
-           (eF_x[ind1+1] - eF_x[ind1]))/rho[ind0];
-      }
-    }
+        nx, ny, 0, mesh, dt, dt_h, rho, rho_old, e, u, F_x, eF_x, celldx, edgedx, celldy, edgedy);
   }
-
-  handle_boundary(nx, ny, mesh, rho, NO_INVERT, PACK);
-  handle_boundary(nx, ny, mesh, e, NO_INVERT, PACK);
 }
 
 // Calculate the flux in the x direction
 void x_mass_and_energy_flux(
-    const int nx, const int ny, Mesh* mesh, const double dt_h, double* rho, 
-    double* e, const double* u, double* F_x, double* eF_x, const double* celldx, 
-    const double* edgedx, const double* celldy, const double* edgedy)
+    const int nx, const int ny, const int first, Mesh* mesh, const double dt, 
+    const double dt_h, double* rho, double* rho_old, double* e, const double* u, 
+    double* F_x, double* eF_x, const double* celldx, const double* edgedx, 
+    const double* celldy, const double* edgedy)
 {
   // Compute the mass fluxes along the x edges
   // In the ghost cells flux is left as 0.0
@@ -337,10 +277,23 @@ void x_mass_and_energy_flux(
         limiter = (smoothness + fabs(smoothness))/(1.0+fabs(smoothness));
       }
 
+      const double du = (u[ind1] > 0.0) 
+        ? (u[ind1+1]-u[ind1])/(2.0*celldx[jj]) 
+        : (u[ind1]-u[ind1-1])/(2.0*celldx[jj]);
+
+      const double du_upwind = (u[ind1+1]-u[ind1-1])/(2.0*celldx[jj]);
+      const double u_upwind_r = 
+        (samesign(u[ind1+1], u[ind1]) && samesign(u[ind1], u[ind1-1]) &&
+          samesign(du, du_upwind)) ? du_upwind : 0.0;
+
+      const double u_tc = (u[ind1] > 0.0) 
+        ? u[ind1]-0.5*u[ind1]*dt*u_upwind_r
+        : u[ind1]-0.5*u[ind1]*dt*u_upwind_r;
+
       // Calculate the flux
-      const double rho_upwind = (u[ind1] >= 0.0) ? rho[ind0-1] : rho[ind0];
-      F_x[ind1] = (u[ind1]*rho_upwind+
-          0.5*fabs(u[ind1])*(1.0-fabs((u[ind1]*dt_h)/celldx[jj]))*limiter*rho_diff);
+      const double rho_upwind = (u_tc >= 0.0) ? rho[ind0-1] : rho[ind0];
+      F_x[ind1] = (u_tc*rho_upwind+
+          0.5*fabs(u_tc)*(1.0-fabs((u_tc*dt_h)/celldx[jj]))*limiter*rho_diff);
 
       // Use MC limiter to get slope of energy
       const double invdx = 1.0/edgedx[jj];
@@ -373,16 +326,25 @@ void x_mass_and_energy_flux(
       rho[ind0] -= dt_h*
         (edgedx[jj+1]*F_x[ind1+1] - edgedx[jj]*F_x[ind1])/ 
         (celldx[jj]*celldy[ii]);
+      const double rho_e = (rho_old[ind0]*e[ind0] - 
+          (dt_h*(eF_x[ind1+1] - eF_x[ind1]))/(celldx[jj]*celldy[ii]));
+      e[ind0] = (first) 
+        ? (rho_old[ind0] == 0.0) ? 0.0 : rho_e/rho_old[ind0]
+        : (rho[ind0] == 0.0) ? 0.0 : rho_e/rho[ind0];
     }
   }
   STOP_PROFILING(&compute_profile, "advect_mass_and_energy");
+
+  handle_boundary(nx, ny, mesh, rho, NO_INVERT, PACK);
+  handle_boundary(nx, ny, mesh, e, NO_INVERT, PACK);
 }
 
 // Calculate the flux in the y direction
 void y_mass_and_energy_flux(
-    const int nx, const int ny, Mesh* mesh, const double dt_h, double* rho, 
-    double* e, const double* v, double* F_y, double* eF_y, const double* celldx, 
-    const double* edgedx, const double* celldy, const double* edgedy)
+    const int nx, const int ny, const int first, Mesh* mesh, const double dt,
+    const double dt_h, double* rho, double* rho_old, double* e, const double* v, 
+    double* F_y, double* eF_y, const double* celldx, const double* edgedx, 
+    const double* celldy, const double* edgedy)
 {
   // Compute the mass flux along the y edges
   // In the ghost cells flux is left as 0.0
@@ -402,10 +364,23 @@ void y_mass_and_energy_flux(
         limiter = (smoothness + fabs(smoothness))/(1.0+fabs(smoothness));
       }
 
+      const double du = (v[ind0] > 0.0) 
+        ? (v[ind0+nx]-v[ind0])/(2.0*celldx[jj]) 
+        : (v[ind0]-v[ind0-nx])/(2.0*celldx[jj]);
+
+      const double du_upwind = (v[ind0+nx]-v[ind0-nx])/(2.0*celldx[jj]);
+      const double u_upwind_r = 
+        (samesign(v[ind0+nx], v[ind0]) && samesign(v[ind0], v[ind0-nx]) &&
+          samesign(du, du_upwind)) ? du_upwind : 0.0;
+
+      const double v_tc = (v[ind0] > 0.0) 
+        ? v[ind0]-0.5*v[ind0]*dt*u_upwind_r
+        : v[ind0]-0.5*v[ind0]*dt*u_upwind_r;
+
       // Calculate the flux
-      const double rho_upwind = (v[ind0] >= 0.0) ? rho[ind0-nx] : rho[ind0];
-      F_y[ind0] = (v[ind0]*rho_upwind+
-          0.5*fabs(v[ind0])*(1.0-fabs((v[ind0]*dt_h)/celldx[jj]))*limiter*rho_diff);
+      const double rho_upwind = (v_tc >= 0.0) ? rho[ind0-nx] : rho[ind0];
+      F_y[ind0] = (v_tc*rho_upwind+
+          0.5*fabs(v_tc)*(1.0-fabs((v_tc*dt_h)/celldx[jj]))*limiter*rho_diff);
 
       // Use MC limiter to get slope of energy
       const double invdy = 1.0/edgedy[ii];
@@ -437,9 +412,17 @@ void y_mass_and_energy_flux(
       rho[ind0] -= dt_h*
         (edgedy[ii+1]*F_y[ind0+nx] - edgedy[ii]*F_y[ind0])/
         (celldx[jj]*celldy[ii]);
+      const double rho_e = (rho_old[ind0]*e[ind0] - 
+          (dt_h*(eF_y[ind0+nx] - eF_y[ind0]))/(celldx[jj]*celldy[ii]));
+      e[ind0] = (first) 
+        ? (rho_old[ind0] == 0.0) ? 0.0 : rho_e/rho_old[ind0]
+        : (rho[ind0] == 0.0) ? 0.0 : rho_e/rho[ind0];
     }
   }
   STOP_PROFILING(&compute_profile, "advect_mass_and_energy");
+
+  handle_boundary(nx, ny, mesh, rho, NO_INVERT, PACK);
+  handle_boundary(nx, ny, mesh, e, NO_INVERT, PACK);
 }
 
 // Advect momentum according to the velocity
@@ -450,7 +433,28 @@ void advect_momentum(
     const double* rho, const double* F_x, const double* F_y, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
-  if(tt % 2 == 0) {
+#if 0
+  // Update the momenta by the artificial viscous stresses
+#pragma omp parallel for
+  for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
+#pragma omp simd
+    for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
+      // Calculate the zone edge centered density
+      const double rho_edge_x = 
+        (rho[ind0]*celldx[jj]*celldy[ii] + rho[ind0-1]*celldx[jj-1]*celldy[ii]) / 
+        (2.0*edgedx[jj]*celldy[ii]);
+      const double rho_edge_y = 
+        (rho[ind0]*celldx[jj]*celldy[ii] + rho[ind0-nx]*celldx[jj]*celldy[ii-1]) / 
+        (2.0*celldx[jj]*edgedy[ii]);
+
+      // Find the velocities from the momenta and edge centered mass densities
+      u[ind1] = (rho_edge_x == 0.0) ? 0.0 : rho_u[ind1] / rho_edge_x;
+      v[ind0] = (rho_edge_y == 0.0) ? 0.0 : rho_v[ind0] / rho_edge_y;
+    }
+  }
+#endif // if 0
+
+  if(tt % 2) {
     ux_momentum_flux(
         nx, ny, mesh, dt_h, dt, u, v, uF_x, rho_u, rho, F_x, edgedx, edgedy, celldx, celldy);
 

@@ -4,7 +4,7 @@
 
 // Controllable parameters for the application
 #define GAM 1.4
-#define C_Q 2.5
+#define C_Q 2.0
 #define C_M (1.5/C_T)
 
 // Constitutes an individual solve of a mesh
@@ -22,7 +22,7 @@ void set_timestep(
     const double* e, Mesh* mesh, const int first_step,
     const double* celldx, const double* celldy);
 
-void lagrangian_step(
+void pressure_acceleration(
     const int nx, const int ny, Mesh* mesh, const double dt, double* rho_u, 
     double* rho_v, double* u, double* v, const double* P, const double* rho,
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy);
@@ -40,22 +40,24 @@ void shock_heating_and_work(
 
 // Perform advection with monotonicity improvement
 void advect_mass_and_energy(
-    const int nx, const int ny, Mesh* mesh, const int tt, const double dt_h, 
-    double* rho, double* e, double* rho_old, double* F_x, double* F_y, 
+    const int nx, const int ny, Mesh* mesh, const int tt, const double dt,
+    const double dt_h, double* rho, double* e, double* rho_old, double* F_x, double* F_y, 
     double* eF_x, double* eF_y, const double* u, const double* v, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy);
 
 // Calculate the flux in the x direction
 void x_mass_and_energy_flux(
-    const int nx, const int ny, Mesh* mesh, const double dt_h, double* rho, 
-    double* e, const double* u, double* F_x, double* eF_x, const double* celldx, 
-    const double* edgedx, const double* celldy, const double* edgedy);
+    const int nx, const int ny, const int first, Mesh* mesh, const double dt, 
+    const double dt_h, double* rho, double* rho_old, double* e, const double* u, 
+    double* F_x, double* eF_x, const double* celldx, const double* edgedx, 
+    const double* celldy, const double* edgedy);
 
 // Calculate the flux in the y direction
 void y_mass_and_energy_flux(
-    const int nx, const int ny, Mesh* mesh, const double dt_h, double* rho, 
-    double* e, const double* v, double* F_y, double* eF_y, const double* celldx, 
-    const double* edgedx, const double* celldy, const double* edgedy);
+    const int nx, const int ny, const int first, Mesh* mesh, const double dt,
+    const double dt_h, double* rho, double* rho_old, double* e, const double* v, 
+    double* F_y, double* eF_y, const double* celldx, const double* edgedx, 
+    const double* celldy, const double* edgedy);
 
 // Advect momentum according to the velocity
 void advect_momentum(
