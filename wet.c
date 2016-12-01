@@ -17,6 +17,10 @@ void solve_hydro(
   if(mesh->rank == MASTER)
     printf("dt %.12e dt_h %.12e\n", mesh->dt, mesh->dt_h);
 
+  set_timestep(
+      mesh->local_nx, mesh->local_ny, Qxx, Qyy, rho, 
+      e, mesh, tt == 0, mesh->celldx, mesh->celldy);
+
   equation_of_state(
       mesh->local_nx, mesh->local_ny, P, rho, e);
 
@@ -221,7 +225,7 @@ void shock_heating_and_work(
       const double rho_c = rho[ind0]/(1.0 + div_vel_dt);
       const double e_c = e[ind0] - (P[ind0]*div_vel_dt)/rho[ind0];
       const double work = 0.5*div_vel_dt*(P[ind0] + (GAM-1.0)*e_c*rho_c)/rho[ind0];
-      const double shock_heating = dt_h*(Qxx[ind0]*div_vel_x + Qyy[ind0]*div_vel_y)/rho_c;
+      const double shock_heating = dt_h*(Qxx[ind0]*div_vel_x + Qyy[ind0]*div_vel_y)/rho[ind0];
       e[ind0] -= (work + shock_heating);
     }
   }
@@ -446,9 +450,6 @@ void advect_momentum(
     const double* rho, const double* F_x, const double* F_y, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
-  double* u_new = (double*)malloc(sizeof(double)*(nx+1)*(ny+1));
-  double* v_new = (double*)malloc(sizeof(double)*(nx+1)*(ny+1));
-
   if(tt % 2 == 0) {
     ux_momentum_flux(
         nx, ny, mesh, dt_h, dt, u, v, uF_x, rho_u, rho, F_x, edgedx, edgedy, celldx, celldy);
@@ -566,9 +567,6 @@ void advect_momentum(
       }
     }
   }
-
-  free(u_new);
-  free(v_new);
 }
 
 void ux_momentum_flux(

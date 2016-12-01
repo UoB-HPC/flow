@@ -4,7 +4,7 @@
 
 // Controllable parameters for the application
 #define GAM 1.4
-#define C_Q 1.5
+#define C_Q 2.5
 #define C_M (1.5/C_T)
 
 // Constitutes an individual solve of a mesh
