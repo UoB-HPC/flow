@@ -458,17 +458,21 @@ void advect_momentum(
 #pragma omp simd
       for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
         rho_u[ind1] -= dt_h*(uF_x[ind0] - uF_x[ind0-1])/(edgedx[jj]*celldy[ii]);
+#if 0
         const double rho_edge_x = 
           (rho[ind0]*celldx[jj]*celldy[ii] + rho[ind0-1]*celldx[jj - 1]*celldy[ii])/ 
           (2.0*edgedx[jj]*celldy[ii]);
         u_new[ind1] = (rho_edge_x == 0.0) ? 0.0 : rho_u[ind1] / rho_edge_x;
+#endif // if 0
       }
     }
 
+#if 0
     handle_boundary(nx+1, ny, mesh, u_new, INVERT_X, PACK);
+#endif // if 0
 
     uy_momentum_flux(
-        nx, ny, mesh, dt_h, dt, u_new, v, uF_y, rho_u, rho, F_y, edgedx, edgedy, celldx, celldy);
+        nx, ny, mesh, dt_h, dt, u, v, uF_y, rho_u, rho, F_y, edgedx, edgedy, celldx, celldy);
 
     // Calculate the axial momentum
 #pragma omp parallel for
@@ -487,17 +491,21 @@ void advect_momentum(
 #pragma omp simd
       for(int jj = PAD; jj < nx-PAD; ++jj) {
         rho_v[ind0] -= dt_h*(vF_x[ind1+1] - vF_x[ind1])/(edgedx[jj]*celldy[ii]);
+#if 0
         const double rho_edge_y = 
           (rho[ind0]*celldx[jj]*celldy[ii] + rho[ind0-nx]*celldx[jj]*celldy[ii - 1])/ 
           (2.0*celldx[jj]*edgedy[ii]);
-        v_new[ind0] = (rho_edge_y == 0.0) ? 0.0 : rho_v[ind0] / rho_edge_y;
+        v[ind0] = (rho_edge_y == 0.0) ? 0.0 : rho_v[ind0] / rho_edge_y;
+#endif // if 0
       }
     }
 
-    handle_boundary(nx, ny+1, mesh, v_new, INVERT_Y, PACK);
+#if 0
+    handle_boundary(nx, ny+1, mesh, v, INVERT_Y, PACK);
+#endif // if 0
 
     vy_momentum_flux(
-        nx, ny, mesh, dt_h, dt, u, v_new, vF_y, rho_v, rho, F_y, edgedx, edgedy, celldx, celldy);
+        nx, ny, mesh, dt_h, dt, u, v, vF_y, rho_v, rho, F_y, edgedx, edgedy, celldx, celldy);
 
     START_PROFILING(&compute_profile);
 #pragma omp parallel for
@@ -518,13 +526,18 @@ void advect_momentum(
 #pragma omp simd
       for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
         rho_u[ind1] -= dt_h*(uF_y[ind1+(nx+1)] - uF_y[ind1])/(celldx[jj]*edgedy[ii]);
+#if 0
         const double rho_edge_x = 
           (rho[ind0]*celldx[jj]*celldy[ii] + rho[ind0-1]*celldx[jj - 1]*celldy[ii])/ 
           (2.0*edgedx[jj]*celldy[ii]);
         u_new[ind1] = (rho_edge_x == 0.0) ? 0.0 : rho_u[ind1] / rho_edge_x;
+#endif // if 0
       }
     }
-    handle_boundary(nx+1, ny, mesh, u_new, INVERT_X, PACK);
+
+#if 0
+    handle_boundary(nx+1, ny, mesh, u, INVERT_X, PACK);
+#endif // if 0
 
     ux_momentum_flux(
         nx, ny, mesh, dt_h, dt, u, v, uF_x, rho_u, rho, F_x, edgedx, edgedy, celldx, celldy);
@@ -545,14 +558,18 @@ void advect_momentum(
 #pragma omp simd
       for(int jj = PAD; jj < nx-PAD; ++jj) {
         rho_v[ind0] -= dt_h*(vF_y[ind0] - vF_y[ind0-nx])/(celldx[jj]*edgedy[ii]);
+#if 0
         const double rho_edge_y = 
           (rho[ind0]*celldx[jj]*celldy[ii] + rho[ind0-nx]*celldx[jj]*celldy[ii - 1])/ 
           (2.0*celldx[jj]*edgedy[ii]);
         v[ind0] = (rho_edge_y == 0.0) ? 0.0 : rho_v[ind0] / rho_edge_y;
+#endif // if 0
       }
     }
 
-    handle_boundary(nx, ny+1, mesh, v_new, INVERT_Y, PACK);
+#if 0
+    handle_boundary(nx, ny+1, mesh, v, INVERT_Y, PACK);
+#endif // if 0
 
     vx_momentum_flux(
         nx, ny, mesh, dt_h, dt, u, v, vF_x, rho_v, rho, F_x, edgedx, edgedy, celldx, celldy);
@@ -580,15 +597,33 @@ void ux_momentum_flux(
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
 #pragma omp simd
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
+      // Use MC limiter to get slope of velocity
       const double invdx = 1.0/edgedx[jj];
-      const double S_L_0 = invdx*(u[ind1] - u[ind1-1]);
-      const double S_C_0 = invdx*(u[ind1+1] - u[ind1]);
-      const double S_R_0 = invdx*(u[ind1+2] - u[ind1+1]);
-      const double f_x = edgedy[ii]*0.5*(F_x[ind1] + F_x[ind1+1]); 
+      const double a_x_0 = 0.5*invdx*(u[ind1+1]-u[ind1-1]);
+      const double b_x_0 = 2.0*invdx*(u[ind1]-u[ind1-1]);
+      const double c_x_0 = 2.0*invdx*(u[ind1+1]-u[ind1]);
+      const double a_x_1 = 0.5*invdx*(u[ind1+2]-u[ind1]);
+      const double b_x_1 = 2.0*invdx*(u[ind1+1]-u[ind1]);
+      const double c_x_1 = 2.0*invdx*(u[ind1+2]-u[ind1+1]);
+
+      // Calculate the interpolated densities
       const double u_cell_x = 0.5*(u[ind1]+u[ind1+1]);
+      const double f_x = edgedy[ii]*0.5*(F_x[ind1] + F_x[ind1+1]); 
+      const double u_cell_x_interp = (u_cell_x > 0.0)
+        ? u[ind1] + 0.5*minmod(minmod(a_x_0, b_x_0), c_x_0)*(celldx[jj-1] - u_cell_x*dt_h)
+        : u[ind1+1] - 0.5*minmod(minmod(a_x_1, b_x_1), c_x_1)*(celldx[jj] + u_cell_x*dt_h);
+      uF_x[ind0] = f_x*u_cell_x_interp;
+
+#if 0
+      const double invdx = 1.0/edgedx[jj];
+      const double SL = invdx*(u[ind1] - u[ind1-1]);
+      const double SR = invdx*(u[ind1+1] - u[ind1]);
+      const double u_cell_x = 0.5*(u[ind1]+u[ind1+1]);
+      const double f_x = edgedy[ii]*0.5*(F_x[ind1] + F_x[ind1+1]); 
       uF_x[ind0] = f_x*((u_cell_x >= 0.0) 
-          ? u[ind1] + 0.5*minmod(S_L_0, S_C_0)*(edgedx[jj]+u_cell_x*dt)
-          : u[ind1+1] - 0.5*minmod(S_C_0, S_R_0)*(edgedx[jj]-u_cell_x*dt));
+          ? u[ind1] + minmod(SL, SR)*(edgedx[jj]*0.5+u_cell_x*dt)
+          : u[ind1+1] - minmod(SL, SR)*(edgedx[jj]*0.5-u_cell_x*dt));
+#endif // if 0
     }
   }
 
@@ -605,15 +640,32 @@ void uy_momentum_flux(
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
 #pragma omp simd
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
+      // Use MC limiter to get slope of energy
       const double invdy = 1.0/edgedy[ii];
-      const double S_D_1 = invdy*(u[ind1-(nx+1)] - u[ind1-2*(nx+1)]);
-      const double S_C_1 = invdy*(u[ind1] - u[ind1-(nx+1)]);
-      const double S_U_1 = invdy*(u[ind1+(nx+1)] - u[ind1]);
+      const double a_y_0 = 0.5*invdy*(u[ind1]-u[ind1-2*(nx+1)]);
+      const double b_y_0 = 2.0*invdy*(u[ind1-(nx+1)]-u[ind1-2*(nx+1)]);
+      const double c_y_0 = 2.0*invdy*(u[ind1]-u[ind1-(nx+1)]);
+      const double a_y_1 = 0.5*invdy*(u[ind1+(nx+1)]-u[ind1-(nx+1)]);
+      const double b_y_1 = 2.0*invdy*(u[ind1]-u[ind1-(nx+1)]);
+      const double c_y_1 = 2.0*invdy*(u[ind1+(nx+1)]-u[ind1]);
+      const double v_cell_y = 0.5*(v[ind0-1]+v[ind0]);
+
+      const double f_y = edgedx[jj]*0.5*(F_y[ind0] + F_y[ind0-1]);
+      const double u_corner_y = (v_cell_y > 0.0)
+        ? u[ind1-(nx+1)] + 0.5*minmod(minmod(a_y_0, b_y_0), c_y_0)*(celldy[ii-1] - v_cell_y*dt_h)
+        : u[ind1] - 0.5*minmod(minmod(a_y_1, b_y_1), c_y_1)*(celldy[ii] + v_cell_y*dt_h);
+      uF_y[ind1] = f_y*u_corner_y;
+
+#if 0
+      const double invdy = 1.0/edgedy[ii];
+      const double SL = invdy*(u[ind1] - u[ind1-(nx+1)]);
+      const double SR = invdy*(u[ind1+(nx+1)] - u[ind1]);
       const double f_y = edgedx[jj]*0.5*(F_y[ind0] + F_y[ind0-1]);
       const double v_cell_y = 0.5*(v[ind0]+v[ind0-1]);
       uF_y[ind1] = f_y*((v_cell_y >= 0.0)
-          ? u[ind1-(nx+1)] + 0.5*minmod(S_D_1, S_C_1)*(edgedy[ii]+v_cell_y*dt)
-          : u[ind1] - 0.5*minmod(S_C_1, S_U_1)*(edgedy[ii]-v_cell_y*dt));
+          ? u[ind1] + minmod(SL, SR)*(edgedy[ii]*0.5+v_cell_y*dt)
+          : u[ind1+(nx+1)] - minmod(SL, SR)*(edgedy[ii]*0.5-v_cell_y*dt));
+#endif // if 0
     }
   }
 
@@ -631,15 +683,34 @@ void vx_momentum_flux(
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
 #pragma omp simd
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
+
+      // Use MC limiter to get slope of energy
       const double invdx = 1.0/edgedx[jj];
-      const double S_L_0 = invdx*(v[ind0-1] - v[ind0-2]);
-      const double S_C_0 = invdx*(v[ind0] - v[ind0-1]);
-      const double S_R_0 = invdx*(v[ind0+1] - v[ind0]);
+      const double a_x_0 = 0.5*invdx*(v[ind0]-v[ind0-2]);
+      const double b_x_0 = 2.0*invdx*(v[ind0-1]-v[ind0-2]);
+      const double c_x_0 = 2.0*invdx*(v[ind0]-v[ind0-1]);
+      const double a_x_1 = 0.5*invdx*(v[ind0+1]-v[ind0-1]);
+      const double b_x_1 = 2.0*invdx*(v[ind0]-v[ind0-1]);
+      const double c_x_1 = 2.0*invdx*(v[ind0+1]-v[ind0]);
+
+      // Calculate the interpolated densities
       const double f_x = celldy[ii]*0.5*(F_x[ind1] + F_x[ind1-(nx+1)]);
       const double u_cell_x = 0.5*(u[ind1]+u[ind1-(nx+1)]);
+      const double v_cell_x_interp = (u_cell_x > 0.0)
+        ? v[ind0-1] + 0.5*minmod(minmod(a_x_0, b_x_0), c_x_0)*(celldx[jj-1] - u_cell_x*dt_h)
+        : v[ind0] - 0.5*minmod(minmod(a_x_1, b_x_1), c_x_1)*(celldx[jj] + u_cell_x*dt_h);
+      vF_x[ind1] = f_x*v_cell_x_interp;
+
+#if 0
+      const double invdx = 1.0/edgedx[jj];
+      const double SL = invdx*(v[ind0] - v[ind0-1]);
+      const double SR = invdx*(v[ind0+1] - v[ind0]);
+      const double f_x = celldy[ii]*0.5*(F_x[ind1] + F_x[ind1-(nx+1)]);
+      const double u_cell_x = 0.5*(u[ind1]+u[ind1+1]);
       vF_x[ind1] = f_x*((u_cell_x >= 0.0) 
-          ? v[ind0-1] + 0.5*minmod(S_L_0, S_C_0)*(edgedx[jj]+u_cell_x*dt)
-          : v[ind0] - 0.5*minmod(S_C_0, S_R_0)*(edgedx[jj]-u_cell_x*dt));
+          ? v[ind0] + minmod(SL, SR)*(0.5*edgedx[jj]+u_cell_x*dt)
+          : v[ind0+1] - minmod(SL, SR)*(0.5*edgedx[jj]-u_cell_x*dt));
+#endif // if 0
     }
   }
 
@@ -655,15 +726,32 @@ void vy_momentum_flux(
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
 #pragma omp simd
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
+      // Use MC limiter to get slope of energy
       const double invdy = 1.0/edgedy[ii];
-      const double S_D_1 = invdy*(v[ind0] - v[ind0-nx]);
-      const double S_C_1 = invdy*(v[ind0+nx] - v[ind0]);
-      const double S_U_1 = invdy*(v[ind0+2*nx] - v[ind0+nx]);
+      const double a_y_0 = 0.5*invdy*(v[ind0+nx]-v[ind0-nx]);
+      const double b_y_0 = 2.0*invdy*(v[ind0]-v[ind0-nx]);
+      const double c_y_0 = 2.0*invdy*(v[ind0+nx]-v[ind0]);
+      const double a_y_1 = 0.5*invdy*(v[ind0+2*nx]-v[ind0]);
+      const double b_y_1 = 2.0*invdy*(v[ind0+nx]-v[ind0]);
+      const double c_y_1 = 2.0*invdy*(v[ind0+2*nx]-v[ind0+nx]);
+
+      const double f_y = celldx[jj]*0.5*(F_y[ind0] + F_y[ind0+nx]);
+      const double v_cell_y = 0.5*(v[ind0]+v[ind0+nx]);
+      const double v_cell_y_interp = (v_cell_y > 0.0)
+        ? v[ind0] + 0.5*minmod(minmod(a_y_0, b_y_0), c_y_0)*(celldy[ii-1] - v_cell_y*dt_h)
+        : v[ind0+nx] - 0.5*minmod(minmod(a_y_1, b_y_1), c_y_1)*(celldy[ii] + v_cell_y*dt_h);
+      vF_y[ind0] = f_y*v_cell_y_interp;
+
+#if 0
+      const double invdy = 1.0/edgedy[ii];
+      const double SL = invdy*(v[ind0] - v[ind0-nx]);
+      const double SR = invdy*(v[ind0+nx] - v[ind0]);
       const double f_y = celldx[jj]*0.5*(F_y[ind0] + F_y[ind0+nx]);
       const double v_cell_y = 0.5*(v[ind0]+v[ind0+nx]);
       vF_y[ind0] = f_y*((v_cell_y >= 0.0)
-          ? v[ind0] + 0.5*minmod(S_D_1, S_C_1)*(edgedy[ii]+v_cell_y*dt)
-          : v[ind0+nx] - 0.5*minmod(S_C_1, S_U_1)*(edgedy[ii]-v_cell_y*dt));
+          ? v[ind0] + minmod(SL, SR)*(edgedy[ii]*0.5+v_cell_y*dt)
+          : v[ind0+nx] - minmod(SL, SR)*(edgedy[ii]*0.5-v_cell_y*dt));
+#endif // if 0
     }
   }
 
