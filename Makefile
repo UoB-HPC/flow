@@ -1,9 +1,9 @@
 # User defined parameters
 KERNELS 	  	= omp3
-COMPILER    	= CRAY
-CFLAGS_INTEL	= -O3 -g -qopenmp -no-prec-div -xhost -std=gnu99 -DINTEL
+COMPILER    	= INTEL
+CFLAGS_INTEL	= -O3 -g -qopenmp -no-prec-div -std=gnu99 -DINTEL #-xhost 
 CFLAGS_CRAY		= 
-OPTIONS		  	= -DENABLE_PROFILING -DMPI -DDEBUG
+OPTIONS		  	= -DENABLE_PROFILING -DMPI -DDEBUG -qopt-report=5
 
 # Default compiler
 MULTI_COMPILER   = cc
