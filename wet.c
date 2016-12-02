@@ -146,9 +146,9 @@ void artificial_viscosity(
   // Calculate the artificial viscous stresses
   // PLPC Hydro Paper
 #pragma omp parallel for 
-  for(int ii = PAD-1; ii < ny-PAD; ++ii) {
+  for(int ii = PAD; ii < ny-PAD; ++ii) {
 #pragma omp simd
-    for(int jj = PAD-1; jj < nx-PAD; ++jj) {
+    for(int jj = PAD; jj < nx-PAD; ++jj) {
       const double u_i = min(0.0, u[ind1+1] - u[ind1]);
       const double u_ii = 0.5*(
           fabs(min(0.0, (u[ind1+2]-u[ind1+1])) - min(0.0, (u[ind1+1]-u[ind1]))) + 
@@ -263,7 +263,7 @@ void x_mass_and_energy_flux(
   // In the ghost cells flux is left as 0.0
   START_PROFILING(&compute_profile);
 #pragma omp parallel for
-  for(int ii = PAD; ii < ny-PAD; ++ii) {
+  for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
 #pragma omp simd
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
       const double rho_diff = (rho[ind0]-rho[ind0-1]);
@@ -349,7 +349,7 @@ void y_mass_and_energy_flux(
 #pragma omp parallel for
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
 #pragma omp simd
-    for(int jj = PAD; jj < nx-PAD; ++jj) {
+    for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
       const double rho_diff = (rho[ind0]-rho[ind0-nx]);
 
       // Van leer limiter
@@ -446,7 +446,9 @@ void advect_momentum(
     }
     STOP_PROFILING(&compute_profile, __func__);
 
+#if 0
     handle_boundary(nx+1, ny, mesh, u, INVERT_X, PACK);
+#endif // if 0
 
     START_PROFILING(&compute_profile);
     uy_momentum_flux(
@@ -477,7 +479,9 @@ void advect_momentum(
     }
     STOP_PROFILING(&compute_profile, __func__);
 
+#if 0
     handle_boundary(nx, ny+1, mesh, v, INVERT_Y, PACK);
+#endif // if 0
 
     START_PROFILING(&compute_profile);
     vy_momentum_flux(
@@ -509,7 +513,9 @@ void advect_momentum(
     }
     STOP_PROFILING(&compute_profile, __func__);
 
+#if 0
     handle_boundary(nx+1, ny, mesh, u, INVERT_X, PACK);
+#endif // if 0
 
     START_PROFILING(&compute_profile);
     ux_momentum_flux(
@@ -539,7 +545,9 @@ void advect_momentum(
     }
     STOP_PROFILING(&compute_profile, __func__);
 
+#if 0
     handle_boundary(nx, ny+1, mesh, v, INVERT_Y, PACK);
+#endif // if 0
 
     START_PROFILING(&compute_profile);
     vx_momentum_flux(
@@ -563,9 +571,9 @@ void ux_momentum_flux(
 {
   // Calculate the cell centered x momentum fluxes in the x direction
 #pragma omp parallel for
-  for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
+  for(int ii = PAD; ii < ny-PAD; ++ii) {
 #pragma omp simd
-    for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
+    for(int jj = PAD; jj < nx-PAD; ++jj) {
       // Use MC limiter to get slope of velocity
       const double invdx = 1.0/edgedx[jj];
       const double a_x_0 = 0.5*invdx*(u[ind1+1]-u[ind1-1]);
@@ -659,9 +667,9 @@ void vy_momentum_flux(
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
 #pragma omp parallel for
-  for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
+  for(int ii = PAD; ii < ny-PAD; ++ii) {
 #pragma omp simd
-    for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
+    for(int jj = PAD; jj < nx-PAD; ++jj) {
       // Use MC limiter to get slope of velocity
       const double invdy = 1.0/edgedy[ii];
       const double a_y_0 = 0.5*invdy*(v[ind0+nx]-v[ind0-nx]);
