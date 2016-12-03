@@ -6,11 +6,6 @@
 #include "../state.h"
 #include "../comms.h"
 
-#if 0
-extern struct Profile compute_profile;
-extern struct Profile comms_profile;
-#endif // if 0
-
 int main(int argc, char** argv)
 {
   if(argc != 4) {
@@ -18,20 +13,17 @@ int main(int argc, char** argv)
     exit(1);
   }
 
-  int rank = MASTER;
-  int nranks = 1;
-  init_mpi(argc, argv, &rank, &nranks);
-
   // Store the dimensions of the mesh
   Mesh mesh = {0};
   mesh.global_nx = atoi(argv[1]);
   mesh.global_ny = atoi(argv[2]);
   mesh.local_nx = atoi(argv[1]) + 2*PAD;
   mesh.local_ny = atoi(argv[2]) + 2*PAD;
-  mesh.rank = rank;
-  mesh.nranks = nranks;
+  mesh.rank = MASTER;
+  mesh.nranks = 1;
   mesh.niters = atoi(argv[3]);
 
+  init_mpi(argc, argv, &mesh.rank, &mesh.nranks);
   initialise_comms(&mesh);
   initialise_mesh(&mesh);
 

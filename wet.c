@@ -53,7 +53,7 @@ void solve_hydro(
 void equation_of_state(
     const int nx, const int ny, double* P, const double* rho, const double* e)
 {
-  START_PROFILING(&compute_profile);
+  //  START_PROFILING(&compute_profile);
 
 #pragma omp parallel for
   for(int ii = 0; ii < ny; ++ii) {
@@ -284,7 +284,7 @@ void x_mass_and_energy_flux(
       const double du_upwind = (u[ind1+1]-u[ind1-1])/(2.0*celldx[jj]);
       const double u_upwind = 
         (samesign(u[ind1+1], u[ind1]) && samesign(u[ind1], u[ind1-1]) &&
-          samesign(du, du_upwind)) ? du_upwind : 0.0;
+         samesign(du, du_upwind)) ? du_upwind : 0.0;
       const double u_tc = u[ind1]-0.5*u[ind1]*dt*u_upwind;
 
       // Calculate the flux
@@ -368,7 +368,7 @@ void y_mass_and_energy_flux(
       const double du_upwind = (v[ind0+nx]-v[ind0-nx])/(2.0*celldx[jj]);
       const double u_upwind = 
         (samesign(v[ind0+nx], v[ind0]) && samesign(v[ind0], v[ind0-nx]) &&
-          samesign(du, du_upwind)) ? du_upwind : 0.0;
+         samesign(du, du_upwind)) ? du_upwind : 0.0;
 
       const double v_tc = v[ind0]-0.5*v[ind0]*dt*u_upwind;
 
