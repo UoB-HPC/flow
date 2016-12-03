@@ -18,19 +18,24 @@ int main(int argc, char** argv)
     exit(1);
   }
 
+  int rank = MASTER;
+  int nranks = 1;
+  init_mpi(argc, argv, &rank, &nranks);
+
   // Store the dimensions of the mesh
   Mesh mesh = {0};
-  State state = {0};
   mesh.global_nx = atoi(argv[1]);
   mesh.global_ny = atoi(argv[2]);
   mesh.local_nx = atoi(argv[1]) + 2*PAD;
   mesh.local_ny = atoi(argv[2]) + 2*PAD;
-  mesh.rank = MASTER;
-  mesh.nranks = 1;
+  mesh.rank = rank;
+  mesh.nranks = nranks;
   mesh.niters = atoi(argv[3]);
 
-  initialise_comms(argc, argv, &mesh);
+  initialise_comms(&mesh);
   initialise_mesh(&mesh);
+
+  State state = {0};
   initialise_state(
       mesh.global_nx, mesh.global_ny, mesh.local_nx, mesh.local_ny, 
       mesh.x_off, mesh.y_off, &state);
