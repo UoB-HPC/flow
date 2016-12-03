@@ -6,8 +6,8 @@ CFLAGS_CRAY		=
 OPTIONS		  	= -DENABLE_PROFILING -DMPI -DDEBUG -qopt-report=5
 
 # Default compiler
-MULTI_COMPILER   = mpiicc
-MULTI_LINKER     = mpiicc
+MULTI_COMPILER   = mpicc
+MULTI_LINKER     = mpicc
 MULTI_FLAGS      = $(CFLAGS_$(COMPILER))
 MULTI_LDFLAGS    =
 MULTI_BUILD_DIR  = ../obj

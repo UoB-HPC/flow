@@ -174,7 +174,7 @@ void artificial_viscosity(
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
 #pragma omp simd
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
-      rho_u[ind1] -= dt*(Qxx[ind0] - Qxx[ind0-1])/edgedx[jj];
+      rho_u[ind1] -= dt*(Qxx[ind0] - Qxx[ind0-1])/celldx[jj];
       rho_v[ind0] -= dt*(Qyy[ind0] - Qyy[ind0-nx])/celldy[ii];
 
       // Calculate the zone edge centered density
@@ -321,7 +321,7 @@ void x_mass_and_energy_flux(
 #pragma omp simd
     for(int jj = PAD; jj < nx-PAD; ++jj) {
       rho[ind0] -= dt_h*
-        (edgedx[jj+1]*F_x[ind1+1] - edgedx[jj]*F_x[ind1])/ 
+        (edgedy[ii+1]*F_x[ind1+1] - edgedy[ii]*F_x[ind1])/ 
         (celldx[jj]*celldy[ii]);
       const double rho_e = (rho_old[ind0]*e[ind0] - 
           (dt_h*(eF_x[ind1+1] - eF_x[ind1]))/(celldx[jj]*celldy[ii]));
@@ -362,10 +362,10 @@ void y_mass_and_energy_flux(
       }
 
       const double du = (v[ind0] > 0.0) 
-        ? (v[ind0+nx]-v[ind0])/(2.0*celldx[jj]) 
-        : (v[ind0]-v[ind0-nx])/(2.0*celldx[jj]);
+        ? (v[ind0+nx]-v[ind0])/(2.0*celldy[ii]) 
+        : (v[ind0]-v[ind0-nx])/(2.0*celldy[ii]);
 
-      const double du_upwind = (v[ind0+nx]-v[ind0-nx])/(2.0*celldx[jj]);
+      const double du_upwind = (v[ind0+nx]-v[ind0-nx])/(2.0*celldy[ii]);
       const double u_upwind = 
         (samesign(v[ind0+nx], v[ind0]) && samesign(v[ind0], v[ind0-nx]) &&
          samesign(du, du_upwind)) ? du_upwind : 0.0;
@@ -375,7 +375,7 @@ void y_mass_and_energy_flux(
       // Calculate the flux
       const double rho_upwind = (v_tc >= 0.0) ? rho[ind0-nx] : rho[ind0];
       F_y[ind0] = (v_tc*rho_upwind+
-          0.5*fabs(v_tc)*(1.0-fabs((v_tc*dt_h)/celldx[jj]))*limiter*rho_diff);
+          0.5*fabs(v_tc)*(1.0-fabs((v_tc*dt_h)/celldy[ii]))*limiter*rho_diff);
 
       // Use MC limiter to get slope of energy
       const double invdy = 1.0/edgedy[ii];
@@ -405,7 +405,7 @@ void y_mass_and_energy_flux(
 #pragma omp simd
     for(int jj = PAD; jj < nx-PAD; ++jj) {
       rho[ind0] -= dt_h*
-        (edgedy[ii+1]*F_y[ind0+nx] - edgedy[ii]*F_y[ind0])/
+        (edgedx[jj+1]*F_y[ind0+nx] - edgedx[jj]*F_y[ind0])/
         (celldx[jj]*celldy[ii]);
       const double rho_e = (rho_old[ind0]*e[ind0] - 
           (dt_h*(eF_y[ind0+nx] - eF_y[ind0]))/(celldx[jj]*celldy[ii]));
