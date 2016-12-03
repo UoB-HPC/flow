@@ -277,10 +277,28 @@ void x_mass_and_energy_flux(
         limiter = (smoothness + fabs(smoothness))/(1.0+fabs(smoothness));
       }
 
+#if 0
+      // To make second order in time interpolate the velocity
+      const double du = (u[ind1] > 0.0) 
+        ? (u[ind1+1]-u[ind1])/(2.0*celldx[jj]) 
+        : (u[ind1+2]-u[ind1+1])/(2.0*celldx[jj]);
+      const double du_upwind = (u[ind1] > 0.0)
+        ? (u[ind1+1]-u[ind1-1])/(2.0*celldx[jj])
+        : (u[ind1+2]-u[ind1])/(2.0*celldx[jj]);
+      const double u_upwind = (u[ind1] > 0.0)
+        ? ((samesign(u[ind1+1], u[ind1]) && samesign(u[ind1], u[ind1-1]) &&
+         samesign(du, du_upwind)) ? du_upwind : 0.0)
+        : ((samesign(u[ind1+2], u[ind1+1]) && samesign(u[ind1+1], u[ind1]) &&
+         samesign(du, du_upwind)) ? du_upwind : 0.0);
+
+      const double u_tc = (u[ind1] > 0.0)
+        ? u[ind1]-0.5*u[ind1]*dt*u_upwind
+        : u[ind1+1]-0.5*u[ind1]*dt*u_upwind;
+#endif // if 0
+
       const double du = (u[ind1] > 0.0) 
         ? (u[ind1+1]-u[ind1])/(2.0*celldx[jj]) 
         : (u[ind1]-u[ind1-1])/(2.0*celldx[jj]);
-
       const double du_upwind = (u[ind1+1]-u[ind1-1])/(2.0*celldx[jj]);
       const double u_upwind = 
         (samesign(u[ind1+1], u[ind1]) && samesign(u[ind1], u[ind1-1]) &&
@@ -349,7 +367,7 @@ void y_mass_and_energy_flux(
 #pragma omp parallel for
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
 #pragma omp simd
-    for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
+    for(int jj = PAD; jj < nx-PAD; ++jj) {
       const double rho_diff = (rho[ind0]-rho[ind0-nx]);
 
       // Van leer limiter
@@ -361,16 +379,39 @@ void y_mass_and_energy_flux(
         limiter = (smoothness + fabs(smoothness))/(1.0+fabs(smoothness));
       }
 
+      const double dv = (v[ind0] > 0.0) 
+        ? (v[ind0+nx]-v[ind0])/(2.0*celldy[ii]) 
+        : (v[ind0+2*nx]-v[ind0+nx])/(2.0*celldy[ii]);
+      const double dv_upwind = (v[ind0] > 0.0)
+        ? (v[ind0+nx]-v[ind0-nx])/(2.0*celldy[ii])
+        : (v[ind0+2*nx]-v[ind0])/(2.0*celldy[ii]);
+      const double v_upwind = (v[ind0] > 0.0)
+        ? ((samesign(v[ind0+nx], v[ind0]) && samesign(v[ind0], v[ind0-nx]) &&
+         samesign(dv, dv_upwind)) ? dv_upwind : 0.0)
+        : ((samesign(v[ind0+2*nx], v[ind0+nx]) && samesign(v[ind0+nx], v[ind0]) &&
+         samesign(dv, dv_upwind)) ? dv_upwind : 0.0);
+
+      const double v_tc = (v[ind0] > 0.0)
+        ? v[ind0]-0.5*v[ind0]*dt*v_upwind
+        : v[ind0+1]-0.5*v[ind0]*dt*v_upwind;
+
+#if 0
       const double du = (v[ind0] > 0.0) 
         ? (v[ind0+nx]-v[ind0])/(2.0*celldy[ii]) 
         : (v[ind0]-v[ind0-nx])/(2.0*celldy[ii]);
-
-      const double du_upwind = (v[ind0+nx]-v[ind0-nx])/(2.0*celldy[ii]);
-      const double u_upwind = 
+      const double du_upwind0 = (v[ind0+nx]-v[ind0-nx])/(2.0*celldy[ii]);
+      const double du_upwind1 = (v[ind0+2*nx]-v[ind0])/(2.0*celldy[ii]);
+      const double u_upwind0 = 
         (samesign(v[ind0+nx], v[ind0]) && samesign(v[ind0], v[ind0-nx]) &&
-         samesign(du, du_upwind)) ? du_upwind : 0.0;
+         samesign(du, du_upwind0)) ? du_upwind0 : 0.0;
+      const double u_upwind1 = 
+        (samesign(v[ind0+nx], v[ind0]) && samesign(v[ind0], v[ind0-nx]) &&
+         samesign(du, du_upwind1)) ? du_upwind1 : 0.0;
 
-      const double v_tc = v[ind0]-0.5*v[ind0]*dt*u_upwind;
+      const double v_tc = (v[ind0] > 0.0)
+        ? v[ind0]-0.5*v[ind0]*dt*u_upwind0
+        : v[ind0+1]+0.5*v[ind0]*dt*u_upwind1;
+#endif // if 0
 
       // Calculate the flux
       const double rho_upwind = (v_tc >= 0.0) ? rho[ind0-nx] : rho[ind0];
