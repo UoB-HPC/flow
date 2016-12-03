@@ -446,9 +446,7 @@ void advect_momentum(
     }
     STOP_PROFILING(&compute_profile, __func__);
 
-#if 0
     handle_boundary(nx+1, ny, mesh, u, INVERT_X, PACK);
-#endif // if 0
 
     START_PROFILING(&compute_profile);
     uy_momentum_flux(
@@ -479,9 +477,7 @@ void advect_momentum(
     }
     STOP_PROFILING(&compute_profile, __func__);
 
-#if 0
     handle_boundary(nx, ny+1, mesh, v, INVERT_Y, PACK);
-#endif // if 0
 
     START_PROFILING(&compute_profile);
     vy_momentum_flux(
@@ -513,9 +509,7 @@ void advect_momentum(
     }
     STOP_PROFILING(&compute_profile, __func__);
 
-#if 0
     handle_boundary(nx+1, ny, mesh, u, INVERT_X, PACK);
-#endif // if 0
 
     START_PROFILING(&compute_profile);
     ux_momentum_flux(
@@ -545,9 +539,7 @@ void advect_momentum(
     }
     STOP_PROFILING(&compute_profile, __func__);
 
-#if 0
     handle_boundary(nx, ny+1, mesh, v, INVERT_Y, PACK);
-#endif // if 0
 
     START_PROFILING(&compute_profile);
     vx_momentum_flux(
