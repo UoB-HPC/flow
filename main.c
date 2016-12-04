@@ -60,7 +60,7 @@ int main(int argc, char** argv)
 
     STOP_PROFILING(&wallclock, "wallclock");
 
-    print_conservation(mesh.local_nx, mesh.local_ny, &state, &mesh);
+    print_conservation(mesh.local_nx, mesh.local_ny, state.rho, state.e, &mesh);
 
     if(mesh.rank == MASTER) {
       printf("simulation time: %.4lf(s)\n", elapsed_sim_time);

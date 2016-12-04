@@ -1,17 +1,19 @@
 # User defined parameters
-KERNELS 	  	= omp3
-COMPILER    	= INTEL
-CFLAGS_INTEL	= -O3 -g -qopenmp -no-prec-div -std=gnu99 -DINTEL -xhost -Wall
-CFLAGS_CRAY		= 
-OPTIONS		  	= -DENABLE_PROFILING -DMPI -DDEBUG -qopt-report=5
+KERNELS 	  	= omp4
+COMPILER    	= CRAY
+CFLAGS_INTEL	= -O3 -g -qopenmp -no-prec-div -std=gnu99 -DINTEL -xhost -Wall -qopt-report=5
+CFLAGS_CRAY		= -lrt -hlist=a
+OPTIONS		  	= -DENABLE_PROFILING -DMPI -DDEBUG
 
 # Default compiler
-MULTI_COMPILER   = mpicc
-MULTI_LINKER     = mpicc
-MULTI_FLAGS      = $(CFLAGS_$(COMPILER))
-MULTI_LDFLAGS    =
-MULTI_BUILD_DIR  = ../obj
-MULTI_DIR 			 = ..
+MULTI_COMPILER  = cc
+#MULTI_COMPILER  = mpiicc
+#MULTI_COMPILER  = mpicc
+MULTI_LINKER    = $(MULTI_COMPILER)
+MULTI_FLAGS     = $(CFLAGS_$(COMPILER))
+MULTI_LDFLAGS   =
+MULTI_BUILD_DIR = ../obj
+MULTI_DIR       = ..
 
 SRC  			 = $(wildcard *.c)
 SRC  			+= $(wildcard $(KERNELS)/*.c)

@@ -55,7 +55,7 @@ void equation_of_state(
 {
   //  START_PROFILING(&compute_profile);
 
-#pragma omp target teams distribute parallel for simd
+#pragma omp target teams distribute parallel for
   for(int ii = 0; ii < ny; ++ii) {
     for(int jj = 0; jj < nx; ++jj) {
       // Only invoke simple GAMma law at the moment
@@ -76,7 +76,7 @@ void set_timestep(
 
   START_PROFILING(&compute_profile);
   // Check the minimum timestep from the sound speed in the nx and ny directions
-#pragma omp target teams distribute parallel for simd reduction(min: local_min_dt)
+#pragma omp target teams distribute parallel for reduction(min: local_min_dt)
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
       // Constrain based on the sound speed within the system
@@ -106,7 +106,7 @@ void pressure_acceleration(
 {
   START_PROFILING(&compute_profile);
 
-#pragma omp target teams distribute parallel for simd
+#pragma omp target teams distribute parallel for
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
       // Update the momenta using the pressure gradients
@@ -166,7 +166,7 @@ void artificial_viscosity(
   START_PROFILING(&compute_profile);
 
   // Update the momenta by the artificial viscous stresses
-#pragma omp target teams distribute parallel for simd
+#pragma omp target teams distribute parallel for
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
       rho_u[ind1] -= dt*(Qxx[ind0] - Qxx[ind0-1])/celldx[jj];
@@ -199,7 +199,7 @@ void shock_heating_and_work(
 {
   START_PROFILING(&compute_profile);
 
-#pragma omp target teams distribute parallel for simd
+#pragma omp target teams distribute parallel for
   for(int ii = PAD; ii < ny-PAD; ++ii) {
     for(int jj = PAD; jj < nx-PAD; ++jj) {
       const double div_vel_x = (u[ind1+1] - u[ind1])/celldx[jj];
@@ -227,7 +227,7 @@ void advect_mass_and_energy(
     double* eF_x, double* eF_y, const double* u, const double* v, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
-#pragma omp target teams distribute parallel for simd
+#pragma omp target teams distribute parallel for
   for(int ii = 0; ii < nx*ny; ++ii) {
     rho_old[ii] = rho[ii];
   }
@@ -256,7 +256,7 @@ void x_mass_and_energy_flux(
   // Compute the mass fluxes along the x edges
   // In the ghost cells flux is left as 0.0
   START_PROFILING(&compute_profile);
-#pragma omp target teams distribute parallel for simd
+#pragma omp target teams distribute parallel for
   for(int ii = PAD; ii < ny-PAD; ++ii) {
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
 
@@ -305,7 +305,7 @@ void x_mass_and_energy_flux(
 
   // Calculate the new density values
   START_PROFILING(&compute_profile);
-#pragma omp target teams distribute parallel for simd
+#pragma omp target teams distribute parallel for
   for(int ii = PAD; ii < ny-PAD; ++ii) {
     for(int jj = PAD; jj < nx-PAD; ++jj) {
       rho[ind0] -= dt_h*
@@ -334,7 +334,7 @@ void y_mass_and_energy_flux(
   // Compute the mass flux along the y edges
   // In the ghost cells flux is left as 0.0
   START_PROFILING(&compute_profile);
-#pragma omp target teams distribute parallel for simd
+#pragma omp target teams distribute parallel for
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
     for(int jj = PAD; jj < nx-PAD; ++jj) {
 
@@ -382,7 +382,7 @@ void y_mass_and_energy_flux(
 
   // Calculate the new density values
   START_PROFILING(&compute_profile);
-#pragma omp target teams distribute parallel for simd
+#pragma omp target teams distribute parallel for
   for(int ii = PAD; ii < ny-PAD; ++ii) {
     for(int jj = PAD; jj < nx-PAD; ++jj) {
       rho[ind0] -= dt_h*
@@ -414,7 +414,7 @@ void advect_momentum(
     ux_momentum_flux(
         nx, ny, mesh, dt_h, dt, u, v, uF_x, rho_u, rho, F_x, edgedx, edgedy, celldx, celldy);
 
-#pragma omp target teams distribute parallel for simd
+#pragma omp target teams distribute parallel for
     for(int ii = PAD; ii < ny-PAD; ++ii) {
       for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
         rho_u[ind1] -= dt_h*(uF_x[ind0] - uF_x[ind0-1])/(edgedx[jj]*celldy[ii]);
@@ -433,7 +433,7 @@ void advect_momentum(
         nx, ny, mesh, dt_h, dt, u, v, uF_y, rho_u, rho, F_y, edgedx, edgedy, celldx, celldy);
 
     // Calculate the axial momentum
-#pragma omp target teams distribute parallel for simd
+#pragma omp target teams distribute parallel for
     for(int ii = PAD; ii < ny-PAD; ++ii) {
       for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
         rho_u[ind1] -= dt_h*(uF_y[ind1+(nx+1)] - uF_y[ind1])/(celldx[jj]*edgedy[ii]);
@@ -443,7 +443,7 @@ void advect_momentum(
     vx_momentum_flux(
         nx, ny, mesh, dt_h, dt, u, v, vF_x, rho_v, rho, F_x, edgedx, edgedy, celldx, celldy);
 
-#pragma omp target teams distribute parallel for simd
+#pragma omp target teams distribute parallel for
     for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
       for(int jj = PAD; jj < nx-PAD; ++jj) {
         rho_v[ind0] -= dt_h*(vF_x[ind1+1] - vF_x[ind1])/(edgedx[jj]*celldy[ii]);
@@ -461,7 +461,7 @@ void advect_momentum(
     vy_momentum_flux(
         nx, ny, mesh, dt_h, dt, u, v, vF_y, rho_v, rho, F_y, edgedx, edgedy, celldx, celldy);
 
-#pragma omp target teams distribute parallel for simd
+#pragma omp target teams distribute parallel for
     for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
       for(int jj = PAD; jj < nx-PAD; ++jj) {
         rho_v[ind0] -= dt_h*(vF_y[ind0] - vF_y[ind0-nx])/(celldx[jj]*edgedy[ii]);
@@ -473,7 +473,7 @@ void advect_momentum(
         nx, ny, mesh, dt_h, dt, u, v, uF_y, rho_u, rho, F_y, edgedx, edgedy, celldx, celldy);
 
     // Calculate the axial momentum
-#pragma omp target teams distribute parallel for simd
+#pragma omp target teams distribute parallel for
     for(int ii = PAD; ii < ny-PAD; ++ii) {
       for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
         rho_u[ind1] -= dt_h*(uF_y[ind1+(nx+1)] - uF_y[ind1])/(celldx[jj]*edgedy[ii]);
@@ -491,7 +491,7 @@ void advect_momentum(
     ux_momentum_flux(
         nx, ny, mesh, dt_h, dt, u, v, uF_x, rho_u, rho, F_x, edgedx, edgedy, celldx, celldy);
 
-#pragma omp target teams distribute parallel for simd
+#pragma omp target teams distribute parallel for
     for(int ii = PAD; ii < ny-PAD; ++ii) {
       for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
         rho_u[ind1] -= dt_h*(uF_x[ind0] - uF_x[ind0-1])/(edgedx[jj]*celldy[ii]);
@@ -501,7 +501,7 @@ void advect_momentum(
     vy_momentum_flux(
         nx, ny, mesh, dt_h, dt, u, v, vF_y, rho_v, rho, F_y, edgedx, edgedy, celldx, celldy);
 
-#pragma omp target teams distribute parallel for simd
+#pragma omp target teams distribute parallel for
     for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
       for(int jj = PAD; jj < nx-PAD; ++jj) {
         rho_v[ind0] -= dt_h*(vF_y[ind0] - vF_y[ind0-nx])/(celldx[jj]*edgedy[ii]);
@@ -519,7 +519,7 @@ void advect_momentum(
     vx_momentum_flux(
         nx, ny, mesh, dt_h, dt, u, v, vF_x, rho_v, rho, F_x, edgedx, edgedy, celldx, celldy);
 
-#pragma omp target teams distribute parallel for simd
+#pragma omp target teams distribute parallel for
     for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
       for(int jj = PAD; jj < nx-PAD; ++jj) {
         rho_v[ind0] -= dt_h*(vF_x[ind1+1] - vF_x[ind1])/(edgedx[jj]*celldy[ii]);
@@ -535,7 +535,7 @@ void ux_momentum_flux(
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
   // Calculate the cell centered x momentum fluxes in the x direction
-#pragma omp target teams distribute parallel for simd
+#pragma omp target teams distribute parallel for
   for(int ii = PAD; ii < ny-PAD; ++ii) {
     for(int jj = PAD; jj < nx-PAD; ++jj) {
       // Use MC limiter to get slope of velocity
@@ -566,7 +566,7 @@ void uy_momentum_flux(
     const double* F_y, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
-#pragma omp target teams distribute parallel for simd
+#pragma omp target teams distribute parallel for
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
       // Use MC limiter to get slope of velocity
@@ -597,7 +597,7 @@ void vx_momentum_flux(
 {
   // Calculate the corner centered y momentum fluxes in the x direction
   // Calculate the cell centered y momentum fluxes in the y direction
-#pragma omp target teams distribute parallel for simd
+#pragma omp target teams distribute parallel for
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
 
@@ -628,7 +628,7 @@ void vy_momentum_flux(
     double* u, double* v, double* vF_y, double* rho_v, const double* rho, const double* F_y, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
-#pragma omp target teams distribute parallel for simd
+#pragma omp target teams distribute parallel for
   for(int ii = PAD; ii < ny-PAD; ++ii) {
     for(int jj = PAD; jj < nx-PAD; ++jj) {
       // Use MC limiter to get slope of velocity
@@ -654,14 +654,14 @@ void vy_momentum_flux(
 
 // Prints some conservation values
 void print_conservation(
-    const int nx, const int ny, State* state, Mesh* mesh) {
+    const int nx, const int ny, double* rho, double* e, Mesh* mesh) {
   double mass_tot = 0.0;
   double energy_tot = 0.0;
-#pragma omp target teams distribute parallel for simd reduction(+:mass_tot, energy_tot)
+#pragma omp target teams distribute parallel for reduction(+:mass_tot, energy_tot)
   for(int ii = PAD; ii < ny-PAD; ++ii) {
     for(int jj = PAD; jj < nx-PAD; ++jj) {
-      mass_tot += state->rho[ind0];
-      energy_tot += state->rho[ind0]*state->e[ind0];
+      mass_tot += rho[ind0];
+      energy_tot += rho[ind0]*e[ind0];
     }
   }
 
@@ -677,5 +677,177 @@ void print_conservation(
     printf("total mass: %.12e\n", global_mass_tot);
     printf("total energy: %.12e\n", global_energy_tot);
   }
+}
+
+// Enforce reflective boundary conditions on the problem state
+void handle_boundary(
+    const int nx, const int ny, Mesh* mesh, double* arr, 
+    const int invert, const int pack)
+{
+  double* north_buffer_out = mesh->north_buffer_out;
+  double* east_buffer_out = mesh->east_buffer_out;
+  double* south_buffer_out = mesh->south_buffer_out;
+  double* west_buffer_out = mesh->west_buffer_out;
+  double* north_buffer_in = mesh->north_buffer_in;
+  double* east_buffer_in = mesh->east_buffer_in;
+  double* south_buffer_in = mesh->south_buffer_in;
+  double* west_buffer_in = mesh->west_buffer_in;
+
+  START_PROFILING(&comms_profile);
+
+  int* neighbours = mesh->neighbours;
+#ifdef MPI
+  int nmessages = 0;
+  MPI_Request req[2*NNEIGHBOURS];
+#endif
+
+  double x_inversion_coeff = (invert == INVERT_X) ? -1.0 : 1.0;
+
+  if(neighbours[WEST] == EDGE) {
+    // reflect at the west
+#pragma omp target teams distribute parallel for
+    for(int ii = 0; ii < ny; ++ii) {
+      for(int dd = 0; dd < PAD; ++dd) {
+        arr[ii*nx + (PAD - 1 - dd)] = x_inversion_coeff*arr[ii*nx + (PAD + dd)];
+      }
+    }
+  }
+#ifdef MPI
+  else if(pack) {
+#pragma omp target teams distribute parallel for
+    for(int ii = 0; ii < ny; ++ii) {
+      for(int dd = 0; dd < PAD; ++dd) {
+        west_buffer_out[ii*PAD+dd] = arr[(ii*nx)+(PAD+dd)];
+      }
+    }
+
+    MPI_Isend(west_buffer_out, ny*PAD, MPI_DOUBLE,
+        neighbours[WEST], 3, MPI_COMM_WORLD, &req[nmessages++]);
+    MPI_Irecv(west_buffer_in, ny*PAD, MPI_DOUBLE, 
+        neighbours[WEST], 2, MPI_COMM_WORLD, &req[nmessages++]);
+  }
+#endif
+
+  // Reflect at the east
+  if(neighbours[EAST] == EDGE) {
+#pragma omp target teams distribute parallel for
+    for(int ii = 0; ii < ny; ++ii) {
+      for(int dd = 0; dd < PAD; ++dd) {
+        arr[ii*nx + (nx - PAD + dd)] = x_inversion_coeff*arr[ii*nx + (nx - 1 - PAD - dd)];
+      }
+    }
+  }
+#ifdef MPI
+  else if(pack) {
+#pragma omp target teams distribute parallel for
+    for(int ii = 0; ii < ny; ++ii) {
+      for(int dd = 0; dd < PAD; ++dd) {
+        east_buffer_out[ii*PAD+dd] = arr[(ii*nx)+(nx-2*PAD+dd)];
+      }
+    }
+
+    MPI_Isend(east_buffer_out, ny*PAD, MPI_DOUBLE, 
+        neighbours[EAST], 2, MPI_COMM_WORLD, &req[nmessages++]);
+    MPI_Irecv(east_buffer_in, ny*PAD, MPI_DOUBLE,
+        neighbours[EAST], 3, MPI_COMM_WORLD, &req[nmessages++]);
+  }
+#endif
+
+  double y_inversion_coeff = (invert == INVERT_Y) ? -1.0 : 1.0;
+
+  // Reflect at the north
+  if(neighbours[NORTH] == EDGE) {
+#pragma omp target teams distribute parallel for
+    for(int dd = 0; dd < PAD; ++dd) {
+      for(int jj = 0; jj < nx; ++jj) {
+        arr[(ny - PAD + dd)*nx + jj] = y_inversion_coeff*arr[(ny - 1 - PAD - dd)*nx + jj];
+      }
+    }
+  }
+#ifdef MPI
+  else if(pack) {
+#pragma omp target teams distribute parallel for
+    for(int dd = 0; dd < PAD; ++dd) {
+      for(int jj = 0; jj < nx; ++jj) {
+        north_buffer_out[dd*nx+jj] = arr[(ny-2*PAD+dd)*nx+jj];
+      }
+    }
+
+    MPI_Isend(north_buffer_out, nx*PAD, MPI_DOUBLE, 
+        neighbours[NORTH], 1, MPI_COMM_WORLD, &req[nmessages++]);
+    MPI_Irecv(north_buffer_in, nx*PAD, MPI_DOUBLE,
+        neighbours[NORTH], 0, MPI_COMM_WORLD, &req[nmessages++]);
+  }
+#endif
+
+  // reflect at the south
+  if(neighbours[SOUTH] == EDGE) {
+#pragma omp target teams distribute parallel for
+    for(int dd = 0; dd < PAD; ++dd) {
+      for(int jj = 0; jj < nx; ++jj) {
+        arr[(PAD - 1 - dd)*nx + jj] = y_inversion_coeff*arr[(PAD + dd)*nx + jj];
+      }
+    }
+  }
+#ifdef MPI
+  else if (pack) {
+#pragma omp target teams distribute parallel for
+    for(int dd = 0; dd < PAD; ++dd) {
+      for(int jj = 0; jj < nx; ++jj) {
+        south_buffer_out[dd*nx+jj] = arr[(PAD+dd)*nx+jj];
+      }
+    }
+
+    MPI_Isend(south_buffer_out, nx*PAD, MPI_DOUBLE, 
+        neighbours[SOUTH], 0, MPI_COMM_WORLD, &req[nmessages++]);
+    MPI_Irecv(south_buffer_in, nx*PAD, MPI_DOUBLE,
+        neighbours[SOUTH], 1, MPI_COMM_WORLD, &req[nmessages++]);
+  }
+#endif
+
+  // Unpack the buffers
+#ifdef MPI
+  if(pack) {
+    MPI_Waitall(nmessages, req, MPI_STATUSES_IGNORE);
+
+    if(neighbours[NORTH] != EDGE) {
+#pragma omp target teams distribute parallel for
+      for(int dd = 0; dd < PAD; ++dd) {
+        for(int jj = 0; jj < nx; ++jj) {
+          arr[(ny-PAD+dd)*nx+jj] = north_buffer_in[dd*nx+jj];
+        }
+      }
+    }
+
+    if(neighbours[SOUTH] != EDGE) {
+#pragma omp target teams distribute parallel for
+      for(int dd = 0; dd < PAD; ++dd) {
+        for(int jj = 0; jj < nx; ++jj) {
+          arr[dd*nx + jj] = south_buffer_in[dd*nx+jj];
+        }
+      }
+    }
+
+    if(neighbours[WEST] != EDGE) {
+#pragma omp target teams distribute parallel for
+      for(int ii = 0; ii < ny; ++ii) {
+        for(int dd = 0; dd < PAD; ++dd) {
+          arr[ii*nx + dd] = west_buffer_in[ii*PAD+dd];
+        }
+      }
+    }
+
+    if(neighbours[EAST] != EDGE) {
+#pragma omp target teams distribute parallel for
+      for(int ii = 0; ii < ny; ++ii) {
+        for(int dd = 0; dd < PAD; ++dd) {
+          arr[ii*nx + (nx-PAD+dd)] = east_buffer_in[ii*PAD+dd];
+        }
+      }
+    }
+  }
+#endif
+
+  STOP_PROFILING(&comms_profile, __func__);
 }
 

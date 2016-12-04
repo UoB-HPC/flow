@@ -92,5 +92,5 @@ void vy_momentum_flux(
 // Write out data for visualisation in visit
 // Prints some conservation values
 void print_conservation(
-    const int nx, const int ny, State* state, Mesh* mesh);
+    const int nx, const int ny, double* rho, double* e, Mesh* mesh);
 
