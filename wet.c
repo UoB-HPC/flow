@@ -263,47 +263,26 @@ void x_mass_and_energy_flux(
   // In the ghost cells flux is left as 0.0
   START_PROFILING(&compute_profile);
 #pragma omp parallel for
-  for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
+  for(int ii = PAD; ii < ny-PAD; ++ii) {
 #pragma omp simd
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
-      const double rho_diff = (rho[ind0]-rho[ind0-1]);
+
+      // Interpolate to make second order in time
+      const double invdx = 1.0/edgedx[jj];
+      const double suc0 = 0.5*invdx*(u[ind1+1]-u[ind1-1]);
+      const double sur0 = 2.0*invdx*(u[ind1]-u[ind1-1]);
+      const double sul0 = 2.0*invdx*(u[ind1+1]-u[ind1]);
+      const double u_tc = u[ind1] - 0.5*u[ind1]*dt*minmod(suc0, minmod(sur0, sul0));
 
       // Van leer limiter
       double limiter = 0.0;
+      const double rho_diff = (rho[ind0]-rho[ind0-1]);
       if(rho_diff) {
-        const double smoothness = (u[ind1] >= 0.0) 
+        const double smoothness = (u_tc >= 0.0) 
           ? (rho[ind0-1]-rho[ind0-2])/rho_diff
           : (rho[ind0+1]-rho[ind0])/rho_diff;
         limiter = (smoothness + fabs(smoothness))/(1.0+fabs(smoothness));
       }
-
-#if 0
-      // To make second order in time interpolate the velocity
-      const double du = (u[ind1] > 0.0) 
-        ? (u[ind1+1]-u[ind1])/(2.0*celldx[jj]) 
-        : (u[ind1+2]-u[ind1+1])/(2.0*celldx[jj]);
-      const double du_upwind = (u[ind1] > 0.0)
-        ? (u[ind1+1]-u[ind1-1])/(2.0*celldx[jj])
-        : (u[ind1+2]-u[ind1])/(2.0*celldx[jj]);
-      const double u_upwind = (u[ind1] > 0.0)
-        ? ((samesign(u[ind1+1], u[ind1]) && samesign(u[ind1], u[ind1-1]) &&
-         samesign(du, du_upwind)) ? du_upwind : 0.0)
-        : ((samesign(u[ind1+2], u[ind1+1]) && samesign(u[ind1+1], u[ind1]) &&
-         samesign(du, du_upwind)) ? du_upwind : 0.0);
-
-      const double u_tc = (u[ind1] > 0.0)
-        ? u[ind1]-0.5*u[ind1]*dt*u_upwind
-        : u[ind1+1]-0.5*u[ind1]*dt*u_upwind;
-#endif // if 0
-
-      const double du = (u[ind1] > 0.0) 
-        ? (u[ind1+1]-u[ind1])/(2.0*celldx[jj]) 
-        : (u[ind1]-u[ind1-1])/(2.0*celldx[jj]);
-      const double du_upwind = (u[ind1+1]-u[ind1-1])/(2.0*celldx[jj]);
-      const double u_upwind = 
-        (samesign(u[ind1+1], u[ind1]) && samesign(u[ind1], u[ind1-1]) &&
-         samesign(du, du_upwind)) ? du_upwind : 0.0;
-      const double u_tc = u[ind1]-0.5*u[ind1]*dt*u_upwind;
 
       // Calculate the flux
       const double rho_upwind = (u_tc >= 0.0) ? rho[ind0-1] : rho[ind0];
@@ -311,7 +290,6 @@ void x_mass_and_energy_flux(
           0.5*fabs(u_tc)*(1.0-fabs((u_tc*dt_h)/celldx[jj]))*limiter*rho_diff);
 
       // Use MC limiter to get slope of energy
-      const double invdx = 1.0/edgedx[jj];
       const double a_x_0 = 0.5*invdx*(e[ind0]-e[ind0-2]);
       const double b_x_0 = 2.0*invdx*(e[ind0-1]-e[ind0-2]);
       const double c_x_0 = 2.0*invdx*(e[ind0]-e[ind0-1]);
@@ -368,9 +346,16 @@ void y_mass_and_energy_flux(
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
 #pragma omp simd
     for(int jj = PAD; jj < nx-PAD; ++jj) {
-      const double rho_diff = (rho[ind0]-rho[ind0-nx]);
+
+      // Interpolate the velocity to make second order in time
+      const double invdy = 1.0/edgedy[ii];
+      const double svc0 = 0.5*invdy*(v[ind0+nx]-v[ind0-nx]);
+      const double svr0 = 2.0*invdy*(v[ind0]-v[ind0-nx]);
+      const double svl0 = 2.0*invdy*(v[ind0+nx]-v[ind0]);
+      const double v_tc = v[ind0] - 0.5*v[ind0]*dt*minmod(svc0, minmod(svr0, svl0));
 
       // Van leer limiter
+      const double rho_diff = (rho[ind0]-rho[ind0-nx]);
       double limiter = 0.0;
       if(rho_diff) {
         const double smoothness = (v[ind0] >= 0.0) 
@@ -379,47 +364,12 @@ void y_mass_and_energy_flux(
         limiter = (smoothness + fabs(smoothness))/(1.0+fabs(smoothness));
       }
 
-      const double dv = (v[ind0] > 0.0) 
-        ? (v[ind0+nx]-v[ind0])/(2.0*celldy[ii]) 
-        : (v[ind0+2*nx]-v[ind0+nx])/(2.0*celldy[ii]);
-      const double dv_upwind = (v[ind0] > 0.0)
-        ? (v[ind0+nx]-v[ind0-nx])/(2.0*celldy[ii])
-        : (v[ind0+2*nx]-v[ind0])/(2.0*celldy[ii]);
-      const double v_upwind = (v[ind0] > 0.0)
-        ? ((samesign(v[ind0+nx], v[ind0]) && samesign(v[ind0], v[ind0-nx]) &&
-         samesign(dv, dv_upwind)) ? dv_upwind : 0.0)
-        : ((samesign(v[ind0+2*nx], v[ind0+nx]) && samesign(v[ind0+nx], v[ind0]) &&
-         samesign(dv, dv_upwind)) ? dv_upwind : 0.0);
-
-      const double v_tc = (v[ind0] > 0.0)
-        ? v[ind0]-0.5*v[ind0]*dt*v_upwind
-        : v[ind0+1]-0.5*v[ind0]*dt*v_upwind;
-
-#if 0
-      const double du = (v[ind0] > 0.0) 
-        ? (v[ind0+nx]-v[ind0])/(2.0*celldy[ii]) 
-        : (v[ind0]-v[ind0-nx])/(2.0*celldy[ii]);
-      const double du_upwind0 = (v[ind0+nx]-v[ind0-nx])/(2.0*celldy[ii]);
-      const double du_upwind1 = (v[ind0+2*nx]-v[ind0])/(2.0*celldy[ii]);
-      const double u_upwind0 = 
-        (samesign(v[ind0+nx], v[ind0]) && samesign(v[ind0], v[ind0-nx]) &&
-         samesign(du, du_upwind0)) ? du_upwind0 : 0.0;
-      const double u_upwind1 = 
-        (samesign(v[ind0+nx], v[ind0]) && samesign(v[ind0], v[ind0-nx]) &&
-         samesign(du, du_upwind1)) ? du_upwind1 : 0.0;
-
-      const double v_tc = (v[ind0] > 0.0)
-        ? v[ind0]-0.5*v[ind0]*dt*u_upwind0
-        : v[ind0+1]+0.5*v[ind0]*dt*u_upwind1;
-#endif // if 0
-
       // Calculate the flux
       const double rho_upwind = (v_tc >= 0.0) ? rho[ind0-nx] : rho[ind0];
       F_y[ind0] = (v_tc*rho_upwind+
           0.5*fabs(v_tc)*(1.0-fabs((v_tc*dt_h)/celldy[ii]))*limiter*rho_diff);
 
       // Use MC limiter to get slope of energy
-      const double invdy = 1.0/edgedy[ii];
       const double a_y_0 = 0.5*invdy*(e[ind0]-e[ind0-2*nx]);
       const double b_y_0 = 2.0*invdy*(e[ind0-nx]-e[ind0-2*nx]);
       const double c_y_0 = 2.0*invdy*(e[ind0]-e[ind0-nx]);
