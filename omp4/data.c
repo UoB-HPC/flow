@@ -65,7 +65,7 @@ void state_data_init(
 {
   // Initialise all of the state to 0, but is this best for NUMA?
 //#pragma omp parallel for
-#pragma omp target teams distribute parallel for simd
+#pragma omp target teams distribute parallel for 
   for(int ii = 0; ii < local_nx*local_ny; ++ii) {
     rho[ii] = 0.0;
     e[ii] = 0.0;
@@ -73,7 +73,7 @@ void state_data_init(
     P[ii] = 0.0;
   }
 
-#pragma omp target teams distribute parallel for simd
+#pragma omp target teams distribute parallel for 
   for(int ii = 0; ii < (local_nx+1)*(local_ny+1); ++ii) {
     Qxx[ii] = 0.0;
     Qyy[ii] = 0.0;
@@ -94,7 +94,7 @@ void state_data_init(
 
   // WET STATE INITIALISATION
   // Initialise a default state for the energy and density on the mesh
-#pragma omp target teams distribute parallel for simd
+#pragma omp target teams distribute parallel for 
   for(int ii = 0; ii < local_ny; ++ii) {
     for(int jj = 0; jj < local_nx; ++jj) {
       rho[ii*local_nx+jj] = 0.125;
@@ -104,7 +104,7 @@ void state_data_init(
   }
 
   // Introduce a problem
-#pragma omp target teams distribute parallel for simd
+#pragma omp target teams distribute parallel for 
   for(int ii = 0; ii < local_ny; ++ii) {
     for(int jj = 0; jj < local_nx; ++jj) {
       // CENTER SQUARE TEST

@@ -93,8 +93,8 @@ void set_timestep(
 
   // Ensure that the timestep does not jump too far from one step to the next
   const double final_min_dt = min(global_min_dt, C_M*mesh->dt_h);
-  mesh->dt = C_T*final_min_dt;//0.5*(C_T*final_min_dt + mesh->dt_h);
-  mesh->dt_h = C_T*final_min_dt;//(first_step) ? mesh->dt : C_T*final_min_dt;
+  mesh->dt = 0.5*(C_T*final_min_dt + mesh->dt_h);
+  mesh->dt_h = (first_step) ? mesh->dt : C_T*final_min_dt;
 }
 
 // Calculate change in momentum caused by pressure gradients, and then extract
