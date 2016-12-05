@@ -1,6 +1,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <omp.h>
 #include "wet.h"
 #include "../mesh.h"
 #include "../state.h"
@@ -8,11 +9,6 @@
 
 int main(int argc, char** argv)
 {
-  if(argc != 4) {
-    printf("usage: ./wet.exe <local_nx> <local_y> <niters>\n");
-    exit(1);
-  }
-
   // Store the dimensions of the mesh
   Mesh mesh = {0};
   mesh.global_nx = atoi(argv[1]);
@@ -23,7 +19,15 @@ int main(int argc, char** argv)
   mesh.nranks = 1;
   mesh.niters = atoi(argv[3]);
 
-  init_mpi(argc, argv, &mesh.rank, &mesh.nranks);
+  initialise_mpi(argc, argv, &mesh.rank, &mesh.nranks);
+
+  if(argc != 4 && mesh.rank == MASTER) {
+    printf("usage: ./wet.exe <local_nx> <local_y> <niters>\n");
+    exit(1);
+  }
+
+  omp_set_default_device(mesh.rank);
+
   initialise_comms(&mesh);
   initialise_mesh(&mesh);
 
@@ -90,7 +94,6 @@ int main(int argc, char** argv)
     printf("Wallclock %.2fs, Elapsed Simulation Time %.4fs\n", global_wallclock, elapsed_sim_time);
   }
 
-  fetch_data(mesh.local_nx, mesh.local_ny, state.rho);
   write_all_ranks_to_visit(
       mesh.global_nx+2*PAD, mesh.global_ny+2*PAD, mesh.local_nx, mesh.local_ny, mesh.x_off, 
       mesh.y_off, mesh.rank, mesh.nranks, mesh.neighbours, state.rho, "density", 0, elapsed_sim_time);
