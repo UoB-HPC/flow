@@ -25,7 +25,38 @@ void deallocate_data(double* buf)
 #endif
 }
 
-void data_init(
+// Fetches data back from the device
+void fetch_data(const int nx, const int ny, double* arr)
+{
+#pragma omp target update from(arr[:nx*ny])
+}
+
+// Initialises mesh data in device specific manner
+void mesh_data_init(
+    const int local_nx, const int local_ny, const int global_nx, const int global_ny,
+    double* edgedx, double* edgedy, double* celldx, double* celldy)
+{
+  // Simple uniform rectilinear initialisation
+#pragma omp target teams distribute parallel for
+  for(int ii = 0; ii < local_ny+1; ++ii) {
+    edgedy[ii] = 10.0 / (global_ny);
+  }
+#pragma omp target teams distribute parallel for
+  for(int ii = 0; ii < local_ny; ++ii) {
+    celldy[ii] = 10.0 / (global_ny);
+  }
+#pragma omp target teams distribute parallel for
+  for(int ii = 0; ii < local_nx+1; ++ii) {
+    edgedx[ii] = 10.0 / (global_nx);
+  }
+#pragma omp target teams distribute parallel for
+  for(int ii = 0; ii < local_nx; ++ii) {
+    celldx[ii] = 10.0 / (global_nx);
+  }
+}
+
+// Initialise state data in device specific manner
+void state_data_init(
     const int local_nx, const int local_ny, const int global_nx, const int global_ny,
     const int x_off, const int y_off,
     double* rho, double* e, double* rho_old, double* P, double* Qxx, double* Qyy,
@@ -76,7 +107,6 @@ void data_init(
 #pragma omp target teams distribute parallel for simd
   for(int ii = 0; ii < local_ny; ++ii) {
     for(int jj = 0; jj < local_nx; ++jj) {
-#if 0
       // CENTER SQUARE TEST
       if(jj+x_off >= (global_nx+2*PAD)/2-(global_nx/5) && 
           jj+x_off < (global_nx+2*PAD)/2+(global_nx/5) && 
@@ -86,8 +116,8 @@ void data_init(
         e[ii*local_nx+jj] = 2.5;
         x[ii*local_nx+jj] = rho[ii*local_nx+jj]*0.1;
       }
-#endif // if 0
 
+#if 0
       // OFF CENTER SQUARE TEST
       const int dist = 100;
       if(jj+x_off-PAD >= global_nx/4-dist && 
@@ -98,6 +128,7 @@ void data_init(
         e[ii*local_nx+jj] = 2.5;
         x[ii*local_nx+jj] = rho[ii*local_nx+jj]*e[ii*local_nx+jj];
       }
+#endif // if 0
 
 #if 0
       if(jj+x_off < ((global_nx+2*PAD)/2)) {

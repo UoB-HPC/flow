@@ -36,9 +36,11 @@ int main(int argc, char** argv)
       mesh.local_nx, mesh.local_ny, state.Qxx, state.Qyy, state.rho, 
       state.e, &mesh, 0, mesh.celldx, mesh.celldy);
 
+#if 0
   write_all_ranks_to_visit(
       mesh.global_nx+2*PAD, mesh.global_ny+2*PAD, mesh.local_nx, mesh.local_ny, mesh.x_off, 
       mesh.y_off, mesh.rank, mesh.nranks, mesh.neighbours, state.rho, "initial_density", 0, 0.0);
+#endif // if 0
 
   // Prepare for solve
   struct Profile wallclock = {0};
@@ -88,18 +90,10 @@ int main(int argc, char** argv)
     printf("Wallclock %.2fs, Elapsed Simulation Time %.4fs\n", global_wallclock, elapsed_sim_time);
   }
 
+  fetch_data(mesh.local_nx, mesh.local_ny, state.rho);
   write_all_ranks_to_visit(
       mesh.global_nx+2*PAD, mesh.global_ny+2*PAD, mesh.local_nx, mesh.local_ny, mesh.x_off, 
       mesh.y_off, mesh.rank, mesh.nranks, mesh.neighbours, state.rho, "density", 0, elapsed_sim_time);
-  write_all_ranks_to_visit(
-      mesh.global_nx+2*PAD, mesh.global_ny+2*PAD, mesh.local_nx, mesh.local_ny, mesh.x_off, 
-      mesh.y_off, mesh.rank, mesh.nranks, mesh.neighbours, state.e, "energy", 0, elapsed_sim_time);
-  write_all_ranks_to_visit(
-      mesh.global_nx+1+2*PAD, mesh.global_ny+2*PAD, mesh.local_nx+1, mesh.local_ny, mesh.x_off, 
-      mesh.y_off, mesh.rank, mesh.nranks, mesh.neighbours, state.u, "u", 0, elapsed_sim_time);
-  write_all_ranks_to_visit(
-      mesh.global_nx+2*PAD, mesh.global_ny+1+2*PAD, mesh.local_nx, mesh.local_ny+1, mesh.x_off, 
-      mesh.y_off, mesh.rank, mesh.nranks, mesh.neighbours, state.v, "v", 0, elapsed_sim_time);
 
   finalise_state(&state);
   finalise_mesh(&mesh);

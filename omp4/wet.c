@@ -93,8 +93,8 @@ void set_timestep(
 
   // Ensure that the timestep does not jump too far from one step to the next
   const double final_min_dt = min(global_min_dt, C_M*mesh->dt_h);
-  mesh->dt = 0.5*(C_T*final_min_dt + mesh->dt_h);
-  mesh->dt_h = (first_step) ? mesh->dt : C_T*final_min_dt;
+  mesh->dt = C_T*final_min_dt;//0.5*(C_T*final_min_dt + mesh->dt_h);
+  mesh->dt_h = C_T*final_min_dt;//(first_step) ? mesh->dt : C_T*final_min_dt;
 }
 
 // Calculate change in momentum caused by pressure gradients, and then extract
@@ -705,7 +705,7 @@ void handle_boundary(
 
   if(neighbours[WEST] == EDGE) {
     // reflect at the west
-#pragma omp target teams distribute parallel for
+#pragma omp target teams distribute parallel for collapse(2)
     for(int ii = 0; ii < ny; ++ii) {
       for(int dd = 0; dd < PAD; ++dd) {
         arr[ii*nx + (PAD - 1 - dd)] = x_inversion_coeff*arr[ii*nx + (PAD + dd)];
@@ -714,7 +714,7 @@ void handle_boundary(
   }
 #ifdef MPI
   else if(pack) {
-#pragma omp target teams distribute parallel for
+#pragma omp target teams distribute parallel for collapse(2)
     for(int ii = 0; ii < ny; ++ii) {
       for(int dd = 0; dd < PAD; ++dd) {
         west_buffer_out[ii*PAD+dd] = arr[(ii*nx)+(PAD+dd)];
@@ -730,7 +730,7 @@ void handle_boundary(
 
   // Reflect at the east
   if(neighbours[EAST] == EDGE) {
-#pragma omp target teams distribute parallel for
+#pragma omp target teams distribute parallel for collapse(2)
     for(int ii = 0; ii < ny; ++ii) {
       for(int dd = 0; dd < PAD; ++dd) {
         arr[ii*nx + (nx - PAD + dd)] = x_inversion_coeff*arr[ii*nx + (nx - 1 - PAD - dd)];
@@ -739,7 +739,7 @@ void handle_boundary(
   }
 #ifdef MPI
   else if(pack) {
-#pragma omp target teams distribute parallel for
+#pragma omp target teams distribute parallel for collapse(2)
     for(int ii = 0; ii < ny; ++ii) {
       for(int dd = 0; dd < PAD; ++dd) {
         east_buffer_out[ii*PAD+dd] = arr[(ii*nx)+(nx-2*PAD+dd)];
@@ -757,7 +757,7 @@ void handle_boundary(
 
   // Reflect at the north
   if(neighbours[NORTH] == EDGE) {
-#pragma omp target teams distribute parallel for
+#pragma omp target teams distribute parallel for collapse(2)
     for(int dd = 0; dd < PAD; ++dd) {
       for(int jj = 0; jj < nx; ++jj) {
         arr[(ny - PAD + dd)*nx + jj] = y_inversion_coeff*arr[(ny - 1 - PAD - dd)*nx + jj];
@@ -766,7 +766,7 @@ void handle_boundary(
   }
 #ifdef MPI
   else if(pack) {
-#pragma omp target teams distribute parallel for
+#pragma omp target teams distribute parallel for collapse(2)
     for(int dd = 0; dd < PAD; ++dd) {
       for(int jj = 0; jj < nx; ++jj) {
         north_buffer_out[dd*nx+jj] = arr[(ny-2*PAD+dd)*nx+jj];
@@ -782,7 +782,7 @@ void handle_boundary(
 
   // reflect at the south
   if(neighbours[SOUTH] == EDGE) {
-#pragma omp target teams distribute parallel for
+#pragma omp target teams distribute parallel for collapse(2)
     for(int dd = 0; dd < PAD; ++dd) {
       for(int jj = 0; jj < nx; ++jj) {
         arr[(PAD - 1 - dd)*nx + jj] = y_inversion_coeff*arr[(PAD + dd)*nx + jj];
@@ -791,7 +791,7 @@ void handle_boundary(
   }
 #ifdef MPI
   else if (pack) {
-#pragma omp target teams distribute parallel for
+#pragma omp target teams distribute parallel for collapse(2)
     for(int dd = 0; dd < PAD; ++dd) {
       for(int jj = 0; jj < nx; ++jj) {
         south_buffer_out[dd*nx+jj] = arr[(PAD+dd)*nx+jj];
@@ -811,7 +811,7 @@ void handle_boundary(
     MPI_Waitall(nmessages, req, MPI_STATUSES_IGNORE);
 
     if(neighbours[NORTH] != EDGE) {
-#pragma omp target teams distribute parallel for
+#pragma omp target teams distribute parallel for collapse(2)
       for(int dd = 0; dd < PAD; ++dd) {
         for(int jj = 0; jj < nx; ++jj) {
           arr[(ny-PAD+dd)*nx+jj] = north_buffer_in[dd*nx+jj];
@@ -820,7 +820,7 @@ void handle_boundary(
     }
 
     if(neighbours[SOUTH] != EDGE) {
-#pragma omp target teams distribute parallel for
+#pragma omp target teams distribute parallel for collapse(2)
       for(int dd = 0; dd < PAD; ++dd) {
         for(int jj = 0; jj < nx; ++jj) {
           arr[dd*nx + jj] = south_buffer_in[dd*nx+jj];
@@ -829,7 +829,7 @@ void handle_boundary(
     }
 
     if(neighbours[WEST] != EDGE) {
-#pragma omp target teams distribute parallel for
+#pragma omp target teams distribute parallel for collapse(2)
       for(int ii = 0; ii < ny; ++ii) {
         for(int dd = 0; dd < PAD; ++dd) {
           arr[ii*nx + dd] = west_buffer_in[ii*PAD+dd];
@@ -838,7 +838,7 @@ void handle_boundary(
     }
 
     if(neighbours[EAST] != EDGE) {
-#pragma omp target teams distribute parallel for
+#pragma omp target teams distribute parallel for collapse(2)
       for(int ii = 0; ii < ny; ++ii) {
         for(int dd = 0; dd < PAD; ++dd) {
           arr[ii*nx + (nx-PAD+dd)] = east_buffer_in[ii*PAD+dd];
