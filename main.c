@@ -26,8 +26,6 @@ int main(int argc, char** argv)
     exit(1);
   }
 
-  omp_set_default_device(mesh.rank);
-
   initialise_comms(&mesh);
   initialise_mesh(&mesh);
 
@@ -50,6 +48,8 @@ int main(int argc, char** argv)
   struct Profile wallclock = {0};
   double elapsed_sim_time = 0.0;
 
+  START_PROFILING(&wallclock);
+
   // Main timestep loop
   int tt;
   for(tt = 0; tt < mesh.niters; ++tt) {
@@ -57,14 +57,10 @@ int main(int argc, char** argv)
     if(mesh.rank == MASTER) 
       printf("Iteration %d\n", tt+1);
 
-    START_PROFILING(&wallclock);
-
     solve_hydro(
         &mesh, tt, state.P, state.rho, state.rho_old, state.e, state.u, 
         state.v, state.rho_u, state.rho_v, state.Qxx, state.Qyy, state.F_x, 
         state.F_y, state.uF_x, state.uF_y, state.vF_x, state.vF_y);
-
-    STOP_PROFILING(&wallclock, "wallclock");
 
     print_conservation(mesh.local_nx, mesh.local_ny, state.rho, state.e, &mesh);
 
@@ -80,18 +76,17 @@ int main(int argc, char** argv)
     }
   }
 
-  double global_wallclock = 0.0;
-  if(tt > 0) {
 #ifdef MPI
-    struct ProfileEntry pe = profiler_get_profile_entry(&wallclock, "wallclock");
-    MPI_Reduce(&pe.time, &global_wallclock, 1, MPI_DOUBLE, MPI_SUM, MASTER, MPI_COMM_WORLD);
+  MPI_Barrier(MPI_COMM_WORLD);
 #endif
-  }
+
+  STOP_PROFILING(&wallclock, "wallclock");
 
   if(mesh.rank == MASTER) {
+    struct ProfileEntry pe = profiler_get_profile_entry(&wallclock, "wallclock");
     PRINT_PROFILING_RESULTS(&compute_profile);
     PRINT_PROFILING_RESULTS(&comms_profile);
-    printf("Wallclock %.2fs, Elapsed Simulation Time %.4fs\n", global_wallclock, elapsed_sim_time);
+    printf("Wallclock %.2fs, Elapsed Simulation Time %.4fs\n", pe.time, elapsed_sim_time);
   }
 
   write_all_ranks_to_visit(
