@@ -4,6 +4,8 @@
 #include "../wet.h"
 #include "../../comms.h"
 
+#define NBLOCKS 128
+
 #define set_cuda_indices(padx) \
   const int gid = threadIdx.x+blockIdx.x*blockDim.x; \
 const int jj = (gid % (nx+padx));\
@@ -32,8 +34,8 @@ void solve_hydro(
       u, v, P, rho, mesh->edgedx, mesh->edgedy, 
       mesh->celldx, mesh->celldy);
 
-  handle_boundary(nx+1, ny, mesh, u, INVERT_X, PACK);
-  handle_boundary(nx, ny+1, mesh, v, INVERT_Y, PACK);
+  handle_boundary(mesh->local_nx+1, mesh->local_ny, mesh, u, INVERT_X, PACK);
+  handle_boundary(mesh->local_nx, mesh->local_ny+1, mesh, v, INVERT_Y, PACK);
 
   artificial_viscosity(
       mesh->local_nx, mesh->local_ny, mesh, mesh->dt, Qxx, Qyy, 
@@ -41,11 +43,11 @@ void solve_hydro(
       mesh->edgedx, mesh->edgedy, mesh->celldx, mesh->celldy);
 
   nthreads_per_block = ceil(mesh->local_nx*mesh->local_ny/(double)NBLOCKS);
-  shock_heating_and_work(
+  shock_heating_and_work<<<nthreads_per_block, NBLOCKS>>>(
       mesh->local_nx, mesh->local_ny, mesh, mesh->dt_h, e, P, u, 
       v, rho, Qxx, Qyy, mesh->celldx, mesh->celldy);
 
-  handle_boundary(nx, ny, mesh, e, NO_INVERT, PACK);
+  handle_boundary(mesh->local_nx, mesh->local_ny, mesh, e, NO_INVERT, PACK);
 
   set_timestep(
       mesh->local_nx, mesh->local_ny, Qxx, Qyy, rho, 
@@ -74,7 +76,7 @@ __global__ void equation_of_state(
 
 // Calculate change in momentum caused by pressure gradients, and then extract
 // the velocities using edge centered density approximations
-void pressure_acceleration(
+__global__ void pressure_acceleration(
     const int nx, const int ny, Mesh* mesh, const double dt, double* rho_u, 
     double* rho_v, double* u, double* v, const double* P, const double* rho,
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
@@ -115,7 +117,7 @@ void artificial_viscosity(
   handle_boundary(nx, ny, mesh, Qyy, NO_INVERT, PACK);
 
   nthreads_per_block = ceil((nx+1)*(ny+1)/(double)NBLOCKS);
-  viscous_acceleration(
+  viscous_acceleration<<<nthreads_per_block, NBLOCKS>>>(
       nx, ny, mesh, dt, Qxx, Qyy, u, v, rho_u, rho_v, rho, 
       edgedx, edgedy, celldx, celldy);
 
@@ -204,18 +206,18 @@ void set_timestep(
 
   int nthreads_per_block = ceil((nx+1)*(ny+1)/(double)NBLOCKS);
   calc_min_timestep<NBLOCKS><<<nthreads_per_block, NBLOCKS>>>(
-      nx, ny, Qxx, Qyy, rho, e, Mesh* mesh, min_timesteps, first_step, celldx, celldy);
+      nx, ny, Qxx, Qyy, rho, e, mesh, min_timesteps, first_step, celldx, celldy);
 
   // TODO: This is not right, it doesn't reduce all values
   while(nthreads_per_block > 1) {
-    min_reduce<NBLOCKS>(min_timesteps, min_timesteps);
     nthreads_per_block = ceil(nthreads_per_block/(double)NBLOCKS);
+    min_reduce<NBLOCKS><<<nthreads_per_block, NBLOCKS>>>(min_timesteps, min_timesteps);
   }
 
-  sync_data(1, 1, min_timesteps, RECV);
+  sync_data(1, min_timesteps, &local_min_dt, RECV);
 
   // Ensure that the timestep does not jump too far from one step to the next
-  double global_min_dt = reduce_all_min(min_timesteps[0]);
+  double global_min_dt = reduce_all_min(local_min_dt);
   const double final_min_dt = min(global_min_dt, C_M*mesh->dt_h);
   mesh->dt = 0.5*(C_T*final_min_dt + mesh->dt_h);
   mesh->dt_h = (first_step) ? mesh->dt : C_T*final_min_dt;
@@ -227,19 +229,21 @@ __global__ void calc_min_timestep(
     const double* e, Mesh* mesh, double* min_timesteps, const int first_step,
     const double* celldx, const double* celldy)
 {
+  set_cuda_indices(0);
+
   // Constrain based on the sound speed within the system
   const double c_s = sqrt(GAM*(GAM - 1.0)*e[ind0]);
   const double thread_min_dt_x = celldx[jj]/sqrt(c_s*c_s + 2.0*Qxx[ind0]/rho[ind0]);
   const double thread_min_dt_y = celldy[ii]/sqrt(c_s*c_s + 2.0*Qyy[ind0]/rho[ind0]);
   const double thread_min_dt = min(thread_min_dt_x, thread_min_dt_y);
 
-  __shared__ sdata[block_size];
+  __shared__ double sdata[block_size];
   const int tid = threadIdx.x;
-  sdata[tid] = min(local_min_dt, thread_min_dt);
+  sdata[tid] = min(MAX_DT, thread_min_dt);
   __syncthreads();
 
-  min_reduce_in_shared<NBLOCKS>(threadIdx, sdata);
-  if (tid == 0) result[blockIdx.x] = sdata[0];
+  min_reduce_in_shared<NBLOCKS>(tid, sdata);
+  if (tid == 0) min_timesteps[blockIdx.x] = sdata[0];
 }
 
 // Perform advection with monotonicity improvement
@@ -250,7 +254,7 @@ void advect_mass_and_energy(
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
   int nthreads_per_block = ceil(nx*ny/(double)NBLOCKS);
-  store_old_rho<<<nthreads_per_block, NBLOCKS>>>(rho, rho_old);
+  store_old_rho<<<nthreads_per_block, NBLOCKS>>>(nx, ny, rho, rho_old);
 
   if(tt % 2 == 0) {
     mass_and_energy_x_advection(
@@ -271,7 +275,7 @@ void advect_mass_and_energy(
 }
 
 __global__ void store_old_rho(
-    double* rho, double* rho_old)
+    const int nx, const int ny, double* rho, double* rho_old)
 {
   set_cuda_indices(0);
 
@@ -281,31 +285,8 @@ __global__ void store_old_rho(
   rho_old[ind0] = rho[ind0];
 }
 
-// Advect energy and mass in the x direction
-void mass_and_energy_x_advection(
-    const int nx, const int ny, const int first, Mesh* mesh, const double dt, 
-    const double dt_h, double* rho, double* rho_old, double* e, const double* u, 
-    double* F_x, double* eF_x, const double* celldx, const double* edgedx, 
-    const double* celldy, const double* edgedy)
-{
-  int nthreads_per_block = ceil((nx+1)*ny/(double)NBLOCKS);
-  calc_x_mass_and_energy_flux<<<nthreads_per_block, NBLOCKS>>>(
-      nx, ny, first, mesh, dt, dt_h, rho, rho_old, e, u, 
-      F_x, eF_x, celldx, edgedx, celldy, edgedy);
-
-  handle_boundary(nx+1, ny, mesh, F_x, INVERT_X, PACK);
-
-  nthreads_per_block = ceil(nx*ny/(double)NBLOCKS);
-  advect_mass_and_energy_in_x<<<nthreads_per_block, NBLOCKS>>>(
-      nx, ny, first, mesh, dt, dt_h, rho, rho_old, e, u, 
-      F_x, eF_x, celldx, edgedx, celldy, edgedy);
-
-  handle_boundary(nx, ny, mesh, rho, NO_INVERT, PACK);
-  handle_boundary(nx, ny, mesh, e, NO_INVERT, PACK);
-}
-
 // Calculate the flux in the x direction
-void calc_x_mass_and_energy_flux(
+__global__ void calc_x_mass_and_energy_flux(
     const int nx, const int ny, const int first, Mesh* mesh, const double dt, 
     const double dt_h, double* rho, double* rho_old, double* e, const double* u, 
     double* F_x, double* eF_x, const double* celldx, const double* edgedx, 
@@ -356,7 +337,7 @@ void calc_x_mass_and_energy_flux(
 }
 
 // Advect mass and energy in the x direction
-void advect_mass_and_energy_in_x(
+__global__ void advect_mass_and_energy_in_x(
     const int nx, const int ny, const int first, Mesh* mesh, const double dt, 
     const double dt_h, double* rho, double* rho_old, double* e, const double* u, 
     double* F_x, double* eF_x, const double* celldx, const double* edgedx, 
@@ -377,8 +358,8 @@ void advect_mass_and_energy_in_x(
     : (rho[ind0] == 0.0) ? 0.0 : rho_e/rho[ind0];
 }
 
-// Advect energy and mass in the x direction
-void mass_and_energy_x_advection(
+// Advect energy and mass in the y direction
+void mass_and_energy_y_advection(
     const int nx, const int ny, const int first, Mesh* mesh, const double dt,
     const double dt_h, double* rho, double* rho_old, double* e, const double* v, 
     double* F_y, double* eF_y, const double* celldx, const double* edgedx, 
@@ -386,21 +367,21 @@ void mass_and_energy_x_advection(
 {
   int nthreads_per_block = ceil(nx*(ny+1)/(double)NBLOCKS);
   calc_y_mass_and_energy_flux<<<nthreads_per_block, NBLOCKS>>>(
-      nx, ny, first, Mesh* mesh, dt, dt_h, rho, rho_old, e, v, 
+      nx, ny, first, mesh, dt, dt_h, rho, rho_old, e, v, 
       F_y, eF_y, celldx, edgedx, celldy, edgedy);
 
   handle_boundary(nx, ny+1, mesh, F_y, INVERT_Y, PACK);
 
   nthreads_per_block = ceil(nx*ny/(double)NBLOCKS);
   advect_mass_and_energy_in_y<<<nthreads_per_block, NBLOCKS>>>(
-      nx, ny, first, Mesh* mesh, dt, dt_h, rho, rho_old, e, v, 
+      nx, ny, first, mesh, dt, dt_h, rho, rho_old, e, v, 
       F_y, eF_y, celldx, edgedx, celldy, edgedy);
 
   handle_boundary(nx, ny, mesh, rho, NO_INVERT, PACK);
   handle_boundary(nx, ny, mesh, e, NO_INVERT, PACK);
 }
 
-void calc_y_mass_and_energy_flux(
+__global__ void calc_y_mass_and_energy_flux(
     const int nx, const int ny, const int first, Mesh* mesh, const double dt,
     const double dt_h, double* rho, double* rho_old, double* e, const double* v, 
     double* F_y, double* eF_y, const double* celldx, const double* edgedx, 
@@ -451,7 +432,7 @@ void calc_y_mass_and_energy_flux(
   eF_y[ind0] = edgedx[jj]*edge_e_y*F_y[ind0]; 
 }
 
-void advect_mass_and_energy_in_y(
+__global__ void advect_mass_and_energy_in_y(
     const int nx, const int ny, const int first, Mesh* mesh, const double dt,
     const double dt_h, double* rho, double* rho_old, double* e, const double* v, 
     double* F_y, double* eF_y, const double* celldx, const double* edgedx, 
@@ -470,6 +451,29 @@ void advect_mass_and_energy_in_y(
   e[ind0] = (first) 
     ? (rho_old[ind0] == 0.0) ? 0.0 : rho_e/rho_old[ind0]
     : (rho[ind0] == 0.0) ? 0.0 : rho_e/rho[ind0];
+}
+
+// Advect energy and mass in the x direction
+void mass_and_energy_x_advection(
+    const int nx, const int ny, const int first, Mesh* mesh, const double dt, 
+    const double dt_h, double* rho, double* rho_old, double* e, const double* u, 
+    double* F_x, double* eF_x, const double* celldx, const double* edgedx, 
+    const double* celldy, const double* edgedy)
+{
+  int nthreads_per_block = ceil((nx+1)*ny/(double)NBLOCKS);
+  calc_x_mass_and_energy_flux<<<nthreads_per_block, NBLOCKS>>>(
+      nx, ny, first, mesh, dt, dt_h, rho, rho_old, e, u, 
+      F_x, eF_x, celldx, edgedx, celldy, edgedy);
+
+  handle_boundary(nx+1, ny, mesh, F_x, INVERT_X, PACK);
+
+  nthreads_per_block = ceil(nx*ny/(double)NBLOCKS);
+  advect_mass_and_energy_in_x<<<nthreads_per_block, NBLOCKS>>>(
+      nx, ny, first, mesh, dt, dt_h, rho, rho_old, e, u, 
+      F_x, eF_x, celldx, edgedx, celldy, edgedy);
+
+  handle_boundary(nx, ny, mesh, rho, NO_INVERT, PACK);
+  handle_boundary(nx, ny, mesh, e, NO_INVERT, PACK);
 }
 
 __global__ void ux_momentum_flux(
@@ -502,7 +506,7 @@ __global__ void ux_momentum_flux(
 }
 
 
-void advect_rho_u_in_x(
+__global__ void advect_rho_u_in_x(
     const int nx, const int ny, const int tt, Mesh* mesh, const double dt_h, 
     const double dt, double* u, double* v, double* uF_x, double* uF_y, 
     double* vF_x, double* vF_y, double* rho_u, double* rho_v, 
@@ -517,7 +521,7 @@ void advect_rho_u_in_x(
   rho_u[ind1] -= dt_h*(uF_x[ind0] - uF_x[ind0-1])/(edgedx[jj]*celldy[ii]);
 }
 
-void advect_rho_u_and_u_in_x(
+__global__ void advect_rho_u_and_u_in_x(
     const int nx, const int ny, const int tt, Mesh* mesh, const double dt_h, 
     const double dt, double* u, double* v, double* uF_x, double* uF_y, 
     double* vF_x, double* vF_y, double* rho_u, double* rho_v, 
@@ -536,7 +540,7 @@ void advect_rho_u_and_u_in_x(
   u[ind1] = (rho_edge_x == 0.0) ? 0.0 : rho_u[ind1] / rho_edge_x;
 }
 
-void advect_rho_u_in_y(
+__global__ void advect_rho_u_in_y(
     const int nx, const int ny, const int tt, Mesh* mesh, const double dt_h, 
     const double dt, double* u, double* v, double* uF_x, double* uF_y, 
     double* vF_x, double* vF_y, double* rho_u, double* rho_v, 
@@ -551,7 +555,7 @@ void advect_rho_u_in_y(
   rho_u[ind1] -= dt_h*(uF_y[ind1+(nx+1)] - uF_y[ind1])/(celldx[jj]*edgedy[ii]);
 }
 
-void advect_rho_u_and_u_in_y(
+__global__ void advect_rho_u_and_u_in_y(
     const int nx, const int ny, const int tt, Mesh* mesh, const double dt_h, 
     const double dt, double* u, double* v, double* uF_x, double* uF_y, 
     double* vF_x, double* vF_y, double* rho_u, double* rho_v, 
@@ -570,7 +574,7 @@ void advect_rho_u_and_u_in_y(
   u[ind1] = (rho_edge_x == 0.0) ? 0.0 : rho_u[ind1] / rho_edge_x;
 }
 
-void uy_momentum_flux(
+__global__ void uy_momentum_flux(
     const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
     double* u, double* v, double* uF_y, double* rho_u, const double* rho, 
     const double* F_y, 
@@ -598,7 +602,7 @@ void uy_momentum_flux(
   uF_y[ind1] = f_y*u_corner_y;
 }
 
-void vx_momentum_flux(
+__global__ void vx_momentum_flux(
     const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
     const double* u, double* v, double* vF_x, double* rho_v, const double* rho, 
     const double* F_x, 
@@ -627,7 +631,7 @@ void vx_momentum_flux(
   vF_x[ind1] = f_x*v_cell_x_interp;
 }
 
-void advect_rho_v_and_v_in_y(
+__global__ void advect_rho_v_and_v_in_y(
     const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
     double* u, double* v, double* vF_y, double* rho_v, const double* rho, const double* F_y, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
@@ -644,7 +648,7 @@ void advect_rho_v_and_v_in_y(
   v[ind0] = (rho_edge_y == 0.0) ? 0.0 : rho_v[ind0] / rho_edge_y;
 }
 
-void advect_rho_v_and_v_in_x(
+__global__ void advect_rho_v_and_v_in_x(
     const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
     const double* u, double* v, double* vF_x, double* rho_v, const double* rho, 
     const double* F_x, 
@@ -662,7 +666,7 @@ void advect_rho_v_and_v_in_x(
   v[ind0] = (rho_edge_y == 0.0) ? 0.0 : rho_v[ind0] / rho_edge_y;
 }
 
-void advect_rho_v_in_x(
+__global__ void advect_rho_v_in_x(
     const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
     const double* u, double* v, double* vF_x, double* rho_v, const double* rho, 
     const double* F_x, 
@@ -676,7 +680,7 @@ void advect_rho_v_in_x(
   rho_v[ind0] -= dt_h*(vF_x[ind1+1] - vF_x[ind1])/(edgedx[jj]*celldy[ii]);
 }
 
-void vy_momentum_flux(
+__global__ void vy_momentum_flux(
     const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
     double* u, double* v, double* vF_y, double* rho_v, const double* rho, const double* F_y, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
@@ -703,7 +707,7 @@ void vy_momentum_flux(
   vF_y[ind0] = f_y*v_cell_y_interp;
 }
 
-void advect_rho_v_in_y(
+__global__ void advect_rho_v_in_y(
     const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
     double* u, double* v, double* vF_y, double* rho_v, const double* rho, const double* F_y, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
@@ -809,7 +813,7 @@ void advect_momentum(
     nthreads_per_block = ceil(nx*(ny+1)/(double)NBLOCKS);
     advect_rho_v_in_x<<<nthreads_per_block, NBLOCKS>>>(
         nx, ny, mesh, dt_h, dt, u, v, vF_x, rho_v, rho, 
-        F_x, edgedx, edgedy, celldx, celldy)
+        F_x, edgedx, edgedy, celldx, celldy);
   }
 }
 
@@ -844,21 +848,21 @@ void print_conservation(
 
 // http://developer.download.nvidia.com/compute/cuda/1.1-Beta/x86_website/projects/reduction/doc/reduction.pdf
   template <unsigned int block_size>
-__device__ void min_reduce(
+__global__ void min_reduce(
     double* data, double* result)
 {
-  __shared__ sdata[block_size];
+  __shared__ double sdata[block_size];
   const int ind = blockIdx.x*block_size + threadIdx.x;
   sdata[threadIdx.x] = data[ind];
   __syncthreads();
 
-  min_reduce_in_shared(threadIdx.x, sdata);
+  min_reduce_in_shared<block_size>(threadIdx.x, sdata);
   if (threadIdx.x == 0) result[blockIdx.x] = sdata[0];
 }
 
   template <unsigned int block_size>
 __device__ void min_reduce_in_shared(
-    const int tid, __shared__ double sdata)
+    const int tid, double* sdata)
 {
   if (block_size >= 512) { 
     if (tid < 256) { sdata[tid] = min(sdata[tid], sdata[tid + 256]); } __syncthreads(); }

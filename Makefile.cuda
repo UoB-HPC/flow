@@ -9,5 +9,5 @@ SRC_CLEAN  = $(subst $(MULTI_DIR)/,,$(SRC))
 OBJS 			 = $(patsubst %.cu, $(MULTI_BUILD_DIR)/%.o, $(SRC_CLEAN))
 
 $(MULTI_BUILD_DIR)/%.o: %.cu Makefile
-	$(NVCC) -Xcompiler "$(MULTI_FLAGS)" $(OPTIONS) -c $< -o $@
+	$(NVCC) -Xcompiler "$(MULTI_FLAGS)" -arch=sm_35 $(OPTIONS) -c $< -o $@
 
