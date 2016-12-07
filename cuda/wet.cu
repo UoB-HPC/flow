@@ -93,8 +93,6 @@ void set_timestep(
     const double* e, Mesh* mesh, double* reduce_array, const int first_step,
     const double* celldx, const double* celldy)
 {
-  double local_min_dt = MAX_DT;
-
   int nthreads_per_block = ceil((nx+1)*(ny+1)/(double)NBLOCKS);
   calc_min_timestep<NBLOCKS><<<nthreads_per_block, NBLOCKS>>>(
       nx, ny, Qxx, Qyy, rho, e, mesh, reduce_array, first_step, celldx, celldy);
@@ -105,7 +103,10 @@ void set_timestep(
   }
   gpu_check(cudaDeviceSynchronize());
 
-  sync_data(1, reduce_array, &local_min_dt, RECV);
+  // TODO: URGH
+  double local_min_dt;
+  double* plocal_min_dt = &local_min_dt;
+  sync_data(1, &reduce_array, &plocal_min_dt, RECV);
 
   // Ensure that the timestep does not jump too far from one step to the next
   double global_min_dt = reduce_all_min(local_min_dt);
@@ -332,7 +333,8 @@ void print_conservation(
   gpu_check(cudaDeviceSynchronize());
 
   double local_mass_tot = 0.0;
-  sync_data(1, reduce_array, &local_mass_tot, RECV);
+  double* plocal_mass_tot = &local_mass_tot;
+  sync_data(1, &reduce_array, &plocal_mass_tot, RECV);
 
   double global_mass_tot = local_mass_tot;
 
