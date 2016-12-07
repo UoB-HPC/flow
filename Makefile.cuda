@@ -1,0 +1,13 @@
+
+NVCC					 = nvcc
+MULTI_LINKER 	 = $(NVCC)
+
+SRC  			+= $(wildcard $(KERNELS)/*.cu)
+SRC  			+= $(wildcard $(MULTI_DIR)/$(KERNELS)/*.cu)
+SRC 			+= $(subst main.c,, $(wildcard $(MULTI_DIR)/*.c))
+SRC_CLEAN  = $(subst $(MULTI_DIR)/,,$(SRC))
+OBJS 			 = $(patsubst %.cu, $(MULTI_BUILD_DIR)/%.o, $(SRC_CLEAN))
+
+$(MULTI_BUILD_DIR)/%.o: %.cu Makefile
+	$(NVCC) -Xcompiler "$(MULTI_FLAGS)" $(OPTIONS) -c $< -o $@
+

@@ -4,15 +4,13 @@
 #include "../wet.h"
 #include "../../comms.h"
 
-#define set_cuda_indices() \
+#define set_cuda_indices(padx) \
   const int gid = threadIdx.x+blockIdx.x*blockDim.x; \
-const int jj0 = (gid % nx);\
-const int jj1 = (gid % (nx+1));\
-const int ii0 = (gid / nx);\
-const int ii1 = (gid / (nx+1));
+const int jj = (gid % (nx+padx));\
+const int ii = (gid / (nx+padx));
 
-#define ind0 (ii0*nx + jj0)
-#define ind1 (ii1*(nx+1) + jj1)
+#define ind0 (ii*nx + jj)
+#define ind1 (ii*(nx+1) + jj)
 
 // Solve a single timestep on the given mesh
 void solve_hydro(
@@ -68,7 +66,7 @@ void solve_hydro(
 __global__ void equation_of_state(
     const int nx, const int ny, double* P, const double* rho, const double* e)
 {
-  set_cuda_indices();
+  set_cuda_indices(0);
 
   // Only invoke simple GAMma law at the moment
   P[ind0] = (GAM - 1.0)*rho[ind0]*e[ind0];
@@ -81,7 +79,7 @@ void pressure_acceleration(
     double* rho_v, double* u, double* v, const double* P, const double* rho,
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
-  set_cuda_indices();
+  set_cuda_indices(1);
 
   if(ii < PAD || jj < PAD || jj >= (nx+1)-PAD || ii >= (ny+1)-PAD) 
     return;
@@ -130,7 +128,7 @@ __global__ void calc_viscous_stresses(
     double* Qyy, double* u, double* v, double* rho_u, double* rho_v, const double* rho, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
-  set_cuda_indices();
+  set_cuda_indices(0);
 
   if(ii < PAD || jj < PAD || jj >= nx-PAD || ii >= ny-PAD) 
     return;
@@ -152,7 +150,7 @@ __global__ void viscous_acceleration(
     double* Qyy, double* u, double* v, double* rho_u, double* rho_v, const double* rho, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
-  set_cuda_indices();
+  set_cuda_indices(1);
 
   if(ii < PAD || jj < PAD || jj >= (nx+1)-PAD || ii >= (ny+1)-PAD) 
     return;
@@ -179,7 +177,7 @@ __global__ void shock_heating_and_work(
     const double* P, const double* u, const double* v, const double* rho, 
     const double* Qxx, const double* Qyy, const double* celldx, const double* celldy)
 {
-  set_cuda_indices();
+  set_cuda_indices(0);
 
   if(ii < PAD || jj < PAD || jj >= nx-PAD || ii >= ny-PAD) 
     return;
@@ -275,7 +273,7 @@ void advect_mass_and_energy(
 __global__ void store_old_rho(
     double* rho, double* rho_old)
 {
-  set_cuda_indices();
+  set_cuda_indices(0);
 
   if(ii < PAD || jj < PAD || jj >= nx-PAD || ii >= ny-PAD) 
     return;
@@ -313,7 +311,7 @@ void calc_x_mass_and_energy_flux(
     double* F_x, double* eF_x, const double* celldx, const double* edgedx, 
     const double* celldy, const double* edgedy)
 {
-  set_cuda_indices();
+  set_cuda_indices(1);
 
   if(ii < PAD || jj < PAD || jj >= (nx+1)-PAD || ii >= ny-PAD) 
     return;
@@ -364,7 +362,7 @@ void advect_mass_and_energy_in_x(
     double* F_x, double* eF_x, const double* celldx, const double* edgedx, 
     const double* celldy, const double* edgedy)
 {
-  set_cuda_indices();
+  set_cuda_indices(0);
 
   if(ii < PAD || jj < PAD || jj >= nx-PAD || ii >= ny-PAD) 
     return;
@@ -408,7 +406,7 @@ void calc_y_mass_and_energy_flux(
     double* F_y, double* eF_y, const double* celldx, const double* edgedx, 
     const double* celldy, const double* edgedy)
 {
-  set_cuda_indices();
+  set_cuda_indices(0);
 
   if(ii < PAD || jj < PAD || jj >= nx-PAD || ii >= (ny+1)-PAD) 
     return;
@@ -459,7 +457,7 @@ void advect_mass_and_energy_in_y(
     double* F_y, double* eF_y, const double* celldx, const double* edgedx, 
     const double* celldy, const double* edgedy)
 {
-  set_cuda_indices();
+  set_cuda_indices(0);
 
   if(ii < PAD || jj < PAD || jj >= nx-PAD || ii >= ny-PAD) 
     return;
@@ -472,6 +470,250 @@ void advect_mass_and_energy_in_y(
   e[ind0] = (first) 
     ? (rho_old[ind0] == 0.0) ? 0.0 : rho_e/rho_old[ind0]
     : (rho[ind0] == 0.0) ? 0.0 : rho_e/rho[ind0];
+}
+
+__global__ void ux_momentum_flux(
+    const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
+    double* u, double* v, double* uF_x, double* rho_u, const double* rho, const double* F_x, 
+    const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
+{
+  set_cuda_indices(0);
+
+  if(ii < PAD || jj < PAD || jj >= nx-PAD || ii >= ny-PAD) 
+    return;
+
+  // Calculate the cell centered x momentum fluxes in the x direction
+  // Use MC limiter to get slope of velocity
+  const double invdx = 1.0/edgedx[jj];
+  const double a_x_0 = 0.5*invdx*(u[ind1+1]-u[ind1-1]);
+  const double b_x_0 = 2.0*invdx*(u[ind1]-u[ind1-1]);
+  const double c_x_0 = 2.0*invdx*(u[ind1+1]-u[ind1]);
+  const double a_x_1 = 0.5*invdx*(u[ind1+2]-u[ind1]);
+  const double b_x_1 = 2.0*invdx*(u[ind1+1]-u[ind1]);
+  const double c_x_1 = 2.0*invdx*(u[ind1+2]-u[ind1+1]);
+
+  // Calculate the interpolated densities
+  const double u_cell_x = 0.5*(u[ind1]+u[ind1+1]);
+  const double f_x = edgedy[ii]*0.5*(F_x[ind1] + F_x[ind1+1]); 
+  const double u_cell_x_interp = (u_cell_x > 0.0)
+    ? u[ind1] + 0.5*minmod(minmod(a_x_0, b_x_0), c_x_0)*(celldx[jj-1] - u_cell_x*dt_h)
+    : u[ind1+1] - 0.5*minmod(minmod(a_x_1, b_x_1), c_x_1)*(celldx[jj] + u_cell_x*dt_h);
+  uF_x[ind0] = f_x*u_cell_x_interp;
+}
+
+
+void advect_rho_u_in_x(
+    const int nx, const int ny, const int tt, Mesh* mesh, const double dt_h, 
+    const double dt, double* u, double* v, double* uF_x, double* uF_y, 
+    double* vF_x, double* vF_y, double* rho_u, double* rho_v, 
+    const double* rho, const double* F_x, const double* F_y, 
+    const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
+{
+  set_cuda_indices(1);
+
+  if(ii < PAD || jj < PAD || jj >= (nx+1)-PAD || ii >= ny-PAD) 
+    return;
+
+  rho_u[ind1] -= dt_h*(uF_x[ind0] - uF_x[ind0-1])/(edgedx[jj]*celldy[ii]);
+}
+
+void advect_rho_u_and_u_in_x(
+    const int nx, const int ny, const int tt, Mesh* mesh, const double dt_h, 
+    const double dt, double* u, double* v, double* uF_x, double* uF_y, 
+    double* vF_x, double* vF_y, double* rho_u, double* rho_v, 
+    const double* rho, const double* F_x, const double* F_y, 
+    const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
+{
+  set_cuda_indices(1);
+
+  if(ii < PAD || jj < PAD || jj >= (nx+1)-PAD || ii >= ny-PAD) 
+    return;
+
+  rho_u[ind1] -= dt_h*(uF_x[ind0] - uF_x[ind0-1])/(edgedx[jj]*celldy[ii]);
+  const double rho_edge_x = 
+    (rho[ind0]*celldx[jj]*celldy[ii] + rho[ind0-1]*celldx[jj - 1]*celldy[ii])/ 
+    (2.0*edgedx[jj]*celldy[ii]);
+  u[ind1] = (rho_edge_x == 0.0) ? 0.0 : rho_u[ind1] / rho_edge_x;
+}
+
+void advect_rho_u_in_y(
+    const int nx, const int ny, const int tt, Mesh* mesh, const double dt_h, 
+    const double dt, double* u, double* v, double* uF_x, double* uF_y, 
+    double* vF_x, double* vF_y, double* rho_u, double* rho_v, 
+    const double* rho, const double* F_x, const double* F_y, 
+    const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
+{
+  set_cuda_indices(1);
+
+  if(ii < PAD || jj < PAD || jj >= (nx+1)-PAD || ii >= ny-PAD) 
+    return;
+
+  rho_u[ind1] -= dt_h*(uF_y[ind1+(nx+1)] - uF_y[ind1])/(celldx[jj]*edgedy[ii]);
+}
+
+void advect_rho_u_and_u_in_y(
+    const int nx, const int ny, const int tt, Mesh* mesh, const double dt_h, 
+    const double dt, double* u, double* v, double* uF_x, double* uF_y, 
+    double* vF_x, double* vF_y, double* rho_u, double* rho_v, 
+    const double* rho, const double* F_x, const double* F_y, 
+    const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
+{
+  set_cuda_indices(1);
+
+  if(ii < PAD || jj < PAD || jj >= (nx+1)-PAD || ii >= ny-PAD) 
+    return;
+
+  rho_u[ind1] -= dt_h*(uF_y[ind1+(nx+1)] - uF_y[ind1])/(celldx[jj]*edgedy[ii]);
+  const double rho_edge_x = 
+    (rho[ind0]*celldx[jj]*celldy[ii] + rho[ind0-1]*celldx[jj - 1]*celldy[ii])/ 
+    (2.0*edgedx[jj]*celldy[ii]);
+  u[ind1] = (rho_edge_x == 0.0) ? 0.0 : rho_u[ind1] / rho_edge_x;
+}
+
+void uy_momentum_flux(
+    const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
+    double* u, double* v, double* uF_y, double* rho_u, const double* rho, 
+    const double* F_y, 
+    const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
+{
+  set_cuda_indices(1);
+
+  if(ii < PAD || jj < PAD || jj >= (nx+1)-PAD || ii >= (ny+1)-PAD) 
+    return;
+
+  // Use MC limiter to get slope of velocity
+  const double invdy = 1.0/edgedy[ii];
+  const double a_y_0 = 0.5*invdy*(u[ind1]-u[ind1-2*(nx+1)]);
+  const double b_y_0 = 2.0*invdy*(u[ind1-(nx+1)]-u[ind1-2*(nx+1)]);
+  const double c_y_0 = 2.0*invdy*(u[ind1]-u[ind1-(nx+1)]);
+  const double a_y_1 = 0.5*invdy*(u[ind1+(nx+1)]-u[ind1-(nx+1)]);
+  const double b_y_1 = 2.0*invdy*(u[ind1]-u[ind1-(nx+1)]);
+  const double c_y_1 = 2.0*invdy*(u[ind1+(nx+1)]-u[ind1]);
+  const double v_cell_y = 0.5*(v[ind0-1]+v[ind0]);
+
+  const double f_y = edgedx[jj]*0.5*(F_y[ind0] + F_y[ind0-1]);
+  const double u_corner_y = (v_cell_y > 0.0)
+    ? u[ind1-(nx+1)] + 0.5*minmod(minmod(a_y_0, b_y_0), c_y_0)*(celldy[ii-1] - v_cell_y*dt_h)
+    : u[ind1] - 0.5*minmod(minmod(a_y_1, b_y_1), c_y_1)*(celldy[ii] + v_cell_y*dt_h);
+  uF_y[ind1] = f_y*u_corner_y;
+}
+
+void vx_momentum_flux(
+    const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
+    const double* u, double* v, double* vF_x, double* rho_v, const double* rho, 
+    const double* F_x, 
+    const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
+{
+  set_cuda_indices(1);
+
+  if(ii < PAD || jj < PAD || jj >= (nx+1)-PAD || ii >= (ny+1)-PAD) 
+    return;
+
+  // Use MC limiter to get slope of velocity
+  const double invdx = 1.0/edgedx[jj];
+  const double a_x_0 = 0.5*invdx*(v[ind0]-v[ind0-2]);
+  const double b_x_0 = 2.0*invdx*(v[ind0-1]-v[ind0-2]);
+  const double c_x_0 = 2.0*invdx*(v[ind0]-v[ind0-1]);
+  const double a_x_1 = 0.5*invdx*(v[ind0+1]-v[ind0-1]);
+  const double b_x_1 = 2.0*invdx*(v[ind0]-v[ind0-1]);
+  const double c_x_1 = 2.0*invdx*(v[ind0+1]-v[ind0]);
+
+  // Calculate the interpolated densities
+  const double f_x = celldy[ii]*0.5*(F_x[ind1] + F_x[ind1-(nx+1)]);
+  const double u_cell_x = 0.5*(u[ind1]+u[ind1-(nx+1)]);
+  const double v_cell_x_interp = (u_cell_x > 0.0)
+    ? v[ind0-1] + 0.5*minmod(minmod(a_x_0, b_x_0), c_x_0)*(celldx[jj-1] - u_cell_x*dt_h)
+    : v[ind0] - 0.5*minmod(minmod(a_x_1, b_x_1), c_x_1)*(celldx[jj] + u_cell_x*dt_h);
+  vF_x[ind1] = f_x*v_cell_x_interp;
+}
+
+void advect_rho_v_and_v_in_y(
+    const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
+    double* u, double* v, double* vF_y, double* rho_v, const double* rho, const double* F_y, 
+    const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
+{
+  set_cuda_indices(0);
+
+  if(ii < PAD || jj < PAD || jj >= nx-PAD || ii >= (ny+1)-PAD) 
+    return;
+
+  rho_v[ind0] -= dt_h*(vF_y[ind0] - vF_y[ind0-nx])/(celldx[jj]*edgedy[ii]);
+  const double rho_edge_y = 
+    (rho[ind0]*celldx[jj]*celldy[ii] + rho[ind0-nx]*celldx[jj]*celldy[ii - 1])/ 
+    (2.0*celldx[jj]*edgedy[ii]);
+  v[ind0] = (rho_edge_y == 0.0) ? 0.0 : rho_v[ind0] / rho_edge_y;
+}
+
+void advect_rho_v_and_v_in_x(
+    const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
+    const double* u, double* v, double* vF_x, double* rho_v, const double* rho, 
+    const double* F_x, 
+    const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
+{
+  set_cuda_indices(0);
+
+  if(ii < PAD || jj < PAD || jj >= nx-PAD || ii >= (ny+1)-PAD) 
+    return;
+
+  rho_v[ind0] -= dt_h*(vF_x[ind1+1] - vF_x[ind1])/(edgedx[jj]*celldy[ii]);
+  const double rho_edge_y = 
+    (rho[ind0]*celldx[jj]*celldy[ii] + rho[ind0-nx]*celldx[jj]*celldy[ii - 1])/ 
+    (2.0*celldx[jj]*edgedy[ii]);
+  v[ind0] = (rho_edge_y == 0.0) ? 0.0 : rho_v[ind0] / rho_edge_y;
+}
+
+void advect_rho_v_in_x(
+    const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
+    const double* u, double* v, double* vF_x, double* rho_v, const double* rho, 
+    const double* F_x, 
+    const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
+{
+  set_cuda_indices(0);
+
+  if(ii < PAD || jj < PAD || jj >= nx-PAD || ii >= (ny+1)-PAD) 
+    return;
+
+  rho_v[ind0] -= dt_h*(vF_x[ind1+1] - vF_x[ind1])/(edgedx[jj]*celldy[ii]);
+}
+
+void vy_momentum_flux(
+    const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
+    double* u, double* v, double* vF_y, double* rho_v, const double* rho, const double* F_y, 
+    const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
+{
+  set_cuda_indices(0);
+
+  if(ii < PAD || jj < PAD || jj >= nx-PAD || ii >= ny-PAD) 
+    return;
+
+  // Use MC limiter to get slope of velocity
+  const double invdy = 1.0/edgedy[ii];
+  const double a_y_0 = 0.5*invdy*(v[ind0+nx]-v[ind0-nx]);
+  const double b_y_0 = 2.0*invdy*(v[ind0]-v[ind0-nx]);
+  const double c_y_0 = 2.0*invdy*(v[ind0+nx]-v[ind0]);
+  const double a_y_1 = 0.5*invdy*(v[ind0+2*nx]-v[ind0]);
+  const double b_y_1 = 2.0*invdy*(v[ind0+nx]-v[ind0]);
+  const double c_y_1 = 2.0*invdy*(v[ind0+2*nx]-v[ind0+nx]);
+
+  const double f_y = celldx[jj]*0.5*(F_y[ind0] + F_y[ind0+nx]);
+  const double v_cell_y = 0.5*(v[ind0]+v[ind0+nx]);
+  const double v_cell_y_interp = (v_cell_y > 0.0)
+    ? v[ind0] + 0.5*minmod(minmod(a_y_0, b_y_0), c_y_0)*(celldy[ii-1] - v_cell_y*dt_h)
+    : v[ind0+nx] - 0.5*minmod(minmod(a_y_1, b_y_1), c_y_1)*(celldy[ii] + v_cell_y*dt_h);
+  vF_y[ind0] = f_y*v_cell_y_interp;
+}
+
+void advect_rho_v_in_y(
+    const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
+    double* u, double* v, double* vF_y, double* rho_v, const double* rho, const double* F_y, 
+    const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
+{
+  set_cuda_indices(0);
+
+  if(ii < PAD || jj < PAD || jj >= nx-PAD || ii >= (ny+1)-PAD) 
+    return;
+
+  rho_v[ind0] -= dt_h*(vF_y[ind0] - vF_y[ind0-nx])/(celldx[jj]*edgedy[ii]);
 }
 
 // Advect momentum according to the velocity
@@ -571,249 +813,6 @@ void advect_momentum(
   }
 }
 
-__global__ void ux_momentum_flux(
-    const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
-    double* u, double* v, double* uF_x, double* rho_u, const double* rho, const double* F_x, 
-    const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
-{
-  set_cuda_indices();
-
-  if(ii < PAD || jj < PAD || jj >= nx-PAD || ii >= ny-PAD) 
-    return;
-
-  // Calculate the cell centered x momentum fluxes in the x direction
-  // Use MC limiter to get slope of velocity
-  const double invdx = 1.0/edgedx[jj];
-  const double a_x_0 = 0.5*invdx*(u[ind1+1]-u[ind1-1]);
-  const double b_x_0 = 2.0*invdx*(u[ind1]-u[ind1-1]);
-  const double c_x_0 = 2.0*invdx*(u[ind1+1]-u[ind1]);
-  const double a_x_1 = 0.5*invdx*(u[ind1+2]-u[ind1]);
-  const double b_x_1 = 2.0*invdx*(u[ind1+1]-u[ind1]);
-  const double c_x_1 = 2.0*invdx*(u[ind1+2]-u[ind1+1]);
-
-  // Calculate the interpolated densities
-  const double u_cell_x = 0.5*(u[ind1]+u[ind1+1]);
-  const double f_x = edgedy[ii]*0.5*(F_x[ind1] + F_x[ind1+1]); 
-  const double u_cell_x_interp = (u_cell_x > 0.0)
-    ? u[ind1] + 0.5*minmod(minmod(a_x_0, b_x_0), c_x_0)*(celldx[jj-1] - u_cell_x*dt_h)
-    : u[ind1+1] - 0.5*minmod(minmod(a_x_1, b_x_1), c_x_1)*(celldx[jj] + u_cell_x*dt_h);
-  uF_x[ind0] = f_x*u_cell_x_interp;
-}
-
-
-void advect_rho_u_in_x(
-    const int nx, const int ny, const int tt, Mesh* mesh, const double dt_h, 
-    const double dt, double* u, double* v, double* uF_x, double* uF_y, 
-    double* vF_x, double* vF_y, double* rho_u, double* rho_v, 
-    const double* rho, const double* F_x, const double* F_y, 
-    const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
-{
-  set_cuda_indices();
-
-  if(ii < PAD || jj < PAD || jj >= (nx+1)-PAD || ii >= ny-PAD) 
-    return;
-
-  rho_u[ind1] -= dt_h*(uF_x[ind0] - uF_x[ind0-1])/(edgedx[jj]*celldy[ii]);
-}
-
-void advect_rho_u_and_u_in_x(
-    const int nx, const int ny, const int tt, Mesh* mesh, const double dt_h, 
-    const double dt, double* u, double* v, double* uF_x, double* uF_y, 
-    double* vF_x, double* vF_y, double* rho_u, double* rho_v, 
-    const double* rho, const double* F_x, const double* F_y, 
-    const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
-{
-  set_cuda_indices();
-
-  if(ii < PAD || jj < PAD || jj >= (nx+1)-PAD || ii >= ny-PAD) 
-    return;
-
-  rho_u[ind1] -= dt_h*(uF_x[ind0] - uF_x[ind0-1])/(edgedx[jj]*celldy[ii]);
-  const double rho_edge_x = 
-    (rho[ind0]*celldx[jj]*celldy[ii] + rho[ind0-1]*celldx[jj - 1]*celldy[ii])/ 
-    (2.0*edgedx[jj]*celldy[ii]);
-  u[ind1] = (rho_edge_x == 0.0) ? 0.0 : rho_u[ind1] / rho_edge_x;
-}
-
-void advect_rho_u_in_y(
-    const int nx, const int ny, const int tt, Mesh* mesh, const double dt_h, 
-    const double dt, double* u, double* v, double* uF_x, double* uF_y, 
-    double* vF_x, double* vF_y, double* rho_u, double* rho_v, 
-    const double* rho, const double* F_x, const double* F_y, 
-    const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
-{
-  set_cuda_indices();
-
-  if(ii < PAD || jj < PAD || jj >= (nx+1)-PAD || ii >= ny-PAD) 
-    return;
-
-  rho_u[ind1] -= dt_h*(uF_y[ind1+(nx+1)] - uF_y[ind1])/(celldx[jj]*edgedy[ii]);
-}
-
-void advect_rho_u_and_u_in_y(
-    const int nx, const int ny, const int tt, Mesh* mesh, const double dt_h, 
-    const double dt, double* u, double* v, double* uF_x, double* uF_y, 
-    double* vF_x, double* vF_y, double* rho_u, double* rho_v, 
-    const double* rho, const double* F_x, const double* F_y, 
-    const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
-{
-  set_cuda_indices();
-
-  if(ii < PAD || jj < PAD || jj >= (nx+1)-PAD || ii >= ny-PAD) 
-    return;
-
-  rho_u[ind1] -= dt_h*(uF_y[ind1+(nx+1)] - uF_y[ind1])/(celldx[jj]*edgedy[ii]);
-  const double rho_edge_x = 
-    (rho[ind0]*celldx[jj]*celldy[ii] + rho[ind0-1]*celldx[jj - 1]*celldy[ii])/ 
-    (2.0*edgedx[jj]*celldy[ii]);
-  u[ind1] = (rho_edge_x == 0.0) ? 0.0 : rho_u[ind1] / rho_edge_x;
-}
-
-void uy_momentum_flux(
-    const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
-    double* u, double* v, double* uF_y, double* rho_u, const double* rho, 
-    const double* F_y, 
-    const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
-{
-  set_cuda_indices();
-
-  if(ii < PAD || jj < PAD || jj >= (nx+1)-PAD || ii >= (ny+1)-PAD) 
-    return;
-
-  // Use MC limiter to get slope of velocity
-  const double invdy = 1.0/edgedy[ii];
-  const double a_y_0 = 0.5*invdy*(u[ind1]-u[ind1-2*(nx+1)]);
-  const double b_y_0 = 2.0*invdy*(u[ind1-(nx+1)]-u[ind1-2*(nx+1)]);
-  const double c_y_0 = 2.0*invdy*(u[ind1]-u[ind1-(nx+1)]);
-  const double a_y_1 = 0.5*invdy*(u[ind1+(nx+1)]-u[ind1-(nx+1)]);
-  const double b_y_1 = 2.0*invdy*(u[ind1]-u[ind1-(nx+1)]);
-  const double c_y_1 = 2.0*invdy*(u[ind1+(nx+1)]-u[ind1]);
-  const double v_cell_y = 0.5*(v[ind0-1]+v[ind0]);
-
-  const double f_y = edgedx[jj]*0.5*(F_y[ind0] + F_y[ind0-1]);
-  const double u_corner_y = (v_cell_y > 0.0)
-    ? u[ind1-(nx+1)] + 0.5*minmod(minmod(a_y_0, b_y_0), c_y_0)*(celldy[ii-1] - v_cell_y*dt_h)
-    : u[ind1] - 0.5*minmod(minmod(a_y_1, b_y_1), c_y_1)*(celldy[ii] + v_cell_y*dt_h);
-  uF_y[ind1] = f_y*u_corner_y;
-}
-
-void vx_momentum_flux(
-    const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
-    const double* u, double* v, double* vF_x, double* rho_v, const double* rho, 
-    const double* F_x, 
-    const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
-{
-  set_cuda_indices();
-
-  if(ii < PAD || jj < PAD || jj >= (nx+1)-PAD || ii >= (ny+1)-PAD) 
-    return;
-
-  // Use MC limiter to get slope of velocity
-  const double invdx = 1.0/edgedx[jj];
-  const double a_x_0 = 0.5*invdx*(v[ind0]-v[ind0-2]);
-  const double b_x_0 = 2.0*invdx*(v[ind0-1]-v[ind0-2]);
-  const double c_x_0 = 2.0*invdx*(v[ind0]-v[ind0-1]);
-  const double a_x_1 = 0.5*invdx*(v[ind0+1]-v[ind0-1]);
-  const double b_x_1 = 2.0*invdx*(v[ind0]-v[ind0-1]);
-  const double c_x_1 = 2.0*invdx*(v[ind0+1]-v[ind0]);
-
-  // Calculate the interpolated densities
-  const double f_x = celldy[ii]*0.5*(F_x[ind1] + F_x[ind1-(nx+1)]);
-  const double u_cell_x = 0.5*(u[ind1]+u[ind1-(nx+1)]);
-  const double v_cell_x_interp = (u_cell_x > 0.0)
-    ? v[ind0-1] + 0.5*minmod(minmod(a_x_0, b_x_0), c_x_0)*(celldx[jj-1] - u_cell_x*dt_h)
-    : v[ind0] - 0.5*minmod(minmod(a_x_1, b_x_1), c_x_1)*(celldx[jj] + u_cell_x*dt_h);
-  vF_x[ind1] = f_x*v_cell_x_interp;
-}
-
-void advect_rho_v_and_v_in_y(
-    const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
-    double* u, double* v, double* vF_y, double* rho_v, const double* rho, const double* F_y, 
-    const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
-{
-  set_cuda_indices();
-
-  if(ii < PAD || jj < PAD || jj >= nx-PAD || ii >= (ny+1)-PAD) 
-    return;
-
-  rho_v[ind0] -= dt_h*(vF_y[ind0] - vF_y[ind0-nx])/(celldx[jj]*edgedy[ii]);
-  const double rho_edge_y = 
-    (rho[ind0]*celldx[jj]*celldy[ii] + rho[ind0-nx]*celldx[jj]*celldy[ii - 1])/ 
-    (2.0*celldx[jj]*edgedy[ii]);
-  v[ind0] = (rho_edge_y == 0.0) ? 0.0 : rho_v[ind0] / rho_edge_y;
-}
-
-void advect_rho_v_and_v_in_x(
-    const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
-    const double* u, double* v, double* vF_x, double* rho_v, const double* rho, 
-    const double* F_x, 
-    const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
-{
-  set_cuda_indices();
-
-  if(ii < PAD || jj < PAD || jj >= nx-PAD || ii >= (ny+1)-PAD) 
-    return;
-
-  rho_v[ind0] -= dt_h*(vF_x[ind1+1] - vF_x[ind1])/(edgedx[jj]*celldy[ii]);
-  const double rho_edge_y = 
-    (rho[ind0]*celldx[jj]*celldy[ii] + rho[ind0-nx]*celldx[jj]*celldy[ii - 1])/ 
-    (2.0*celldx[jj]*edgedy[ii]);
-  v[ind0] = (rho_edge_y == 0.0) ? 0.0 : rho_v[ind0] / rho_edge_y;
-}
-
-void advect_rho_v_in_x(
-    const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
-    const double* u, double* v, double* vF_x, double* rho_v, const double* rho, 
-    const double* F_x, 
-    const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
-{
-  set_cuda_indices();
-
-  if(ii < PAD || jj < PAD || jj >= nx-PAD || ii >= (ny+1)-PAD) 
-    return;
-
-  rho_v[ind0] -= dt_h*(vF_x[ind1+1] - vF_x[ind1])/(edgedx[jj]*celldy[ii]);
-}
-
-void vy_momentum_flux(
-    const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
-    double* u, double* v, double* vF_y, double* rho_v, const double* rho, const double* F_y, 
-    const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
-{
-  set_cuda_indices();
-
-  if(ii < PAD || jj < PAD || jj >= nx-PAD || ii >= ny-PAD) 
-    return;
-
-  // Use MC limiter to get slope of velocity
-  const double invdy = 1.0/edgedy[ii];
-  const double a_y_0 = 0.5*invdy*(v[ind0+nx]-v[ind0-nx]);
-  const double b_y_0 = 2.0*invdy*(v[ind0]-v[ind0-nx]);
-  const double c_y_0 = 2.0*invdy*(v[ind0+nx]-v[ind0]);
-  const double a_y_1 = 0.5*invdy*(v[ind0+2*nx]-v[ind0]);
-  const double b_y_1 = 2.0*invdy*(v[ind0+nx]-v[ind0]);
-  const double c_y_1 = 2.0*invdy*(v[ind0+2*nx]-v[ind0+nx]);
-
-  const double f_y = celldx[jj]*0.5*(F_y[ind0] + F_y[ind0+nx]);
-  const double v_cell_y = 0.5*(v[ind0]+v[ind0+nx]);
-  const double v_cell_y_interp = (v_cell_y > 0.0)
-    ? v[ind0] + 0.5*minmod(minmod(a_y_0, b_y_0), c_y_0)*(celldy[ii-1] - v_cell_y*dt_h)
-    : v[ind0+nx] - 0.5*minmod(minmod(a_y_1, b_y_1), c_y_1)*(celldy[ii] + v_cell_y*dt_h);
-  vF_y[ind0] = f_y*v_cell_y_interp;
-}
-
-void advect_rho_v_in_y(
-    const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
-    double* u, double* v, double* vF_y, double* rho_v, const double* rho, const double* F_y, 
-    const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
-{
-  set_cuda_indices();
-
-  if(ii < PAD || jj < PAD || jj >= nx-PAD || ii >= (ny+1)-PAD) 
-    return;
-
-  rho_v[ind0] -= dt_h*(vF_y[ind0] - vF_y[ind0-nx])/(celldx[jj]*edgedy[ii]);
-}
 
 // Prints some conservation values
 void print_conservation(

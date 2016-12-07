@@ -1,26 +1,31 @@
 # User defined parameters
-KERNELS 	  	= omp3
-COMPILER    	= INTEL
+KERNELS 	  	= cuda
+COMPILER    	= GCC
 CFLAGS_INTEL	= -O3 -g -qopenmp -no-prec-div -std=gnu99 -DINTEL -xhost -Wall -qopt-report=5
+CFLAGS_GCC		= -O3 -g -fopenmp -std=gnu99 -march=native -Wall
 CFLAGS_CRAY		= -lrt -hlist=a
-OPTIONS		  	= -DENABLE_PROFILING -DMPI -DDEBUG
+OPTIONS		  	= -DENABLE_PROFILING -DDEBUG #-DMPI 
 
 # Default compiler
-MULTI_COMPILER  = mpicc
-#MULTI_COMPILER  = mpiicc
-#MULTI_COMPILER  = mpicc
+MULTI_COMPILER  = gcc
 MULTI_LINKER    = $(MULTI_COMPILER)
 MULTI_FLAGS     = $(CFLAGS_$(COMPILER))
 MULTI_LDFLAGS   =
 MULTI_BUILD_DIR = ../obj
 MULTI_DIR       = ..
 
+# Get specialised kernels
 SRC  			 = $(wildcard *.c)
 SRC  			+= $(wildcard $(KERNELS)/*.c)
 SRC  			+= $(wildcard $(MULTI_DIR)/$(KERNELS)/*.c)
+
+ifeq ($(KERNELS), cuda)
+include Makefile.cuda
+endif
+
 SRC 			+= $(subst main.c,, $(wildcard $(MULTI_DIR)/*.c))
 SRC_CLEAN  = $(subst $(MULTI_DIR)/,,$(SRC))
-OBJS 			 = $(patsubst %.c, $(MULTI_BUILD_DIR)/%.o, $(SRC_CLEAN))
+OBJS 			 += $(patsubst %.c, $(MULTI_BUILD_DIR)/%.o, $(SRC_CLEAN))
 
 wet: make_build_dir $(OBJS) Makefile
 	$(MULTI_LINKER) $(MULTI_FLAGS) $(OBJS) $(MULTI_LDFLAGS) -o wet.exe
