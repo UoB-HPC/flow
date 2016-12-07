@@ -1,13 +1,13 @@
 # User defined parameters
-KERNELS 	  	= omp3#cuda
-COMPILER    	= INTEL#GCC
+KERNELS 	  	= cuda
+COMPILER    	= GCC
 CFLAGS_INTEL	= -O3 -g -qopenmp -no-prec-div -std=gnu99 -DINTEL -xhost -Wall -qopt-report=5
 CFLAGS_GCC		= -O3 -g -fopenmp -std=gnu99 -march=native -Wall
 CFLAGS_CRAY		= -lrt -hlist=a
 OPTIONS		  	= -DENABLE_PROFILING -DDEBUG #-DMPI 
 
 # Default compiler
-MULTI_COMPILER  = icc#g++
+MULTI_COMPILER  = g++
 MULTI_LINKER    = $(MULTI_COMPILER)
 MULTI_FLAGS     = $(CFLAGS_$(COMPILER))
 MULTI_LDFLAGS   = $(MULTI_FLAGS)
