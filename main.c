@@ -36,7 +36,7 @@ int main(int argc, char** argv)
 
   set_timestep(
       mesh.local_nx, mesh.local_ny, state.Qxx, state.Qyy, state.rho, 
-      state.e, &mesh, state.min_timesteps, 0, mesh.celldx, mesh.celldy);
+      state.e, &mesh, state.reduce_array, 0, mesh.celldx, mesh.celldy);
 
 #if 0
   write_all_ranks_to_visit(
@@ -60,9 +60,9 @@ int main(int argc, char** argv)
     solve_hydro(
         &mesh, tt, state.P, state.rho, state.rho_old, state.e, state.u, 
         state.v, state.rho_u, state.rho_v, state.Qxx, state.Qyy, state.F_x, 
-        state.F_y, state.uF_x, state.uF_y, state.vF_x, state.vF_y, state.min_timesteps);
+        state.F_y, state.uF_x, state.uF_y, state.vF_x, state.vF_y, state.reduce_array);
 
-    print_conservation(mesh.local_nx, mesh.local_ny, state.rho, state.e, &mesh);
+    print_conservation(mesh.local_nx, mesh.local_ny, state.rho, state.e, state.reduce_array, &mesh);
 
     if(mesh.rank == MASTER) {
       printf("simulation time: %.4lf(s)\n", elapsed_sim_time);

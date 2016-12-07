@@ -514,17 +514,6 @@ __global__ void advect_rho_v_in_y(
   rho_v[ind0] -= dt_h*(vF_y[ind0] - vF_y[ind0-nx])/(celldx[jj]*edgedy[ii]);
 }
 
-__global__ void calc_mass_conservation(
-    const int nx, const int ny, double* rho, double* e)
-{
-  set_cuda_indices(0);
-
-  if(ii < PAD || jj < PAD || jj >= nx-PAD || ii >= ny-PAD) 
-    return;
-
-  mass_tot += rho[ind0];
-}
-
   template <unsigned int block_size>
 __device__ void min_reduce_in_shared(
     const int tid, double* sdata)
@@ -568,11 +557,11 @@ __device__ void sum_reduce_in_shared(
 // http://developer.download.nvidia.com/compute/cuda/1.1-Beta/x86_website/projects/reduction/doc/reduction.pdf
   template <unsigned int block_size>
 __global__ void min_reduce(
-    double* data, double* result)
+    double* data, double* result, int nthreads_per_block)
 {
+  const int gid = blockIdx.x*block_size+threadIdx.x;
   __shared__ double sdata[block_size];
-  const int ind = blockIdx.x*block_size + threadIdx.x;
-  sdata[threadIdx.x] = data[ind];
+  sdata[threadIdx.x] = (gid < nthreads_per_block) ? data[gid] : 10000.0;
   __syncthreads();
 
   min_reduce_in_shared<block_size>(threadIdx.x, sdata);
@@ -582,11 +571,11 @@ __global__ void min_reduce(
 // http://developer.download.nvidia.com/compute/cuda/1.1-Beta/x86_website/projects/reduction/doc/reduction.pdf
   template <unsigned int block_size>
 __global__ void sum_reduce(
-    double* data, double* result)
+    double* data, double* result, int nthreads_per_block)
 {
+  const int gid = blockIdx.x*block_size+threadIdx.x;
   __shared__ double sdata[block_size];
-  const int ind = blockIdx.x*block_size + threadIdx.x;
-  sdata[threadIdx.x] = data[ind];
+  sdata[threadIdx.x] = (gid < nthreads_per_block) ? data[gid] : 0.0;
   __syncthreads();
 
   sum_reduce_in_shared<block_size>(threadIdx.x, sdata);
@@ -596,10 +585,11 @@ __global__ void sum_reduce(
   template <unsigned int block_size>
 __global__ void calc_min_timestep(
     const int nx, const int ny, double* Qxx, double* Qyy, const double* rho, 
-    const double* e, Mesh* mesh, double* min_timesteps, const int first_step,
+    const double* e, Mesh* mesh, double* reduce_array, const int first_step,
     const double* celldx, const double* celldy)
 {
   set_cuda_indices(0);
+  if(gid >= nx*ny) return;
 
   // Constrain based on the sound speed within the system
   const double c_s = sqrt(GAM*(GAM - 1.0)*e[ind0]);
@@ -613,6 +603,6 @@ __global__ void calc_min_timestep(
   __syncthreads();
 
   min_reduce_in_shared<NBLOCKS>(tid, sdata);
-  if (tid == 0) min_timesteps[blockIdx.x] = sdata[0];
+  if (tid == 0) reduce_array[blockIdx.x] = sdata[0];
 }
 

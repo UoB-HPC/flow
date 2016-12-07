@@ -13,7 +13,7 @@ void solve_hydro(
     Mesh* mesh, int tt, double* P, double* rho, double* rho_old, 
     double* e, double* u, double* v, double* rho_u, double* rho_v, 
     double* Qxx, double* Qyy, double* F_x, double* F_y, double* uF_x, 
-    double* uF_y, double* vF_x, double* vF_y, double* min_timesteps)
+    double* uF_y, double* vF_x, double* vF_y, double* reduce_array)
 {
   if(mesh->rank == MASTER)
     printf("dt %.12e dt_h %.12e\n", mesh->dt, mesh->dt_h);
@@ -37,7 +37,7 @@ void solve_hydro(
 
   set_timestep(
       mesh->local_nx, mesh->local_ny, Qxx, Qyy, rho, 
-      e, mesh, min_timesteps, tt == 0, mesh->celldx, mesh->celldy);
+      e, mesh, reduce_array, tt == 0, mesh->celldx, mesh->celldy);
 
   // Perform advection
   advect_mass_and_energy(
@@ -71,7 +71,7 @@ void equation_of_state(
 // Calculates the timestep from the current state
 void set_timestep(
     const int nx, const int ny, double* Qxx, double* Qyy, const double* rho, 
-    const double* e, Mesh* mesh, double* min_timesteps, const int first_step,
+    const double* e, Mesh* mesh, double* reduce_array, const int first_step,
     const double* celldx, const double* celldy)
 {
   double local_min_dt = MAX_DT;
@@ -677,7 +677,7 @@ void vy_momentum_flux(
 
 // Prints some conservation values
 void print_conservation(
-    const int nx, const int ny, double* rho, double* e, Mesh* mesh) {
+    const int nx, const int ny, double* rho, double* e, double* reduce_array, Mesh* mesh) {
   double mass_tot = 0.0;
   double energy_tot = 0.0;
 #pragma omp parallel for reduction(+:mass_tot, energy_tot)
