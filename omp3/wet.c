@@ -681,8 +681,8 @@ void print_conservation(
   double mass_tot = 0.0;
   double energy_tot = 0.0;
 #pragma omp parallel for reduction(+:mass_tot, energy_tot)
-  for(int ii = 0; ii < ny; ++ii) {
-    for(int jj = 0; jj < nx; ++jj) {
+  for(int ii = PAD; ii < ny-PAD; ++ii) {
+    for(int jj = PAD; jj < nx-PAD; ++jj) {
       mass_tot += rho[ind0];
       energy_tot += rho[ind0]*e[ind0];
     }
