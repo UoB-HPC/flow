@@ -93,13 +93,14 @@ void set_timestep(
     const double* e, Mesh* mesh, double* reduce_array, const int first_step,
     const double* celldx, const double* celldy)
 {
-  int nthreads_per_block = ceil((nx+1)*(ny+1)/(double)NBLOCKS);
-  calc_min_timestep<NBLOCKS><<<nthreads_per_block, NBLOCKS>>>(
+  int nthreads_per_block1 = ceil((nx+1)*(ny+1)/(double)NBLOCKS);
+  calc_min_timestep<NBLOCKS><<<nthreads_per_block1, NBLOCKS>>>(
       nx, ny, Qxx, Qyy, rho, e, mesh, reduce_array, first_step, celldx, celldy);
 
-  while(nthreads_per_block > 1) {
-    nthreads_per_block = max(1, ceil(nthreads_per_block/(double)NBLOCKS));
-    min_reduce<NBLOCKS><<<nthreads_per_block, NBLOCKS>>>(reduce_array, reduce_array, nthreads_per_block);
+  while(nthreads_per_block1 > 1) {
+    int nthreads_per_block0 = nthreads_per_block1;
+    nthreads_per_block1 = max(1, ceil(nthreads_per_block1/(double)NBLOCKS));
+    min_reduce<NBLOCKS><<<nthreads_per_block0, NBLOCKS>>>(reduce_array, reduce_array, nthreads_per_block0);
   }
   gpu_check(cudaDeviceSynchronize());
 
