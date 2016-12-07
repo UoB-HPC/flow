@@ -59,3 +59,17 @@ void advect_momentum(
     const double* rho, const double* F_x, const double* F_y, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy);
 
+// Calculate the flux in the x direction
+void x_mass_and_energy_flux(
+    const int nx, const int ny, const int first, Mesh* mesh, const double dt, 
+    const double dt_h, double* rho, double* rho_old, double* e, const double* u, 
+    double* F_x, double* eF_x, const double* celldx, const double* edgedx, 
+    const double* celldy, const double* edgedy);
+
+// Calculate the flux in the y direction
+void y_mass_and_energy_flux(
+    const int nx, const int ny, const int first, Mesh* mesh, const double dt,
+    const double dt_h, double* rho, double* rho_old, double* e, const double* v, 
+    double* F_y, double* eF_y, const double* celldx, const double* edgedx, 
+    const double* celldy, const double* edgedy);
+

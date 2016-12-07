@@ -1,7 +1,8 @@
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "../wet.h"
+#include "wet.h"
+#include "../wet_interface.h"
 #include "../../comms.h"
 
 #define ind0 (ii*nx + jj)
