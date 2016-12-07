@@ -1,19 +1,18 @@
 # User defined parameters
-KERNELS 	  	= omp4
-COMPILER    	= CRAY
+KERNELS 	  	= cuda
+COMPILER    	= GCC
 CFLAGS_INTEL	= -O3 -g -qopenmp -no-prec-div -std=gnu99 -DINTEL -xhost -Wall -qopt-report=5
 CFLAGS_GCC		= -O3 -g -fopenmp -std=gnu99 -march=native -Wall
 CFLAGS_CRAY		= -lrt -hlist=a
 OPTIONS		  	= -DENABLE_PROFILING -DDEBUG #-DMPI 
 
 # Default compiler
-MULTI_COMPILER  = cc
+MULTI_COMPILER  = gcc
 MULTI_LINKER    = $(MULTI_COMPILER)
 MULTI_FLAGS     = $(CFLAGS_$(COMPILER))
 MULTI_LDFLAGS   = $(MULTI_FLAGS)
 MULTI_BUILD_DIR = ../obj
 MULTI_DIR       = ..
-
 
 ifeq ($(KERNELS), cuda)
 include Makefile.cuda

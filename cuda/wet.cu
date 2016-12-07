@@ -279,29 +279,29 @@ void advect_momentum(
 
 // Prints some conservation values
 void print_conservation(
-    const int nx, const int ny, double* rho, double* e, Mesh* mesh) 
+    const int nx, const int ny, double* rho, double* e, double* reduce_array, Mesh* mesh) 
 {
-  double mass_tot = 0.0;
-  double energy_tot = 0.0;
-#pragma omp parallel for reduction(+:mass_tot, energy_tot)
-  for(int ii = PAD; ii < ny-PAD; ++ii) {
-    for(int jj = PAD; jj < nx-PAD; ++jj) {
-      mass_tot += rho[ind0];
-      energy_tot += rho[ind0]*e[ind0];
-    }
+  int nthreads_per_block = ceil(nx*ny/(double)NBLOCKS);
+  sum_reduce<NBLOCKS><<<nthreads_per_block, NBLOCKS>>>(
+      rho, reduce_array);
+
+  // TODO: This is not right, it doesn't reduce all values
+  while(nthreads_per_block > 1) {
+    nthreads_per_block = ceil(nthreads_per_block/(double)NBLOCKS);
+    sum_reduce<NBLOCKS><<<nthreads_per_block, NBLOCKS>>>(reduce_array, reduce_array);
   }
 
+  double local_mass_tot = 0.0;
+  sync_data(1, reduce_array, &local_mass_tot, RECV);
+
   double global_mass_tot = mass_tot;
-  double global_energy_tot = energy_tot;
 
 #ifdef MPI
   MPI_Reduce(&mass_tot, &global_mass_tot, 1, MPI_DOUBLE, MPI_SUM, MASTER, MPI_COMM_WORLD);
-  MPI_Reduce(&energy_tot, &global_energy_tot, 1, MPI_DOUBLE, MPI_SUM, MASTER, MPI_COMM_WORLD);
 #endif
 
   if(mesh->rank == MASTER) {
     printf("total mass: %.12e\n", global_mass_tot);
-    printf("total energy: %.12e\n", global_energy_tot);
   }
 }
 

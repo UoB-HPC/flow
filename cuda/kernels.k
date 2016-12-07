@@ -5,40 +5,6 @@
 #include "../../comms.h"
 #include "../../cuda/config.h"
 
-  template <unsigned int block_size>
-__device__ void min_reduce_in_shared(
-    const int tid, double* sdata)
-{
-  if (block_size >= 512) { 
-    if (tid < 256) { sdata[tid] = min(sdata[tid], sdata[tid + 256]); } __syncthreads(); }
-  if (block_size >= 256) { 
-    if (tid < 128) { sdata[tid] = min(sdata[tid], sdata[tid + 128]); } __syncthreads(); }
-  if (block_size >= 128) { 
-    if (tid < 64) { sdata[tid] = min(sdata[tid], sdata[tid + 64]); } __syncthreads(); }
-  if (tid < 32) {
-    if (block_size >= 64) sdata[tid] = min(sdata[tid], sdata[tid + 32]);
-    if (block_size >= 32) sdata[tid] = min(sdata[tid], sdata[tid + 16]);
-    if (block_size >= 16) sdata[tid] = min(sdata[tid], sdata[tid + 8]);
-    if (block_size >= 8) sdata[tid] = min(sdata[tid], sdata[tid + 4]);
-    if (block_size >= 4) sdata[tid] = min(sdata[tid], sdata[tid + 2]);
-    if (block_size >= 2) sdata[tid] = min(sdata[tid], sdata[tid + 1]);
-  }
-}
-
-// http://developer.download.nvidia.com/compute/cuda/1.1-Beta/x86_website/projects/reduction/doc/reduction.pdf
-  template <unsigned int block_size>
-__global__ void min_reduce(
-    double* data, double* result)
-{
-  __shared__ double sdata[block_size];
-  const int ind = blockIdx.x*block_size + threadIdx.x;
-  sdata[threadIdx.x] = data[ind];
-  __syncthreads();
-
-  min_reduce_in_shared<block_size>(threadIdx.x, sdata);
-  if (threadIdx.x == 0) result[blockIdx.x] = sdata[0];
-}
-
 __global__ void equation_of_state(
     const int nx, const int ny, double* P, const double* rho, const double* e)
 {
@@ -146,29 +112,6 @@ __global__ void shock_heating_and_work(
   const double e_c = e_q - (P[ind0]*div_vel_dt)/rho[ind0];
   const double work = 0.5*div_vel_dt*(P[ind0] + (GAM-1.0)*e_c*rho_c)/rho[ind0];
   e[ind0] = (rho[ind0] == 0.0) ? 0.0 : e_q-work;
-}
-
-  template <unsigned int block_size>
-__global__ void calc_min_timestep(
-    const int nx, const int ny, double* Qxx, double* Qyy, const double* rho, 
-    const double* e, Mesh* mesh, double* min_timesteps, const int first_step,
-    const double* celldx, const double* celldy)
-{
-  set_cuda_indices(0);
-
-  // Constrain based on the sound speed within the system
-  const double c_s = sqrt(GAM*(GAM - 1.0)*e[ind0]);
-  const double thread_min_dt_x = celldx[jj]/sqrt(c_s*c_s + 2.0*Qxx[ind0]/rho[ind0]);
-  const double thread_min_dt_y = celldy[ii]/sqrt(c_s*c_s + 2.0*Qyy[ind0]/rho[ind0]);
-  const double thread_min_dt = min(thread_min_dt_x, thread_min_dt_y);
-
-  __shared__ double sdata[block_size];
-  const int tid = threadIdx.x;
-  sdata[tid] = min(MAX_DT, thread_min_dt);
-  __syncthreads();
-
-  min_reduce_in_shared<NBLOCKS>(tid, sdata);
-  if (tid == 0) min_timesteps[blockIdx.x] = sdata[0];
 }
 
 __global__ void store_old_rho(
@@ -569,5 +512,107 @@ __global__ void advect_rho_v_in_y(
     return;
 
   rho_v[ind0] -= dt_h*(vF_y[ind0] - vF_y[ind0-nx])/(celldx[jj]*edgedy[ii]);
+}
+
+__global__ void calc_mass_conservation(
+    const int nx, const int ny, double* rho, double* e)
+{
+  set_cuda_indices(0);
+
+  if(ii < PAD || jj < PAD || jj >= nx-PAD || ii >= ny-PAD) 
+    return;
+
+  mass_tot += rho[ind0];
+}
+
+  template <unsigned int block_size>
+__device__ void min_reduce_in_shared(
+    const int tid, double* sdata)
+{
+  if (block_size >= 512) { 
+    if (tid < 256) { sdata[tid] = min(sdata[tid], sdata[tid + 256]); } __syncthreads(); }
+  if (block_size >= 256) { 
+    if (tid < 128) { sdata[tid] = min(sdata[tid], sdata[tid + 128]); } __syncthreads(); }
+  if (block_size >= 128) { 
+    if (tid < 64) { sdata[tid] = min(sdata[tid], sdata[tid + 64]); } __syncthreads(); }
+  if (tid < 32) {
+    if (block_size >= 64) sdata[tid] = min(sdata[tid], sdata[tid + 32]);
+    if (block_size >= 32) sdata[tid] = min(sdata[tid], sdata[tid + 16]);
+    if (block_size >= 16) sdata[tid] = min(sdata[tid], sdata[tid + 8]);
+    if (block_size >= 8) sdata[tid] = min(sdata[tid], sdata[tid + 4]);
+    if (block_size >= 4) sdata[tid] = min(sdata[tid], sdata[tid + 2]);
+    if (block_size >= 2) sdata[tid] = min(sdata[tid], sdata[tid + 1]);
+  }
+}
+
+  template <unsigned int block_size>
+__device__ void sum_reduce_in_shared(
+    const int tid, double* sdata)
+{
+  if (block_size >= 512) { 
+    if (tid < 256) { sdata[tid] = sdata[tid] + sdata[tid + 256]; } __syncthreads(); }
+  if (block_size >= 256) { 
+    if (tid < 128) { sdata[tid] = sdata[tid] + sdata[tid + 128]; } __syncthreads(); }
+  if (block_size >= 128) { 
+    if (tid < 64) { sdata[tid] = sdata[tid] + sdata[tid + 64]; } __syncthreads(); }
+  if (tid < 32) {
+    if (block_size >= 64) sdata[tid] = sdata[tid] + sdata[tid + 32];
+    if (block_size >= 32) sdata[tid] = sdata[tid] + sdata[tid + 16];
+    if (block_size >= 16) sdata[tid] = sdata[tid] + sdata[tid + 8];
+    if (block_size >= 8) sdata[tid] = sdata[tid] + sdata[tid + 4];
+    if (block_size >= 4) sdata[tid] = sdata[tid] + sdata[tid + 2];
+    if (block_size >= 2) sdata[tid] = sdata[tid] + sdata[tid + 1];
+  }
+}
+
+// http://developer.download.nvidia.com/compute/cuda/1.1-Beta/x86_website/projects/reduction/doc/reduction.pdf
+  template <unsigned int block_size>
+__global__ void min_reduce(
+    double* data, double* result)
+{
+  __shared__ double sdata[block_size];
+  const int ind = blockIdx.x*block_size + threadIdx.x;
+  sdata[threadIdx.x] = data[ind];
+  __syncthreads();
+
+  min_reduce_in_shared<block_size>(threadIdx.x, sdata);
+  if (threadIdx.x == 0) result[blockIdx.x] = sdata[0];
+}
+
+// http://developer.download.nvidia.com/compute/cuda/1.1-Beta/x86_website/projects/reduction/doc/reduction.pdf
+  template <unsigned int block_size>
+__global__ void sum_reduce(
+    double* data, double* result)
+{
+  __shared__ double sdata[block_size];
+  const int ind = blockIdx.x*block_size + threadIdx.x;
+  sdata[threadIdx.x] = data[ind];
+  __syncthreads();
+
+  sum_reduce_in_shared<block_size>(threadIdx.x, sdata);
+  if (threadIdx.x == 0) result[blockIdx.x] = sdata[0];
+}
+
+  template <unsigned int block_size>
+__global__ void calc_min_timestep(
+    const int nx, const int ny, double* Qxx, double* Qyy, const double* rho, 
+    const double* e, Mesh* mesh, double* min_timesteps, const int first_step,
+    const double* celldx, const double* celldy)
+{
+  set_cuda_indices(0);
+
+  // Constrain based on the sound speed within the system
+  const double c_s = sqrt(GAM*(GAM - 1.0)*e[ind0]);
+  const double thread_min_dt_x = celldx[jj]/sqrt(c_s*c_s + 2.0*Qxx[ind0]/rho[ind0]);
+  const double thread_min_dt_y = celldy[ii]/sqrt(c_s*c_s + 2.0*Qyy[ind0]/rho[ind0]);
+  const double thread_min_dt = min(thread_min_dt_x, thread_min_dt_y);
+
+  __shared__ double sdata[block_size];
+  const int tid = threadIdx.x;
+  sdata[tid] = min(MAX_DT, thread_min_dt);
+  __syncthreads();
+
+  min_reduce_in_shared<NBLOCKS>(tid, sdata);
+  if (tid == 0) min_timesteps[blockIdx.x] = sdata[0];
 }
 
