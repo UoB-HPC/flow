@@ -561,7 +561,7 @@ __global__ void min_reduce(
 {
   const int gid = blockIdx.x*block_size+threadIdx.x;
   __shared__ double sdata[block_size];
-  sdata[threadIdx.x] = (gid < nthreads_per_block) ? data[gid] : 10000.0;
+  sdata[threadIdx.x] = (gid < nthreads_per_block) ? data[gid] : MAX_DT;
   __syncthreads();
 
   min_reduce_in_shared<block_size>(threadIdx.x, sdata);
@@ -589,13 +589,16 @@ __global__ void calc_min_timestep(
     const double* celldx, const double* celldy)
 {
   set_cuda_indices(0);
-  if(gid >= nx*ny) return;
 
-  // Constrain based on the sound speed within the system
-  const double c_s = sqrt(GAM*(GAM - 1.0)*e[ind0]);
-  const double thread_min_dt_x = celldx[jj]/sqrt(c_s*c_s + 2.0*Qxx[ind0]/rho[ind0]);
-  const double thread_min_dt_y = celldy[ii]/sqrt(c_s*c_s + 2.0*Qyy[ind0]/rho[ind0]);
-  const double thread_min_dt = min(thread_min_dt_x, thread_min_dt_y);
+  double thread_min_dt = MAX_DT;
+
+  if(ii >= PAD && ii < ny-PAD && jj >= PAD && jj < nx-PAD) {
+    // Constrain based on the sound speed within the system
+    const double c_s = sqrt(GAM*(GAM - 1.0)*e[ind0]);
+    const double thread_min_dt_x = celldx[jj]/sqrt(c_s*c_s + 2.0*Qxx[ind0]/rho[ind0]);
+    const double thread_min_dt_y = celldy[ii]/sqrt(c_s*c_s + 2.0*Qyy[ind0]/rho[ind0]);
+    thread_min_dt = min(thread_min_dt_x, thread_min_dt_y);
+  }
 
   __shared__ double sdata[block_size];
   const int tid = threadIdx.x;

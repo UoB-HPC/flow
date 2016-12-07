@@ -79,9 +79,9 @@ void set_timestep(
   START_PROFILING(&compute_profile);
   // Check the minimum timestep from the sound speed in the nx and ny directions
 #pragma omp parallel for reduction(min: local_min_dt)
-  for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
+  for(int ii = PAD; ii < ny-PAD; ++ii) {
 #pragma omp simd 
-    for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
+    for(int jj = PAD; jj < nx-PAD; ++jj) {
       // Constrain based on the sound speed within the system
       const double c_s = sqrt(GAM*(GAM - 1.0)*e[ind0]);
       const double thread_min_dt_x = celldx[jj]/sqrt(c_s*c_s + 2.0*Qxx[ind0]/rho[ind0]);

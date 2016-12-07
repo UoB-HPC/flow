@@ -310,6 +310,8 @@ void advect_momentum(
         nx, ny, mesh, dt_h, dt, u, v, vF_x, rho_v, rho, F_x, edgedx, edgedy, celldx, celldy);
     gpu_check(cudaDeviceSynchronize());
 
+    handle_boundary(nx+1, ny+1, mesh, vF_x, NO_INVERT, PACK);
+
     nthreads_per_block = ceil(nx*(ny+1)/(double)NBLOCKS);
     advect_rho_v_in_x<<<nthreads_per_block, NBLOCKS>>>(
         nx, ny, mesh, dt_h, dt, u, v, vF_x, rho_v, rho, 
