@@ -1,18 +1,24 @@
 # User defined parameters
-KERNELS 	  	= cuda
+KERNELS 	  	= omp3
 COMPILER    	= GCC
+MPI						= yes
 CFLAGS_INTEL	= -O3 -g -qopenmp -no-prec-div -std=gnu99 -DINTEL -xhost -Wall -qopt-report=5
-CFLAGS_GCC		= -O3 -g -fopenmp -std=gnu99 -march=native -Wall
+CFLAGS_GCC		= -O3 -g -std=gnu99 -fopenmp -march=native -Wall #-std=gnu99
 CFLAGS_CRAY		= -lrt -hlist=a
-OPTIONS		  	= -DENABLE_PROFILING -DDEBUG #-DMPI 
+OPTIONS		  	= -DENABLE_PROFILING -DDEBUG 
+
+ifeq ($(MPI), yes)
+  OPTIONS += -DMPI
+endif
 
 # Default compiler
-MULTI_COMPILER  = g++
-MULTI_LINKER    = $(MULTI_COMPILER)
-MULTI_FLAGS     = $(CFLAGS_$(COMPILER))
-MULTI_LDFLAGS   = $(MULTI_FLAGS)
-MULTI_BUILD_DIR = ../obj
-MULTI_DIR       = ..
+MULTI_COMPILER_CC   = mpicc
+MULTI_COMPILER_CPP  = mpic++
+MULTI_LINKER    		= $(MULTI_COMPILER_CC)
+MULTI_FLAGS     		= $(CFLAGS_$(COMPILER))
+MULTI_LDFLAGS   		= $(MULTI_FLAGS) -lm
+MULTI_BUILD_DIR 		= ../obj
+MULTI_DIR       		= ..
 
 ifeq ($(KERNELS), cuda)
 include Makefile.cuda
@@ -31,10 +37,10 @@ wet: make_build_dir $(OBJS) Makefile
 
 # Rule to make controlling code
 $(MULTI_BUILD_DIR)/%.o: %.c Makefile 
-	$(MULTI_COMPILER) $(MULTI_FLAGS) $(OPTIONS) -c $< -o $@
+	$(MULTI_COMPILER_CC) $(MULTI_FLAGS) $(OPTIONS) -c $< -o $@
 
 $(MULTI_BUILD_DIR)/%.o: $(MULTI_DIR)/%.c Makefile 
-	$(MULTI_COMPILER) $(MULTI_FLAGS) $(OPTIONS) -c $< -o $@
+	$(MULTI_COMPILER_CC) $(MULTI_FLAGS) $(OPTIONS) -c $< -o $@
 
 make_build_dir:
 	@mkdir -p $(MULTI_BUILD_DIR)/

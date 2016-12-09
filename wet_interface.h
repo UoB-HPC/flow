@@ -7,6 +7,10 @@
 #define C_Q 3.0
 #define C_M (1.5/C_T)
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // Solve a single timestep on the given mesh
 void solve_hydro(
     Mesh* mesh, int tt, double* P, double* rho, double* rho_old, 
@@ -23,4 +27,8 @@ void set_timestep(
 // Prints some conservation values
 void print_conservation(
     const int nx, const int ny, double* rho, double* e, double* reduce_array, Mesh* mesh);
+
+#ifdef __cplusplus
+}
+#endif
 

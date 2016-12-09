@@ -688,13 +688,8 @@ void print_conservation(
     }
   }
 
-  double global_mass_tot = mass_tot;
-  double global_energy_tot = energy_tot;
-
-#ifdef MPI
-  MPI_Reduce(&mass_tot, &global_mass_tot, 1, MPI_DOUBLE, MPI_SUM, MASTER, MPI_COMM_WORLD);
-  MPI_Reduce(&energy_tot, &global_energy_tot, 1, MPI_DOUBLE, MPI_SUM, MASTER, MPI_COMM_WORLD);
-#endif
+  double global_mass_tot = reduce_to_master(mass_tot);
+  double global_energy_tot = reduce_to_master(energy_tot);
 
   if(mesh->rank == MASTER) {
     printf("total mass: %.12e\n", global_mass_tot);

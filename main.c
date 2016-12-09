@@ -76,9 +76,7 @@ int main(int argc, char** argv)
     }
   }
 
-#ifdef MPI
-  MPI_Barrier(MPI_COMM_WORLD);
-#endif
+  barrier();
 
   STOP_PROFILING(&wallclock, "wallclock");
 

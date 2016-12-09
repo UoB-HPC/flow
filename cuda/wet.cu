@@ -4,7 +4,6 @@
 #include "wet.h"
 #include "kernels.k"
 #include "../../comms.h"
-#include "../../cuda/config.h"
 
 // Solve a single timestep on the given mesh
 void solve_hydro(
@@ -16,13 +15,13 @@ void solve_hydro(
   if(mesh->rank == MASTER)
     printf("dt %.12e dt_h %.12e\n", mesh->dt, mesh->dt_h);
 
-  int nthreads_per_block = ceil(mesh->local_nx*mesh->local_ny/(double)NBLOCKS);
-  equation_of_state<<<nthreads_per_block, NBLOCKS>>>(
+  int nblocks = ceil(mesh->local_nx*mesh->local_ny/(double)NTHREADS);
+  equation_of_state<<<nblocks, NTHREADS>>>(
       mesh->local_nx, mesh->local_ny, P, rho, e);
   gpu_check(cudaDeviceSynchronize());
 
-  nthreads_per_block = ceil((mesh->local_nx+1)*(mesh->local_ny+1)/(double)NBLOCKS);
-  pressure_acceleration<<<nthreads_per_block, NBLOCKS>>>(
+  nblocks = ceil((mesh->local_nx+1)*(mesh->local_ny+1)/(double)NTHREADS);
+  pressure_acceleration<<<nblocks, NTHREADS>>>(
       mesh->local_nx, mesh->local_ny, mesh, mesh->dt, rho_u, rho_v, 
       u, v, P, rho, mesh->edgedx, mesh->edgedy, 
       mesh->celldx, mesh->celldy);
@@ -37,8 +36,8 @@ void solve_hydro(
       mesh->edgedx, mesh->edgedy, mesh->celldx, mesh->celldy);
   gpu_check(cudaDeviceSynchronize());
 
-  nthreads_per_block = ceil(mesh->local_nx*mesh->local_ny/(double)NBLOCKS);
-  shock_heating_and_work<<<nthreads_per_block, NBLOCKS>>>(
+  nblocks = ceil(mesh->local_nx*mesh->local_ny/(double)NTHREADS);
+  shock_heating_and_work<<<nblocks, NTHREADS>>>(
       mesh->local_nx, mesh->local_ny, mesh, mesh->dt_h, e, P, u, 
       v, rho, Qxx, Qyy, mesh->celldx, mesh->celldy);
   gpu_check(cudaDeviceSynchronize());
@@ -68,8 +67,8 @@ void artificial_viscosity(
     double* Qyy, double* u, double* v, double* rho_u, double* rho_v, const double* rho, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
-  int nthreads_per_block = ceil(nx*ny/(double)NBLOCKS);
-  calc_viscous_stresses<<<nthreads_per_block, NBLOCKS>>>(
+  int nblocks = ceil(nx*ny/(double)NTHREADS);
+  calc_viscous_stresses<<<nblocks, NTHREADS>>>(
       nx, ny, mesh, dt, Qxx, Qyy, u, v, rho_u, rho_v, rho, 
       edgedx, edgedy, celldx, celldy);
   gpu_check(cudaDeviceSynchronize());
@@ -77,8 +76,8 @@ void artificial_viscosity(
   handle_boundary(nx, ny, mesh, Qxx, NO_INVERT, PACK);
   handle_boundary(nx, ny, mesh, Qyy, NO_INVERT, PACK);
 
-  nthreads_per_block = ceil((nx+1)*(ny+1)/(double)NBLOCKS);
-  viscous_acceleration<<<nthreads_per_block, NBLOCKS>>>(
+  nblocks = ceil((nx+1)*(ny+1)/(double)NTHREADS);
+  viscous_acceleration<<<nblocks, NTHREADS>>>(
       nx, ny, mesh, dt, Qxx, Qyy, u, v, rho_u, rho_v, rho, 
       edgedx, edgedy, celldx, celldy);
   gpu_check(cudaDeviceSynchronize());
@@ -93,21 +92,12 @@ void set_timestep(
     const double* e, Mesh* mesh, double* reduce_array, const int first_step,
     const double* celldx, const double* celldy)
 {
-  int nthreads_per_block1 = ceil((nx+1)*(ny+1)/(double)NBLOCKS);
-  calc_min_timestep<NBLOCKS><<<nthreads_per_block1, NBLOCKS>>>(
+  int nblocks = ceil((nx+1)*(ny+1)/(double)NTHREADS);
+  calc_min_timestep<<<nblocks, NTHREADS>>>(
       nx, ny, Qxx, Qyy, rho, e, mesh, reduce_array, first_step, celldx, celldy);
 
-  while(nthreads_per_block1 > 1) {
-    int nthreads_per_block0 = nthreads_per_block1;
-    nthreads_per_block1 = max(1, ceil(nthreads_per_block1/(double)NBLOCKS));
-    min_reduce<NBLOCKS><<<nthreads_per_block0, NBLOCKS>>>(reduce_array, reduce_array, nthreads_per_block0);
-  }
-  gpu_check(cudaDeviceSynchronize());
-
-  // TODO: URGH
   double local_min_dt;
-  double* plocal_min_dt = &local_min_dt;
-  sync_data(1, &reduce_array, &plocal_min_dt, RECV);
+  finish_min_reduce(nblocks, reduce_array, &local_min_dt);
 
   // Ensure that the timestep does not jump too far from one step to the next
   double global_min_dt = reduce_all_min(local_min_dt);
@@ -123,8 +113,8 @@ void advect_mass_and_energy(
     double* eF_x, double* eF_y, const double* u, const double* v, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
-  int nthreads_per_block = ceil(nx*ny/(double)NBLOCKS);
-  store_old_rho<<<nthreads_per_block, NBLOCKS>>>(nx, ny, rho, rho_old);
+  int nblocks = ceil(nx*ny/(double)NTHREADS);
+  store_old_rho<<<nblocks, NTHREADS>>>(nx, ny, rho, rho_old);
 
   if(tt % 2 == 0) {
     mass_and_energy_x_advection(
@@ -151,16 +141,16 @@ void mass_and_energy_x_advection(
     double* F_x, double* eF_x, const double* celldx, const double* edgedx, 
     const double* celldy, const double* edgedy)
 {
-  int nthreads_per_block = ceil((nx+1)*ny/(double)NBLOCKS);
-  calc_x_mass_and_energy_flux<<<nthreads_per_block, NBLOCKS>>>(
+  int nblocks = ceil((nx+1)*ny/(double)NTHREADS);
+  calc_x_mass_and_energy_flux<<<nblocks, NTHREADS>>>(
       nx, ny, first, mesh, dt, dt_h, rho, rho_old, e, u, 
       F_x, eF_x, celldx, edgedx, celldy, edgedy);
   gpu_check(cudaDeviceSynchronize());
 
   handle_boundary(nx+1, ny, mesh, F_x, INVERT_X, PACK);
 
-  nthreads_per_block = ceil(nx*ny/(double)NBLOCKS);
-  advect_mass_and_energy_in_x<<<nthreads_per_block, NBLOCKS>>>(
+  nblocks = ceil(nx*ny/(double)NTHREADS);
+  advect_mass_and_energy_in_x<<<nblocks, NTHREADS>>>(
       nx, ny, first, mesh, dt, dt_h, rho, rho_old, e, u, 
       F_x, eF_x, celldx, edgedx, celldy, edgedy);
   gpu_check(cudaDeviceSynchronize());
@@ -176,16 +166,16 @@ void mass_and_energy_y_advection(
     double* F_y, double* eF_y, const double* celldx, const double* edgedx, 
     const double* celldy, const double* edgedy)
 {
-  int nthreads_per_block = ceil(nx*(ny+1)/(double)NBLOCKS);
-  calc_y_mass_and_energy_flux<<<nthreads_per_block, NBLOCKS>>>(
+  int nblocks = ceil(nx*(ny+1)/(double)NTHREADS);
+  calc_y_mass_and_energy_flux<<<nblocks, NTHREADS>>>(
       nx, ny, first, mesh, dt, dt_h, rho, rho_old, e, v, 
       F_y, eF_y, celldx, edgedx, celldy, edgedy);
   gpu_check(cudaDeviceSynchronize());
 
   handle_boundary(nx, ny+1, mesh, F_y, INVERT_Y, PACK);
 
-  nthreads_per_block = ceil(nx*ny/(double)NBLOCKS);
-  advect_mass_and_energy_in_y<<<nthreads_per_block, NBLOCKS>>>(
+  nblocks = ceil(nx*ny/(double)NTHREADS);
+  advect_mass_and_energy_in_y<<<nblocks, NTHREADS>>>(
       nx, ny, first, mesh, dt, dt_h, rho, rho_old, e, v, 
       F_y, eF_y, celldx, edgedx, celldy, edgedy);
   gpu_check(cudaDeviceSynchronize());
@@ -203,118 +193,118 @@ void advect_momentum(
     const double* rho, const double* F_x, const double* F_y, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
-  int nthreads_per_block = 0;
+  int nblocks = 0;
   if(tt % 2) {
-    nthreads_per_block = ceil(nx*ny/(double)NBLOCKS);
-    ux_momentum_flux<<<nthreads_per_block, NBLOCKS>>>(
+    nblocks = ceil(nx*ny/(double)NTHREADS);
+    ux_momentum_flux<<<nblocks, NTHREADS>>>(
         nx, ny, mesh, dt_h, dt, u, v, uF_x, rho_u, rho, F_x, edgedx, edgedy, celldx, celldy);
     gpu_check(cudaDeviceSynchronize());
 
     handle_boundary(nx, ny, mesh, uF_x, NO_INVERT, PACK);
 
-    nthreads_per_block = ceil((nx+1)*ny/(double)NBLOCKS);
-    advect_rho_u_and_u_in_x<<<nthreads_per_block, NBLOCKS>>>(
+    nblocks = ceil((nx+1)*ny/(double)NTHREADS);
+    advect_rho_u_and_u_in_x<<<nblocks, NTHREADS>>>(
         nx, ny, tt, mesh, dt_h, dt, u, v, uF_x, uF_y, 
         vF_x, vF_y, rho_u, rho_v, rho, F_x, F_y, edgedx, edgedy, celldx, celldy);
     gpu_check(cudaDeviceSynchronize());
 
     handle_boundary(nx+1, ny, mesh, u, INVERT_X, PACK);
 
-    nthreads_per_block = ceil((nx+1)*(ny+1)/(double)NBLOCKS);
-    uy_momentum_flux<<<nthreads_per_block, NBLOCKS>>>(
+    nblocks = ceil((nx+1)*(ny+1)/(double)NTHREADS);
+    uy_momentum_flux<<<nblocks, NTHREADS>>>(
         nx, ny, mesh, dt_h, dt, u, v, uF_y, rho_u, rho, F_y, edgedx, edgedy, celldx, celldy);
     gpu_check(cudaDeviceSynchronize());
 
     handle_boundary(nx+1, ny+1, mesh, uF_y, NO_INVERT, PACK);
 
-    nthreads_per_block = ceil((nx+1)*ny/(double)NBLOCKS);
-    advect_rho_u_in_y<<<nthreads_per_block, NBLOCKS>>>(
+    nblocks = ceil((nx+1)*ny/(double)NTHREADS);
+    advect_rho_u_in_y<<<nblocks, NTHREADS>>>(
         nx, ny, tt, mesh, dt_h, dt, u, v, uF_x, uF_y, vF_x, vF_y, rho_u, rho_v, 
         rho, F_x, F_y, edgedx, edgedy, celldx, celldy);
     gpu_check(cudaDeviceSynchronize());
 
-    nthreads_per_block = ceil((nx+1)*(ny+1)/(double)NBLOCKS);
-    vx_momentum_flux<<<nthreads_per_block, NBLOCKS>>>(
+    nblocks = ceil((nx+1)*(ny+1)/(double)NTHREADS);
+    vx_momentum_flux<<<nblocks, NTHREADS>>>(
         nx, ny, mesh, dt_h, dt, u, v, vF_x, rho_v, rho, F_x, edgedx, edgedy, celldx, celldy);
     gpu_check(cudaDeviceSynchronize());
 
     handle_boundary(nx+1, ny+1, mesh, vF_x, NO_INVERT, PACK);
 
-    nthreads_per_block = ceil(nx*(ny+1)/(double)NBLOCKS);
-    advect_rho_v_and_v_in_x<<<nthreads_per_block, NBLOCKS>>>(
+    nblocks = ceil(nx*(ny+1)/(double)NTHREADS);
+    advect_rho_v_and_v_in_x<<<nblocks, NTHREADS>>>(
         nx, ny, mesh, dt_h, dt, u, v, vF_x, rho_v, rho, F_x, 
         edgedx, edgedy, celldx, celldy);
     gpu_check(cudaDeviceSynchronize());
 
     handle_boundary(nx, ny+1, mesh, v, INVERT_Y, PACK);
 
-    nthreads_per_block = ceil(nx*ny/(double)NBLOCKS);
-    vy_momentum_flux<<<nthreads_per_block, NBLOCKS>>>(
+    nblocks = ceil(nx*ny/(double)NTHREADS);
+    vy_momentum_flux<<<nblocks, NTHREADS>>>(
         nx, ny, mesh, dt_h, dt, u, v, vF_y, rho_v, rho, F_y, edgedx, edgedy, celldx, celldy);
     gpu_check(cudaDeviceSynchronize());
 
     handle_boundary(nx, ny, mesh, vF_y, NO_INVERT, PACK);
 
-    nthreads_per_block = ceil(nx*(ny+1)/(double)NBLOCKS);
-    advect_rho_v_in_y<<<nthreads_per_block, NBLOCKS>>>(
+    nblocks = ceil(nx*(ny+1)/(double)NTHREADS);
+    advect_rho_v_in_y<<<nblocks, NTHREADS>>>(
         nx, ny, mesh, dt_h, dt, u, v, vF_y, rho_v, rho, F_y, 
         edgedx, edgedy, celldx, celldy);
     gpu_check(cudaDeviceSynchronize());
   }
   else {
-    nthreads_per_block = ceil((nx+1)*(ny+1)/(double)NBLOCKS);
-    uy_momentum_flux<<<nthreads_per_block, NBLOCKS>>>(
+    nblocks = ceil((nx+1)*(ny+1)/(double)NTHREADS);
+    uy_momentum_flux<<<nblocks, NTHREADS>>>(
         nx, ny, mesh, dt_h, dt, u, v, uF_y, rho_u, rho, F_y, edgedx, edgedy, celldx, celldy);
     gpu_check(cudaDeviceSynchronize());
 
     handle_boundary(nx+1, ny+1, mesh, uF_y, NO_INVERT, PACK);
 
-    nthreads_per_block = ceil((nx+1)*ny/(double)NBLOCKS);
-    advect_rho_u_and_u_in_y<<<nthreads_per_block, NBLOCKS>>>(
+    nblocks = ceil((nx+1)*ny/(double)NTHREADS);
+    advect_rho_u_and_u_in_y<<<nblocks, NTHREADS>>>(
         nx, ny, tt, mesh, dt_h, dt, u, v, uF_x, uF_y, vF_x, vF_y, rho_u, 
         rho_v, rho, F_x, F_y, edgedx, edgedy, celldx, celldy);
     gpu_check(cudaDeviceSynchronize());
 
     handle_boundary(nx+1, ny, mesh, u, INVERT_X, PACK);
 
-    nthreads_per_block = ceil(nx*ny/(double)NBLOCKS);
-    ux_momentum_flux<<<nthreads_per_block, NBLOCKS>>>(
+    nblocks = ceil(nx*ny/(double)NTHREADS);
+    ux_momentum_flux<<<nblocks, NTHREADS>>>(
         nx, ny, mesh, dt_h, dt, u, v, uF_x, rho_u, rho, 
         F_x, edgedx, edgedy, celldx, celldy);
     gpu_check(cudaDeviceSynchronize());
 
     handle_boundary(nx, ny, mesh, uF_x, NO_INVERT, PACK);
 
-    nthreads_per_block = ceil((nx+1)*ny/(double)NBLOCKS);
-    advect_rho_u_in_x<<<nthreads_per_block, NBLOCKS>>>(
+    nblocks = ceil((nx+1)*ny/(double)NTHREADS);
+    advect_rho_u_in_x<<<nblocks, NTHREADS>>>(
         nx, ny, tt, mesh, dt_h, dt, u, v, uF_x, uF_y, vF_x, vF_y, rho_u, rho_v, 
         rho, F_x, F_y, edgedx, edgedy, celldx, celldy);
     gpu_check(cudaDeviceSynchronize());
 
-    nthreads_per_block = ceil(nx*ny/(double)NBLOCKS);
-    vy_momentum_flux<<<nthreads_per_block, NBLOCKS>>>(
+    nblocks = ceil(nx*ny/(double)NTHREADS);
+    vy_momentum_flux<<<nblocks, NTHREADS>>>(
         nx, ny, mesh, dt_h, dt, u, v, vF_y, rho_v, rho, F_y, edgedx, edgedy, celldx, celldy);
     gpu_check(cudaDeviceSynchronize());
 
     handle_boundary(nx, ny, mesh, vF_y, NO_INVERT, PACK);
 
-    nthreads_per_block = ceil(nx*(ny+1)/(double)NBLOCKS);
-    advect_rho_v_and_v_in_y<<<nthreads_per_block, NBLOCKS>>>(
+    nblocks = ceil(nx*(ny+1)/(double)NTHREADS);
+    advect_rho_v_and_v_in_y<<<nblocks, NTHREADS>>>(
         nx, ny, mesh, dt_h, dt, u, v, vF_y, rho_v, rho, F_y, 
         edgedx, edgedy, celldx, celldy);
     gpu_check(cudaDeviceSynchronize());
 
     handle_boundary(nx, ny+1, mesh, v, INVERT_Y, PACK);
 
-    nthreads_per_block = ceil((nx+1)*(ny+1)/(double)NBLOCKS);
-    vx_momentum_flux<<<nthreads_per_block, NBLOCKS>>>(
+    nblocks = ceil((nx+1)*(ny+1)/(double)NTHREADS);
+    vx_momentum_flux<<<nblocks, NTHREADS>>>(
         nx, ny, mesh, dt_h, dt, u, v, vF_x, rho_v, rho, F_x, edgedx, edgedy, celldx, celldy);
     gpu_check(cudaDeviceSynchronize());
 
     handle_boundary(nx+1, ny+1, mesh, vF_x, NO_INVERT, PACK);
 
-    nthreads_per_block = ceil(nx*(ny+1)/(double)NBLOCKS);
-    advect_rho_v_in_x<<<nthreads_per_block, NBLOCKS>>>(
+    nblocks = ceil(nx*(ny+1)/(double)NTHREADS);
+    advect_rho_v_in_x<<<nblocks, NTHREADS>>>(
         nx, ny, mesh, dt_h, dt, u, v, vF_x, rho_v, rho, 
         F_x, edgedx, edgedy, celldx, celldy);
     gpu_check(cudaDeviceSynchronize());
@@ -325,25 +315,14 @@ void advect_momentum(
 void print_conservation(
     const int nx, const int ny, double* rho, double* e, double* reduce_array, Mesh* mesh) 
 {
-  int nthreads_per_block = ceil(nx*ny/(double)NBLOCKS);
-  sum_reduce<NBLOCKS><<<nthreads_per_block, NBLOCKS>>>(
-      rho, reduce_array, nthreads_per_block);
-
-  while(nthreads_per_block > 1) {
-    nthreads_per_block = max(1, ceil(nthreads_per_block/(double)NBLOCKS));
-    sum_reduce<NBLOCKS><<<nthreads_per_block, NBLOCKS>>>(reduce_array, reduce_array, nthreads_per_block);
-  }
-  gpu_check(cudaDeviceSynchronize());
+  int nblocks = ceil(nx*ny/(double)NTHREADS);
+  sum_reduce<NTHREADS><<<nblocks, NTHREADS>>>(
+      rho, reduce_array, nblocks);
 
   double local_mass_tot = 0.0;
-  double* plocal_mass_tot = &local_mass_tot;
-  sync_data(1, &reduce_array, &plocal_mass_tot, RECV);
+  finish_sum_reduce(nblocks, reduce_array, &local_mass_tot);
 
-  double global_mass_tot = local_mass_tot;
-
-#ifdef MPI
-  MPI_Reduce(&mass_tot, &global_mass_tot, 1, MPI_DOUBLE, MPI_SUM, MASTER, MPI_COMM_WORLD);
-#endif
+  double global_mass_tot = reduce_to_master(local_mass_tot);
 
   if(mesh->rank == MASTER) {
     printf("total mass: %.12e\n", global_mass_tot);
