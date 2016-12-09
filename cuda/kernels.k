@@ -540,3 +540,23 @@ __global__ void calc_min_timestep(
     reduce_array[blockIdx.x] = sdata[0];
 }
 
+__global__ void calc_mass_sum(
+    const int nx, const int ny, const double* rho, double* reduce_array)
+{
+  set_cuda_indices(0);
+  const int tid = threadIdx.x;
+
+  __shared__ double sdata[NTHREADS];
+  sdata[tid] = 0.0;
+
+  if(ii >= PAD && ii < ny-PAD && jj >= PAD && jj < nx-PAD) {
+    sdata[tid] = rho[ind0];
+  }
+
+  __syncthreads();
+
+  sum_reduce_in_shared<NTHREADS>(tid, sdata);
+  if (tid == 0) 
+    reduce_array[blockIdx.x] = sdata[0];
+}
+

@@ -316,8 +316,8 @@ void print_conservation(
     const int nx, const int ny, double* rho, double* e, double* reduce_array, Mesh* mesh) 
 {
   int nblocks = ceil(nx*ny/(double)NTHREADS);
-  sum_reduce<NTHREADS><<<nblocks, NTHREADS>>>(
-      rho, reduce_array, nblocks);
+  calc_mass_sum<<<nblocks, NTHREADS>>>( 
+      nx, ny, rho, reduce_array);
 
   double local_mass_tot = 0.0;
   finish_sum_reduce(nblocks, reduce_array, &local_mass_tot);

@@ -1,6 +1,6 @@
 # User defined parameters
-KERNELS 	  	= omp3
-COMPILER    	= GCC
+KERNELS 	  	= cuda
+COMPILER    	= CRAY
 MPI						= yes
 CFLAGS_INTEL	= -O3 -g -qopenmp -no-prec-div -std=gnu99 -DINTEL -xhost -Wall -qopt-report=5
 CFLAGS_GCC		= -O3 -g -std=gnu99 -fopenmp -march=native -Wall #-std=gnu99
@@ -12,8 +12,8 @@ ifeq ($(MPI), yes)
 endif
 
 # Default compiler
-MULTI_COMPILER_CC   = mpicc
-MULTI_COMPILER_CPP  = mpic++
+MULTI_COMPILER_CC   = cc
+MULTI_COMPILER_CPP  = CC
 MULTI_LINKER    		= $(MULTI_COMPILER_CC)
 MULTI_FLAGS     		= $(CFLAGS_$(COMPILER))
 MULTI_LDFLAGS   		= $(MULTI_FLAGS) -lm
