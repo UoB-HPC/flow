@@ -10,6 +10,8 @@ __global__ void equation_of_state(
 {
   set_cuda_indices(0);
 
+  if(gid >= nx*ny) return;
+
   // Only invoke simple GAMma law at the moment
   P[ind0] = (GAM - 1.0)*rho[ind0]*e[ind0];
 }
