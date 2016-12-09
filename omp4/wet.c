@@ -655,7 +655,7 @@ void vy_momentum_flux(
 
 // Prints some conservation values
 void print_conservation(
-    const int nx, const int ny, double* rho, double* e, Mesh* mesh) {
+    const int nx, const int ny, double* rho, double* e, double* reduce_array, Mesh* mesh) {
   double mass_tot = 0.0;
   double energy_tot = 0.0;
 #pragma omp target teams distribute parallel for reduction(+:mass_tot, energy_tot)
@@ -666,13 +666,8 @@ void print_conservation(
     }
   }
 
-  double global_mass_tot = mass_tot;
-  double global_energy_tot = energy_tot;
-
-#ifdef MPI
-  MPI_Reduce(&mass_tot, &global_mass_tot, 1, MPI_DOUBLE, MPI_SUM, MASTER, MPI_COMM_WORLD);
-  MPI_Reduce(&energy_tot, &global_energy_tot, 1, MPI_DOUBLE, MPI_SUM, MASTER, MPI_COMM_WORLD);
-#endif
+  double global_mass_tot = reduce_to_master(mass_tot);
+  double global_energy_tot = reduce_to_master(energy_tot);
 
   if(mesh->rank == MASTER) {
     printf("total mass: %.12e\n", global_mass_tot);
