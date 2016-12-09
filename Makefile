@@ -1,5 +1,5 @@
 # User defined parameters
-KERNELS 	  	= omp3
+KERNELS 	  	= cuda
 COMPILER    	= GCC
 MPI						= yes
 CFLAGS_INTEL	= -O3 -g -qopenmp -no-prec-div -std=gnu99 -DINTEL -xhost -Wall -qopt-report=5

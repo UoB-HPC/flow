@@ -27,6 +27,7 @@ int main(int argc, char** argv)
   }
 
   initialise_comms(&mesh);
+  initialise_devices(mesh.rank);
   initialise_mesh(&mesh);
 
   State state = {0};
