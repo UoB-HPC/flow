@@ -33,7 +33,7 @@ SRC_CLEAN  = $(subst $(MULTI_DIR)/,,$(SRC))
 OBJS 			+= $(patsubst %.c, $(MULTI_BUILD_DIR)/%.o, $(SRC_CLEAN))
 
 wet: make_build_dir $(OBJS) Makefile
-	$(MULTI_LINKER) $(OBJS) $(MULTI_LDFLAGS) -o wet.exe
+	$(MULTI_LINKER) $(OBJS) $(MULTI_LDFLAGS) -o wet.$(KERNELS)
 
 # Rule to make controlling code
 $(MULTI_BUILD_DIR)/%.o: %.c Makefile 
