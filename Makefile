@@ -1,19 +1,20 @@
 # User defined parameters
-KERNELS 	  	= cuda
-COMPILER    	= CRAY
-MPI						= yes
-CFLAGS_INTEL	= -O3 -g -qopenmp -no-prec-div -std=gnu99 -DINTEL -xhost -Wall -qopt-report=5
-CFLAGS_GCC		= -O3 -g -std=gnu99 -fopenmp -march=native -Wall #-std=gnu99
-CFLAGS_CRAY		= -lrt -hlist=a
-OPTIONS		  	= -DENABLE_PROFILING -DDEBUG 
+KERNELS          = omp3
+COMPILER         = INTEL_KNL
+MPI              = yes
+CFLAGS_INTEL     = -O3 -g -qopenmp -no-prec-div -std=gnu99 -DINTEL -xhost -Wall -qopt-report=5
+CFLAGS_INTEL_KNL = -O3 -g -qopenmp -no-prec-div -std=gnu99 -DINTEL -xMIC-AVX512 -Wall -qopt-report=5
+CFLAGS_GCC       = -O3 -g -std=gnu99 -fopenmp -march=native -Wall #-std=gnu99
+CFLAGS_CRAY      = -lrt -hlist=a
+OPTIONS          = -DENABLE_PROFILING -DDEBUG
 
 ifeq ($(MPI), yes)
   OPTIONS += -DMPI
 endif
 
 # Default compiler
-MULTI_COMPILER_CC   = cc
-MULTI_COMPILER_CPP  = CC
+MULTI_COMPILER_CC   = mpiicc
+MULTI_COMPILER_CPP  = mpiicpc
 MULTI_LINKER    		= $(MULTI_COMPILER_CC)
 MULTI_FLAGS     		= $(CFLAGS_$(COMPILER))
 MULTI_LDFLAGS   		= $(MULTI_FLAGS) -lm
