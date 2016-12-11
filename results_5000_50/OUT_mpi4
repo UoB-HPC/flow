@@ -1,0 +1,493 @@
+rm -rf ../obj/* wet.exe *.vtk *.bov *.dat *.optrpt *.cub *.ptx
+cc -lrt -hlist=a -DENABLE_PROFILING -DDEBUG  -DMPI -c main.c -o ../obj/main.o
+cc -lrt -hlist=a -DENABLE_PROFILING -DDEBUG  -DMPI -c omp3/wet.c -o ../obj/omp3/wet.o
+cc -lrt -hlist=a -DENABLE_PROFILING -DDEBUG  -DMPI -c ../omp3/data.c -o ../obj/omp3/data.o
+cc -lrt -hlist=a -DENABLE_PROFILING -DDEBUG  -DMPI -c ../omp3/halos.c -o ../obj/omp3/halos.o
+cc -lrt -hlist=a -DENABLE_PROFILING -DDEBUG  -DMPI -c ../omp3/shared.c -o ../obj/omp3/shared.o
+cc -lrt -hlist=a -DENABLE_PROFILING -DDEBUG  -DMPI -c ../comms.c -o ../obj/comms.o
+cc -lrt -hlist=a -DENABLE_PROFILING -DDEBUG  -DMPI -c ../mesh.c -o ../obj/mesh.o
+cc -lrt -hlist=a -DENABLE_PROFILING -DDEBUG  -DMPI -c ../profiler.c -o ../obj/profiler.o
+cc -lrt -hlist=a -DENABLE_PROFILING -DDEBUG  -DMPI -c ../shared.c -o ../obj/shared.o
+cc -lrt -hlist=a -DENABLE_PROFILING -DDEBUG  -DMPI -c ../state.c -o ../obj/state.o
+
+    for(int dd = 0; dd < PAD; ++dd) {
+CC-7242 craycc: WARNING File = ../omp3/halos.c, Line = 116
+  Collapse directive not honored due to imperfect loop nesting.
+
+      for(int jj = PAD; jj < nx-PAD; ++jj) {
+CC-7242 craycc: WARNING File = ../omp3/halos.c, Line = 117
+  Collapse directive not honored due to imperfect loop nesting.
+
+    for(int dd = 0; dd < PAD; ++dd) {
+CC-7242 craycc: WARNING File = ../omp3/halos.c, Line = 125
+  Collapse directive not honored due to imperfect loop nesting.
+
+      for(int jj = PAD; jj < nx-PAD; ++jj) {
+CC-7242 craycc: WARNING File = ../omp3/halos.c, Line = 126
+  Collapse directive not honored due to imperfect loop nesting.
+
+Cray C : Version 8.5.5 (20161018192458_ea2a5395960bcf0b21601dab3dff40dd5608597c)
+Total warnings detected in ../omp3/halos.c: 4
+cc  ../obj/main.o  ../obj/omp3/wet.o  ../obj/omp3/data.o  ../obj/omp3/halos.o  ../obj/omp3/shared.o  ../obj/comms.o  ../obj/mesh.o  ../obj/profiler.o  ../obj/shared.o  ../obj/state.o -lrt -hlist=a -lm -o wet.omp3
+rank 18 neighbours 29 19 7 17
+rank 22 neighbours 33 23 11 -1
+rank 6 neighbours 17 7 -1 5
+rank 32 neighbours 43 -1 21 31
+rank 30 neighbours 41 31 19 29
+rank 5 neighbours 16 6 -1 4
+rank 29 neighbours 40 30 18 28
+rank 43 neighbours 54 -1 32 42
+rank 42 neighbours 53 43 31 41
+rank 21 neighbours 32 -1 10 20
+rank 17 neighbours 28 18 6 16
+rank 35 neighbours 46 36 24 34
+rank 31 neighbours 42 32 20 30
+rank 33 neighbours 44 34 22 -1
+rank 8 neighbours 19 9 -1 7
+rank 2 neighbours 13 3 -1 1
+rank 10 neighbours 21 -1 -1 9
+rank 9 neighbours 20 10 -1 8
+rank 38 neighbours 49 39 27 37
+rank 24 neighbours 35 25 13 23
+rank 13 neighbours 24 14 2 12
+rank 19 neighbours 30 20 8 18
+rank 16 neighbours 27 17 5 15
+rank 26 neighbours 37 27 15 25
+rank 15 neighbours 26 16 4 14
+rank 7 neighbours 18 8 -1 6
+rank 140 neighbours 151 141 129 139
+rank 172 neighbours -1 173 161 171
+rank 144 neighbours 155 145 133 143
+rank 138 neighbours 149 139 127 137
+rank 94 neighbours 105 95 83 93
+rank 108 neighbours 119 109 97 107
+rank 100 neighbours 111 101 89 99
+rank 102 neighbours 113 103 91 101
+rank 115 neighbours 126 116 104 114
+rank 113 neighbours 124 114 102 112
+rank 114 neighbours 125 115 103 113
+rank 128 neighbours 139 129 117 127
+rank 119 neighbours 130 120 108 118
+rank 123 neighbours 134 124 112 122
+rank 126 neighbours 137 127 115 125
+rank 130 neighbours 141 131 119 129
+rank 101 neighbours 112 102 90 100
+rank 74 neighbours 85 75 63 73
+rank 78 neighbours 89 79 67 77
+rank 50 neighbours 61 51 39 49
+rank 76 neighbours 87 -1 65 75
+rank 80 neighbours 91 81 69 79
+rank 52 neighbours 63 53 41 51
+rank 72 neighbours 83 73 61 71
+rank 84 neighbours 95 85 73 83
+rank 48 neighbours 59 49 37 47
+rank 85 neighbours 96 86 74 84
+rank 58 neighbours 69 59 47 57
+rank 69 neighbours 80 70 58 68
+rank 46 neighbours 57 47 35 45
+rank 59 neighbours 70 60 48 58
+rank 57 neighbours 68 58 46 56
+rank 49 neighbours 60 50 38 48
+rank 83 neighbours 94 84 72 82
+rank 45 neighbours 56 46 34 44
+rank 61 neighbours 72 62 50 60
+rank 65 neighbours 76 -1 54 64
+rank 75 neighbours 86 76 64 74
+rank 82 neighbours 93 83 71 81
+rank 34 neighbours 45 35 23 33
+rank 40 neighbours 51 41 29 39
+rank 39 neighbours 50 40 28 38
+rank 41 neighbours 52 42 30 40
+rank 28 neighbours 39 29 17 27
+rank 23 neighbours 34 24 12 22
+rank 25 neighbours 36 26 14 24
+rank 0 neighbours 11 1 -1 -1
+rank 14 neighbours 25 15 3 13
+Problem dimensions 5000x5000 for 50 iterations.
+rank 27 neighbours 38 28 16 26
+rank 4 neighbours 15 5 -1 3
+rank 11 neighbours 22 12 0 -1
+rank 3 neighbours 14 4 -1 2
+rank 12 neighbours 23 13 1 11
+rank 20 neighbours 31 21 9 19
+rank 36 neighbours 47 37 25 35
+rank 1 neighbours 12 2 -1 0
+rank 37 neighbours 48 38 26 36
+rank 66 neighbours 77 67 55 -1
+rank 64 neighbours 75 65 53 63
+rank 56 neighbours 67 57 45 55
+rank 60 neighbours 71 61 49 59
+rank 86 neighbours 97 87 75 85
+rank 68 neighbours 79 69 57 67
+rank 70 neighbours 81 71 59 69
+rank 44 neighbours 55 45 33 -1
+rank 87 neighbours 98 -1 76 86
+rank 47 neighbours 58 48 36 46
+rank 63 neighbours 74 64 52 62
+rank 54 neighbours 65 -1 43 53
+rank 51 neighbours 62 52 40 50
+rank 71 neighbours 82 72 60 70
+rank 79 neighbours 90 80 68 78
+rank 62 neighbours 73 63 51 61
+rank 67 neighbours 78 68 56 66
+rank 77 neighbours 88 78 66 -1
+rank 55 neighbours 66 56 44 -1
+rank 53 neighbours 64 54 42 52
+rank 81 neighbours 92 82 70 80
+rank 73 neighbours 84 74 62 72
+rank 135 neighbours 146 136 124 134
+rank 169 neighbours -1 170 158 168
+rank 173 neighbours -1 174 162 172
+rank 133 neighbours 144 134 122 132
+rank 147 neighbours 158 148 136 146
+rank 168 neighbours -1 169 157 167
+rank 164 neighbours 175 -1 153 163
+rank 163 neighbours 174 164 152 162
+rank 175 neighbours -1 -1 164 174
+rank 171 neighbours -1 172 160 170
+rank 142 neighbours 153 -1 131 141
+rank 166 neighbours -1 167 155 165
+rank 150 neighbours 161 151 139 149
+rank 132 neighbours 143 133 121 -1
+rank 136 neighbours 147 137 125 135
+rank 161 neighbours 172 162 150 160
+rank 156 neighbours 167 157 145 155
+rank 165 neighbours -1 166 154 -1
+rank 170 neighbours -1 171 159 169
+rank 158 neighbours 169 159 147 157
+rank 151 neighbours 162 152 140 150
+rank 146 neighbours 157 147 135 145
+rank 148 neighbours 159 149 137 147
+rank 174 neighbours -1 175 163 173
+rank 154 neighbours 165 155 143 -1
+rank 160 neighbours 171 161 149 159
+rank 167 neighbours -1 168 156 166
+rank 162 neighbours 173 163 151 161
+rank 137 neighbours 148 138 126 136
+rank 145 neighbours 156 146 134 144
+rank 155 neighbours 166 156 144 154
+rank 141 neighbours 152 142 130 140
+rank 157 neighbours 168 158 146 156
+rank 149 neighbours 160 150 138 148
+rank 159 neighbours 170 160 148 158
+rank 134 neighbours 145 135 123 133
+rank 139 neighbours 150 140 128 138
+rank 153 neighbours 164 -1 142 152
+rank 152 neighbours 163 153 141 151
+rank 143 neighbours 154 144 132 -1
+Iteration 1
+dt 8.535462764186e-04 dt_h 5.070925528371e-04
+rank 88 neighbours 99 89 77 -1
+rank 122 neighbours 133 123 111 121
+rank 129 neighbours 140 130 118 128
+rank 121 neighbours 132 122 110 -1
+rank 90 neighbours 101 91 79 89
+rank 131 neighbours 142 -1 120 130
+rank 117 neighbours 128 118 106 116
+rank 127 neighbours 138 128 116 126
+rank 91 neighbours 102 92 80 90
+rank 92 neighbours 103 93 81 91
+rank 118 neighbours 129 119 107 117
+rank 125 neighbours 136 126 114 124
+rank 104 neighbours 115 105 93 103
+rank 112 neighbours 123 113 101 111
+rank 96 neighbours 107 97 85 95
+rank 105 neighbours 116 106 94 104
+rank 124 neighbours 135 125 113 123
+rank 99 neighbours 110 100 88 -1
+rank 120 neighbours 131 -1 109 119
+rank 106 neighbours 117 107 95 105
+rank 93 neighbours 104 94 82 92
+rank 116 neighbours 127 117 105 115
+rank 110 neighbours 121 111 99 -1
+rank 95 neighbours 106 96 84 94
+rank 98 neighbours 109 -1 87 97
+rank 111 neighbours 122 112 100 110
+rank 107 neighbours 118 108 96 106
+rank 89 neighbours 100 90 78 88
+rank 109 neighbours 120 -1 98 108
+rank 103 neighbours 114 104 92 102
+rank 97 neighbours 108 98 86 96
+total mass: 6.625000000000e+06
+total energy: 1.524908997735e+07
+simulation time: 0.0000(s)
+Iteration 2
+dt 4.053977153714e-04 dt_h 4.053977153714e-04
+total mass: 6.625000000000e+06
+total energy: 1.524838920234e+07
+simulation time: 0.0004(s)
+Iteration 3
+dt 3.650052753718e-04 dt_h 3.246128353721e-04
+total mass: 6.625000000000e+06
+total energy: 1.524782351455e+07
+simulation time: 0.0008(s)
+Iteration 4
+dt 3.853294103437e-04 dt_h 4.460459853153e-04
+total mass: 6.625000000000e+06
+total energy: 1.524717484498e+07
+simulation time: 0.0012(s)
+Iteration 5
+dt 4.202662206167e-04 dt_h 3.944864559181e-04
+total mass: 6.625000000000e+06
+total energy: 1.524658623709e+07
+simulation time: 0.0016(s)
+Iteration 6
+dt 4.185936578145e-04 dt_h 4.427008597109e-04
+total mass: 6.625000000000e+06
+total energy: 1.524595573362e+07
+simulation time: 0.0020(s)
+Iteration 7
+dt 4.250884092327e-04 dt_h 4.074759587546e-04
+total mass: 6.625000000000e+06
+total energy: 1.524535682056e+07
+simulation time: 0.0024(s)
+Iteration 8
+dt 4.140321755447e-04 dt_h 4.205883923349e-04
+total mass: 6.625000000000e+06
+total energy: 1.524473872252e+07
+simulation time: 0.0028(s)
+Iteration 9
+dt 4.281864777805e-04 dt_h 4.357845632261e-04
+total mass: 6.625000000000e+06
+total energy: 1.524411966994e+07
+simulation time: 0.0033(s)
+Iteration 10
+dt 4.259666576679e-04 dt_h 4.161487521096e-04
+total mass: 6.625000000000e+06
+total energy: 1.524351273475e+07
+simulation time: 0.0037(s)
+Iteration 11
+dt 4.225892193067e-04 dt_h 4.290296865038e-04
+total mass: 6.625000000000e+06
+total energy: 1.524289840811e+07
+simulation time: 0.0041(s)
+Iteration 12
+dt 4.304106263905e-04 dt_h 4.317915662771e-04
+total mass: 6.625000000000e+06
+total energy: 1.524228132001e+07
+simulation time: 0.0045(s)
+Iteration 13
+dt 4.260032585242e-04 dt_h 4.202149507713e-04
+total mass: 6.625000000000e+06
+total energy: 1.524166435229e+07
+simulation time: 0.0050(s)
+Iteration 14
+dt 4.290037922807e-04 dt_h 4.377926337901e-04
+total mass: 6.625000000000e+06
+total energy: 1.524104035212e+07
+simulation time: 0.0054(s)
+Iteration 15
+dt 4.331314533080e-04 dt_h 4.284702728259e-04
+total mass: 6.625000000000e+06
+total energy: 1.524041725066e+07
+simulation time: 0.0058(s)
+Iteration 16
+dt 4.283162881223e-04 dt_h 4.281623034187e-04
+total mass: 6.625000000000e+06
+total energy: 1.523979604155e+07
+simulation time: 0.0063(s)
+Iteration 17
+dt 4.303948844103e-04 dt_h 4.326274654020e-04
+total mass: 6.625000000000e+06
+total energy: 1.523917476198e+07
+simulation time: 0.0067(s)
+Iteration 18
+dt 4.282873579073e-04 dt_h 4.239472504126e-04
+total mass: 6.625000000000e+06
+total energy: 1.523854840573e+07
+simulation time: 0.0071(s)
+Iteration 19
+dt 4.326720864806e-04 dt_h 4.413969225486e-04
+total mass: 6.625000000000e+06
+total energy: 1.523791722906e+07
+simulation time: 0.0075(s)
+Iteration 20
+dt 4.360318470042e-04 dt_h 4.306667714598e-04
+total mass: 6.625000000000e+06
+total energy: 1.523729327456e+07
+simulation time: 0.0080(s)
+Iteration 21
+dt 4.299970987349e-04 dt_h 4.293274260100e-04
+total mass: 6.625000000000e+06
+total energy: 1.523666621502e+07
+simulation time: 0.0084(s)
+Iteration 22
+dt 4.334607575315e-04 dt_h 4.375940890530e-04
+total mass: 6.625000000000e+06
+total energy: 1.523604042377e+07
+simulation time: 0.0088(s)
+Iteration 23
+dt 4.314440961121e-04 dt_h 4.252941031712e-04
+total mass: 6.625000000000e+06
+total energy: 1.523541584387e+07
+simulation time: 0.0093(s)
+Iteration 24
+dt 4.320937569129e-04 dt_h 4.388934106546e-04
+total mass: 6.625000000000e+06
+total energy: 1.523478455039e+07
+simulation time: 0.0097(s)
+Iteration 25
+dt 4.359388061259e-04 dt_h 4.329842015972e-04
+total mass: 6.625000000000e+06
+total energy: 1.523416081757e+07
+simulation time: 0.0101(s)
+Iteration 26
+dt 4.295347599273e-04 dt_h 4.260853182574e-04
+total mass: 6.625000000000e+06
+total energy: 1.523353454204e+07
+simulation time: 0.0106(s)
+Iteration 27
+dt 4.344309681903e-04 dt_h 4.427766181233e-04
+total mass: 6.625000000000e+06
+total energy: 1.523290260364e+07
+simulation time: 0.0110(s)
+Iteration 28
+dt 4.351899158144e-04 dt_h 4.276032135056e-04
+total mass: 6.625000000000e+06
+total energy: 1.523227865744e+07
+simulation time: 0.0114(s)
+Iteration 29
+dt 4.314188617798e-04 dt_h 4.352345100541e-04
+total mass: 6.625000000000e+06
+total energy: 1.523164847331e+07
+simulation time: 0.0119(s)
+Iteration 30
+dt 4.361587971997e-04 dt_h 4.370830843454e-04
+total mass: 6.625000000000e+06
+total energy: 1.523102123803e+07
+simulation time: 0.0123(s)
+Iteration 31
+dt 4.313413771227e-04 dt_h 4.255996699001e-04
+total mass: 6.625000000000e+06
+total energy: 1.523039187643e+07
+simulation time: 0.0127(s)
+Iteration 32
+dt 4.358506348754e-04 dt_h 4.461015998507e-04
+total mass: 6.625000000000e+06
+total energy: 1.522975525426e+07
+simulation time: 0.0132(s)
+Iteration 33
+dt 4.386032059157e-04 dt_h 4.311048119807e-04
+total mass: 6.625000000000e+06
+total energy: 1.522913035531e+07
+simulation time: 0.0136(s)
+Iteration 34
+dt 4.303369344543e-04 dt_h 4.295690569279e-04
+total mass: 6.625000000000e+06
+total energy: 1.522850425530e+07
+simulation time: 0.0141(s)
+Iteration 35
+dt 4.348686561490e-04 dt_h 4.401682553700e-04
+total mass: 6.625000000000e+06
+total energy: 1.522787425498e+07
+simulation time: 0.0145(s)
+Iteration 36
+dt 4.327865952467e-04 dt_h 4.254049351234e-04
+total mass: 6.625000000000e+06
+total energy: 1.522724849338e+07
+simulation time: 0.0149(s)
+Iteration 37
+dt 4.336236880170e-04 dt_h 4.418424409106e-04
+total mass: 6.625000000000e+06
+total energy: 1.522661355228e+07
+simulation time: 0.0154(s)
+Iteration 38
+dt 4.390839006314e-04 dt_h 4.363253603521e-04
+total mass: 6.625000000000e+06
+total energy: 1.522598401884e+07
+simulation time: 0.0158(s)
+Iteration 39
+dt 4.321317848287e-04 dt_h 4.279382093052e-04
+total mass: 6.625000000000e+06
+total energy: 1.522535612148e+07
+simulation time: 0.0162(s)
+Iteration 40
+dt 4.358512329199e-04 dt_h 4.437642565347e-04
+total mass: 6.625000000000e+06
+total energy: 1.522472141315e+07
+simulation time: 0.0167(s)
+Iteration 41
+dt 4.362644108469e-04 dt_h 4.287645651590e-04
+total mass: 6.625000000000e+06
+total energy: 1.522409453990e+07
+simulation time: 0.0171(s)
+Iteration 42
+dt 4.331860744904e-04 dt_h 4.376075838218e-04
+total mass: 6.625000000000e+06
+total energy: 1.522346119973e+07
+simulation time: 0.0175(s)
+Iteration 43
+dt 4.383971012280e-04 dt_h 4.391866186342e-04
+total mass: 6.625000000000e+06
+total energy: 1.522282940980e+07
+simulation time: 0.0180(s)
+Iteration 44
+dt 4.335758104208e-04 dt_h 4.279650022074e-04
+total mass: 6.625000000000e+06
+total energy: 1.522219737927e+07
+simulation time: 0.0184(s)
+Iteration 45
+dt 4.382657506985e-04 dt_h 4.485664991895e-04
+total mass: 6.625000000000e+06
+total energy: 1.522155591686e+07
+simulation time: 0.0188(s)
+Iteration 46
+dt 4.407765370101e-04 dt_h 4.329865748307e-04
+total mass: 6.625000000000e+06
+total energy: 1.522092665541e+07
+simulation time: 0.0193(s)
+Iteration 47
+dt 4.336332465675e-04 dt_h 4.342799183042e-04
+total mass: 6.625000000000e+06
+total energy: 1.522029413454e+07
+simulation time: 0.0197(s)
+Iteration 48
+dt 4.384485718681e-04 dt_h 4.426172254320e-04
+total mass: 6.625000000000e+06
+total energy: 1.521965899035e+07
+simulation time: 0.0202(s)
+Iteration 49
+dt 4.358586025538e-04 dt_h 4.290999796757e-04
+total mass: 6.625000000000e+06
+total energy: 1.521902732658e+07
+simulation time: 0.0206(s)
+Iteration 50
+dt 4.374634188824e-04 dt_h 4.458268580891e-04
+total mass: 6.625000000000e+06
+total energy: 1.521838625094e+07
+simulation time: 0.0210(s)
+
+-------------------------------------------------------------
+
+Profiling Results:
+
+Kernel Name                               Calls                 Runtime (s)
+set_timestep                                 51                  0.09572696
+communications                               51                  0.01144746
+equation_of_state                            50                  0.30792008
+pressure_acceleration                        50                  0.14454191
+artificial_viscosity                        100                  0.32753001
+shock_heating_and_work                       50                  0.14585904
+advect_mass_and_energy                      200                  0.56052407
+advect_momentum                             125                  0.73457412
+
+Total elapsed time: 2.328s, entries * are excluded.
+
+-------------------------------------------------------------
+
+
+-------------------------------------------------------------
+
+Profiling Results:
+
+Kernel Name                               Calls                 Runtime (s)
+handle_boundary                             950                  0.17589536
+
+Total elapsed time: 0.176s, entries * are excluded.
+
+-------------------------------------------------------------
+
+Wallclock 2.34s, Elapsed Simulation Time 0.0215s
+writing results to visit file density
+[NID 00297] 2016-12-11 05:26:09 Apid 1826165: initiated application termination
+Application 1826165 resources: utime ~20s, stime ~99s, Rss ~35368, inblocks ~31793, outblocks ~76313
