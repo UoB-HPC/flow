@@ -1,0 +1,286 @@
+rank 0 neighbours -1 -1 -1 -1
+Problem dimensions 800x800 for 50 iterations.
+Iteration 1
+dt 1.500000000000e-03 dt_h 1.800000000000e-03
+total mass: 1.696000000000e+05
+total energy: 3.903697984421e+05
+simulation time: 0.0000(s)
+Iteration 2
+dt 2.250000000000e-03 dt_h 2.250000000000e-03
+total mass: 1.696000000000e+05
+total energy: 3.902965733017e+05
+simulation time: 0.0022(s)
+Iteration 3
+dt 2.467510475571e-03 dt_h 2.685020951143e-03
+total mass: 1.696000000000e+05
+total energy: 3.901939266140e+05
+simulation time: 0.0047(s)
+Iteration 4
+dt 2.844927090073e-03 dt_h 3.004833229003e-03
+total mass: 1.696000000000e+05
+total energy: 3.900900129745e+05
+simulation time: 0.0076(s)
+Iteration 5
+dt 2.656625406292e-03 dt_h 2.308417583581e-03
+total mass: 1.696000000000e+05
+total energy: 3.900044742768e+05
+simulation time: 0.0102(s)
+Iteration 6
+dt 2.411501287875e-03 dt_h 2.514584992169e-03
+total mass: 1.696000000000e+05
+total energy: 3.899085808362e+05
+simulation time: 0.0126(s)
+Iteration 7
+dt 2.621007630926e-03 dt_h 2.727430269684e-03
+total mass: 1.696000000000e+05
+total energy: 3.898077848266e+05
+simulation time: 0.0153(s)
+Iteration 8
+dt 2.661075711841e-03 dt_h 2.594721153999e-03
+total mass: 1.696000000000e+05
+total energy: 3.897110387666e+05
+simulation time: 0.0179(s)
+Iteration 9
+dt 2.571365393393e-03 dt_h 2.548009632788e-03
+total mass: 1.696000000000e+05
+total energy: 3.896137435271e+05
+simulation time: 0.0205(s)
+Iteration 10
+dt 2.610663315091e-03 dt_h 2.673316997394e-03
+total mass: 1.696000000000e+05
+total energy: 3.895156656880e+05
+simulation time: 0.0231(s)
+Iteration 11
+dt 2.662917969110e-03 dt_h 2.652518940826e-03
+total mass: 1.696000000000e+05
+total energy: 3.894184942449e+05
+simulation time: 0.0258(s)
+Iteration 12
+dt 2.614476661764e-03 dt_h 2.576434382702e-03
+total mass: 1.696000000000e+05
+total energy: 3.893219887169e+05
+simulation time: 0.0284(s)
+Iteration 13
+dt 2.649254435210e-03 dt_h 2.722074487717e-03
+total mass: 1.696000000000e+05
+total energy: 3.892236579558e+05
+simulation time: 0.0310(s)
+Iteration 14
+dt 2.673043588588e-03 dt_h 2.624012689459e-03
+total mass: 1.696000000000e+05
+total energy: 3.891267771232e+05
+simulation time: 0.0337(s)
+Iteration 15
+dt 2.639995755057e-03 dt_h 2.655978820655e-03
+total mass: 1.696000000000e+05
+total energy: 3.890292121775e+05
+simulation time: 0.0363(s)
+Iteration 16
+dt 2.678010392992e-03 dt_h 2.700041965329e-03
+total mass: 1.696000000000e+05
+total energy: 3.889311275960e+05
+simulation time: 0.0390(s)
+Iteration 17
+dt 2.670361740480e-03 dt_h 2.640681515631e-03
+total mass: 1.696000000000e+05
+total energy: 3.888324580237e+05
+simulation time: 0.0417(s)
+Iteration 18
+dt 2.692149322987e-03 dt_h 2.743617130343e-03
+total mass: 1.696000000000e+05
+total energy: 3.887332750301e+05
+simulation time: 0.0444(s)
+Iteration 19
+dt 2.713982016559e-03 dt_h 2.684346902776e-03
+total mass: 1.696000000000e+05
+total energy: 3.886348366898e+05
+simulation time: 0.0471(s)
+Iteration 20
+dt 2.681013423974e-03 dt_h 2.677679945172e-03
+total mass: 1.696000000000e+05
+total energy: 3.885359765379e+05
+simulation time: 0.0498(s)
+Iteration 21
+dt 2.700595583820e-03 dt_h 2.723511222468e-03
+total mass: 1.696000000000e+05
+total energy: 3.884375040456e+05
+simulation time: 0.0525(s)
+Iteration 22
+dt 2.688071111660e-03 dt_h 2.652631000852e-03
+total mass: 1.696000000000e+05
+total energy: 3.883390080987e+05
+simulation time: 0.0552(s)
+Iteration 23
+dt 2.694599304090e-03 dt_h 2.736567607328e-03
+total mass: 1.696000000000e+05
+total energy: 3.882396711528e+05
+simulation time: 0.0579(s)
+Iteration 24
+dt 2.716915811382e-03 dt_h 2.697264015436e-03
+total mass: 1.696000000000e+05
+total energy: 3.881416031209e+05
+simulation time: 0.0606(s)
+Iteration 25
+dt 2.678935707501e-03 dt_h 2.660607399567e-03
+total mass: 1.696000000000e+05
+total energy: 3.880430492553e+05
+simulation time: 0.0632(s)
+Iteration 26
+dt 2.709235502135e-03 dt_h 2.757863604703e-03
+total mass: 1.696000000000e+05
+total energy: 3.879439092422e+05
+simulation time: 0.0660(s)
+Iteration 27
+dt 2.711822910461e-03 dt_h 2.665782216219e-03
+total mass: 1.696000000000e+05
+total energy: 3.878459340699e+05
+simulation time: 0.0687(s)
+Iteration 28
+dt 2.693243684085e-03 dt_h 2.720705151950e-03
+total mass: 1.696000000000e+05
+total energy: 3.877469022979e+05
+simulation time: 0.0714(s)
+Iteration 29
+dt 2.721831237428e-03 dt_h 2.722957322906e-03
+total mass: 1.696000000000e+05
+total energy: 3.876486514273e+05
+simulation time: 0.0741(s)
+Iteration 30
+dt 2.689798234755e-03 dt_h 2.656639146605e-03
+total mass: 1.696000000000e+05
+total energy: 3.875499575095e+05
+simulation time: 0.0768(s)
+Iteration 31
+dt 2.721684878100e-03 dt_h 2.786730609595e-03
+total mass: 1.696000000000e+05
+total energy: 3.874501803580e+05
+simulation time: 0.0795(s)
+Iteration 32
+dt 2.737626000320e-03 dt_h 2.688521391046e-03
+total mass: 1.696000000000e+05
+total energy: 3.873523536408e+05
+simulation time: 0.0822(s)
+Iteration 33
+dt 2.685315489717e-03 dt_h 2.682109588389e-03
+total mass: 1.696000000000e+05
+total energy: 3.872543916672e+05
+simulation time: 0.0849(s)
+Iteration 34
+dt 2.712762852441e-03 dt_h 2.743416116493e-03
+total mass: 1.696000000000e+05
+total energy: 3.871560134692e+05
+simulation time: 0.0876(s)
+Iteration 35
+dt 2.697646778739e-03 dt_h 2.651877440984e-03
+total mass: 1.696000000000e+05
+total energy: 3.870582644603e+05
+simulation time: 0.0903(s)
+Iteration 36
+dt 2.705397312718e-03 dt_h 2.758917184452e-03
+total mass: 1.696000000000e+05
+total energy: 3.869591437079e+05
+simulation time: 0.0930(s)
+Iteration 37
+dt 2.738994419451e-03 dt_h 2.719071654449e-03
+total mass: 1.696000000000e+05
+total energy: 3.868610164961e+05
+simulation time: 0.0958(s)
+Iteration 38
+dt 2.693903044862e-03 dt_h 2.668734435275e-03
+total mass: 1.696000000000e+05
+total energy: 3.867632185843e+05
+simulation time: 0.0985(s)
+Iteration 39
+dt 2.716647843334e-03 dt_h 2.764561251393e-03
+total mass: 1.696000000000e+05
+total energy: 3.866644983300e+05
+simulation time: 0.1012(s)
+Iteration 40
+dt 2.717570939200e-03 dt_h 2.670580627008e-03
+total mass: 1.696000000000e+05
+total energy: 3.865669840125e+05
+simulation time: 0.1039(s)
+Iteration 41
+dt 2.701417508609e-03 dt_h 2.732254390209e-03
+total mass: 1.696000000000e+05
+total energy: 3.864684546765e+05
+simulation time: 0.1066(s)
+Iteration 42
+dt 2.734363253526e-03 dt_h 2.736472116844e-03
+total mass: 1.696000000000e+05
+total energy: 3.863703406209e+05
+simulation time: 0.1093(s)
+Iteration 43
+dt 2.702034948073e-03 dt_h 2.667597779303e-03
+total mass: 1.696000000000e+05
+total energy: 3.862722892935e+05
+simulation time: 0.1120(s)
+Iteration 44
+dt 2.730826076464e-03 dt_h 2.794054373625e-03
+total mass: 1.696000000000e+05
+total energy: 3.861728590327e+05
+simulation time: 0.1148(s)
+Iteration 45
+dt 2.744932508845e-03 dt_h 2.695810644066e-03
+total mass: 1.696000000000e+05
+total energy: 3.860753307013e+05
+simulation time: 0.1175(s)
+Iteration 46
+dt 2.702656929509e-03 dt_h 2.709503214952e-03
+total mass: 1.696000000000e+05
+total energy: 3.859773061457e+05
+simulation time: 0.1202(s)
+Iteration 47
+dt 2.734013881598e-03 dt_h 2.758524548244e-03
+total mass: 1.696000000000e+05
+total energy: 3.858789562270e+05
+simulation time: 0.1230(s)
+Iteration 48
+dt 2.716097567838e-03 dt_h 2.673670587433e-03
+total mass: 1.696000000000e+05
+total energy: 3.857811253507e+05
+simulation time: 0.1257(s)
+Iteration 49
+dt 2.730110649592e-03 dt_h 2.786550711751e-03
+total mass: 1.696000000000e+05
+total energy: 3.856818299152e+05
+simulation time: 0.1284(s)
+Iteration 50
+dt 2.763002476083e-03 dt_h 2.739454240415e-03
+total mass: 1.696000000000e+05
+total energy: 3.855835810410e+05
+simulation time: 0.1312(s)
+
+-------------------------------------------------------------
+
+Profiling Results:
+
+Kernel Name                               Calls                 Runtime (s)
+set_timestep                                 51                  0.00822429
+communications                               51                  0.00003105
+equation_of_state                            50                  0.01229012
+pressure_acceleration                        50                  0.00755122
+artificial_viscosity                        100                  0.01012561
+shock_heating_and_work                       50                  0.00507483
+advect_mass_and_energy                      200                  0.03342534
+advect_momentum                             125                  0.03992632
+
+Total elapsed time: 0.117s, entries * are excluded.
+
+-------------------------------------------------------------
+
+
+-------------------------------------------------------------
+
+Profiling Results:
+
+Kernel Name                               Calls                 Runtime (s)
+handle_boundary                             950                  0.01488657
+
+Total elapsed time: 0.015s, entries * are excluded.
+
+-------------------------------------------------------------
+
+Wallclock 0.1215s, Elapsed Simulation Time 0.1339s
+writing results to visit file density
+Application 1827454 resources: utime ~17s, stime ~1s, Rss ~90140, inblocks ~6744, outblocks ~27522
