@@ -85,7 +85,7 @@ int main(int argc, char** argv)
     struct ProfileEntry pe = profiler_get_profile_entry(&wallclock, "wallclock");
     PRINT_PROFILING_RESULTS(&compute_profile);
     PRINT_PROFILING_RESULTS(&comms_profile);
-    printf("Wallclock %.2fs, Elapsed Simulation Time %.4fs\n", pe.time, elapsed_sim_time);
+    printf("Wallclock %.4fs, Elapsed Simulation Time %.4fs\n", pe.time, elapsed_sim_time);
   }
 
   write_all_ranks_to_visit(
