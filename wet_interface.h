@@ -12,7 +12,7 @@ extern "C" {
 #endif
 
 // Solve a single timestep on the given mesh
-void solve_hydro(
+void solve_hydro_2d(
     Mesh* mesh, int tt, double* P, double* rho, double* rho_old, 
     double* e, double* u, double* v, double* rho_u, double* rho_v, 
     double* Qxx, double* Qyy, double* F_x, double* F_y, double* uF_x, 

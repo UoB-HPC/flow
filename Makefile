@@ -1,6 +1,6 @@
 # User defined parameters
 KERNELS          = omp3
-COMPILER         = INTEL_KNL
+COMPILER         = INTEL
 MPI              = yes
 CFLAGS_INTEL     = -O3 -g -qopenmp -no-prec-div -std=gnu99 -DINTEL -xhost -Wall -qopt-report=5
 CFLAGS_INTEL_KNL = -O3 -g -qopenmp -no-prec-div -std=gnu99 -DINTEL -xMIC-AVX512 -Wall -qopt-report=5
@@ -13,8 +13,8 @@ ifeq ($(MPI), yes)
 endif
 
 # Default compiler
-MULTI_COMPILER_CC   = mpiicc
-MULTI_COMPILER_CPP  = mpiicpc
+MULTI_COMPILER_CC   = mpicc
+MULTI_COMPILER_CPP  = mpic++
 MULTI_LINKER    		= $(MULTI_COMPILER_CC)
 MULTI_FLAGS     		= $(CFLAGS_$(COMPILER))
 MULTI_LDFLAGS   		= $(MULTI_FLAGS) -lm

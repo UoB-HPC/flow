@@ -28,10 +28,10 @@ int main(int argc, char** argv)
 
   initialise_comms(&mesh);
   initialise_devices(mesh.rank);
-  initialise_mesh(&mesh);
+  initialise_mesh_2d(&mesh);
 
   State state = {0};
-  initialise_state(
+  initialise_state_2d(
       mesh.global_nx, mesh.global_ny, mesh.local_nx, mesh.local_ny, 
       mesh.x_off, mesh.y_off, &state);
 
@@ -58,7 +58,7 @@ int main(int argc, char** argv)
     if(mesh.rank == MASTER) 
       printf("Iteration %d\n", tt+1);
 
-    solve_hydro(
+    solve_hydro_2d(
         &mesh, tt, state.P, state.rho, state.rho_old, state.e, state.u, 
         state.v, state.rho_u, state.rho_v, state.Qxx, state.Qyy, state.F_x, 
         state.F_y, state.uF_x, state.uF_y, state.vF_x, state.vF_y, state.reduce_array);
