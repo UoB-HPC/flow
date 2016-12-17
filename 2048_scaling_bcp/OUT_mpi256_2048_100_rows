@@ -1,0 +1,1558 @@
+node47-010:e2e1:ac86d900: 2023 us(2023 us):  open_hca: device mlx4_0 not found
+node47-008:5698:ac86d900: 2436 us(2436 us):  open_hca: device mlx4_0 not found
+node31-030:1fc5b:ac86d900: 4636 us(4636 us):  open_hca: device mlx4_0 not found
+node47-009:1b7fb:ac86d900: 3880 us(3880 us): node47-002:1a148:ac86d900: 2472 us(2472 us): node47-007:b193:ac86d900: 2084 us(2084 us):  open_hca: device mlx4_0 not found
+node31-037:13dad:ac86d900: 2569 us(2569 us): node31-035:1ecc5:ac86d900: 3108 us(3108 us): node31-031:100e2:ac86d900: 3074 us(3074 us): node31-036:1d24:ac86d900: 3160 us(3160 us): node31-034:14356:ac86d900: 3793 us(3793 us): node47-010:e2d3:ac86d900: 2935 us(2935 us):  open_hca: device mlx4_0 not found
+node47-008:568c:ac86d900: 2507 us(2507 us):  open_hca: device mlx4_0 not found
+node31-030:1fc58:ac86d900: 5039 us(5039 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node47-002:1a13f:ac86d900: 3427 us(3427 us): node31-033:135ac:ac86d900: 5776 us(5776 us): node47-007:b193:ac86d900: 2380 us(296 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-036:1d2b:ac86d900: 3367 us(3367 us): node31-034:14351:ac86d900: 4663 us(4663 us):  open_hca: device mlx4_0 not found
+node47-010:e2e1:ac86d900: 3232 us(1209 us):  open_hca: device mlx4_0 not found
+node47-008:5690:ac86d900: 3182 us(3182 us):  open_hca: device mlx4_0 not found
+node31-030:1fc52:ac86d900: 5422 us(5422 us): node47-009:1b803:ac86d900: 4224 us(4224 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-037:13da4:ac86d900: 3827 us(3827 us):  open_hca: device mlx4_0 not found
+node31-035:1ecc5:ac86d900: 4749 us(1641 us): node31-031:100da:ac86d900: 2758 us(2758 us): node31-036:1d21:ac86d900: 3902 us(3902 us): node31-034:14351:ac86d900: 5015 us(352 us):  open_hca: device mlx4_0 not found
+node47-010:e2d3:ac86d900: 4140 us(1205 us): node47-008:568c:ac86d900: 3991 us(1484 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node47-009:1b800:ac86d900: 4424 us(4424 us): node47-002:1a147:ac86d900: 3117 us(3117 us): node47-007:b190:ac86d900: 2761 us(2761 us): node31-037:13dae:ac86d900: 3629 us(3629 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-036:1d2c:ac86d900: 1863 us(1863 us):  open_hca: device mlx4_0 not found
+node47-008:568d:ac86d900: 3551 us(3551 us):  open_hca: device mlx4_0 not found
+node31-030:1fc58:ac86d900: 5985 us(946 us):  open_hca: device mlx4_0 not found
+node47-002:1a14d:ac86d900: 3515 us(3515 us):  open_hca: device mlx4_0 not found
+node31-033:135b2:ac86d900: 5432 us(5432 us):  open_hca: device mlx4_0 not found
+node31-037:13da6:ac86d900: 3666 us(3666 us):  open_hca: device mlx4_0 not found
+node31-035:1ecbe:ac86d900: 5375 us(5375 us):  open_hca: device mlx4_0 not found
+node31-031:100df:ac86d900: 2981 us(2981 us):  open_hca: device mlx4_0 not found
+node31-036:1d1e:ac86d900: 2483 us(2483 us): node31-034:1434e:ac86d900: 6317 us(6317 us):  open_hca: device mlx4_0 not found
+node47-008:568e:ac86d900: 3726 us(3726 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node47-010:e2d9:ac86d900: 4658 us(4658 us): node47-008:568f:ac86d900: 2829 us(2829 us):  open_hca: device mlx4_0 not found
+node31-034:1434e:ac86d900: 6534 us(217 us):  open_hca: device mlx4_0 not found
+node47-008:5690:ac86d900: 4588 us(1406 us):  open_hca: device mlx4_0 not found
+node47-009:1b7fd:ac86d900: 3685 us(3685 us):  open_hca: device mlx4_0 not found
+node47-010:e2d2:ac86d900: 5014 us(5014 us):  open_hca: device mlx4_0 not found
+node47-008:5691:ac86d900: 4930 us(4930 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-035:1ecba:ac86d900: 6010 us(6010 us): node47-010:e2d4:ac86d900: 5586 us(5586 us):  open_hca: device mlx4_0 not found
+node47-008:5692:ac86d900: 2808 us(2808 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node47-009:1b7fa:ac86d900: 4670 us(4670 us):  open_hca: device mlx4_0 not found
+node31-037:13dad:ac86d900: 4459 us(1890 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-034:14350:ac86d900: 6533 us(6533 us): node47-010:e2dc:ac86d900: 5464 us(5464 us):  open_hca: device mlx4_0 not found
+node47-008:5694:ac86d900: 2370 us(2370 us):  open_hca: device mlx4_0 not found
+node31-030:1fc55:ac86d900: 6432 us(6432 us): node47-009:1b802:ac86d900: 4598 us(4598 us):  open_hca: device mlx4_0 not found
+node47-002:1a14c:ac86d900: 3747 us(3747 us):  open_hca: device mlx4_0 not found
+node47-007:b194:ac86d900: 3245 us(3245 us):  open_hca: device mlx4_0 not found
+node31-037:13dab:ac86d900: 3198 us(3198 us):  open_hca: device mlx4_0 not found
+node31-035:1ecc4:ac86d900: 5170 us(5170 us):  open_hca: device mlx4_0 not found
+node31-031:100da:ac86d900: 4179 us(1421 us): node47-010:e2d5:ac86d900: 2993 us(2993 us):  open_hca: device mlx4_0 not found
+node47-008:5695:ac86d900: 3152 us(3152 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node47-009:1b805:ac86d900: 3014 us(3014 us):  open_hca: device mlx4_0 not found
+node47-002:1a143:ac86d900: 3857 us(3857 us): node31-033:135a6:ac86d900: 6038 us(6038 us): node47-007:b190:ac86d900: 3271 us(510 us): node31-032:11732:ac86d900: 4469 us(4469 us):  open_hca: device mlx4_0 not found
+node31-037:13dab:ac86d900: 3430 us(232 us): node31-035:1ecc8:ac86d900: 5914 us(5914 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node47-010:e2db:ac86d900: 3503 us(3503 us): node47-008:5696:ac86d900: 3959 us(3959 us):  open_hca: device mlx4_0 not found
+node47-008:5696:ac86d900: 5039 us(1080 us):  open_hca: device mlx4_0 not found
+node47-009:1b801:ac86d900: 2611 us(2611 us):  open_hca: device mlx4_0 not found
+node47-002:1a14b:ac86d900: 2838 us(2838 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-031:100e2:ac86d900: 5071 us(1997 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node47-008:5698:ac86d900: 3693 us(1257 us):  open_hca: device mlx4_0 not found
+node47-009:1b800:ac86d900: 4942 us(518 us):  open_hca: device mlx4_0 not found
+node47-007:b19f:ac86d900: 2453 us(2453 us): node31-037:13da6:ac86d900: 4361 us(695 us):  open_hca: device mlx4_0 not found
+node31-035:1ecc6:ac86d900: 4222 us(4222 us):  open_hca: device mlx4_0 not found
+node31-031:100df:ac86d900: 4870 us(1889 us): node31-036:1d23:ac86d900: 2420 us(2420 us): node47-010:e2e0:ac86d900: 5745 us(5745 us): node47-008:5699:ac86d900: 3767 us(3767 us):  open_hca: device mlx4_0 not found
+node47-008:5699:ac86d900: 4687 us(920 us):  open_hca: device mlx4_0 not found
+node31-030:1fc52:ac86d900: 6600 us(1178 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node47-002:1a142:ac86d900: 2458 us(2458 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-037:13da4:ac86d900: 5477 us(1650 us):  open_hca: device mlx4_0 not found
+node31-035:1ecbd:ac86d900: 6409 us(6409 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-034:14350:ac86d900: 6846 us(313 us):  open_hca: device mlx4_0 not found
+node47-008:5694:ac86d900: 2748 us(378 us):  open_hca: device mlx4_0 not found
+node31-030:1fc5b:ac86d900: 6647 us(2011 us):  open_hca: device mlx4_0 not found
+node47-009:1b805:ac86d900: 3336 us(322 us):  open_hca: device mlx4_0 not found
+node47-002:1a13f:ac86d900: 4632 us(1205 us):  open_hca: device mlx4_0 not found
+node31-033:135ac:ac86d900: 6994 us(1218 us): node47-007:b198:ac86d900: 2563 us(2563 us): node31-037:13da5:ac86d900: 4482 us(4482 us): node31-035:1ecc2:ac86d900: 3601 us(3601 us):  open_hca: device mlx4_0 not found
+node31-031:100d7:ac86d900: 6597 us(6597 us):  open_hca: device mlx4_0 not found
+node31-036:1d29:ac86d900: 4292 us(4292 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node47-010:e2d4:ac86d900: 5887 us(301 us):  open_hca: device mlx4_0 not found
+node47-008:568d:ac86d900: 5497 us(1946 us):  open_hca: device mlx4_0 not found
+node31-030:1fc55:ac86d900: 6846 us(414 us): node47-009:1b7f8:ac86d900: 2944 us(2944 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-033:135a6:ac86d900: 6399 us(361 us):  open_hca: device mlx4_0 not found
+node47-007:b194:ac86d900: 4280 us(1035 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-035:1ecbd:ac86d900: 6701 us(292 us):  open_hca: device mlx4_0 not found
+node31-031:100d7:ac86d900: 6911 us(314 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node47-010:e2dc:ac86d900: 5840 us(376 us):  open_hca: device mlx4_0 not found
+node47-008:568e:ac86d900: 5104 us(1378 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node47-009:1b7ff:ac86d900: 4996 us(4996 us):  open_hca: device mlx4_0 not found
+node47-002:1a14c:ac86d900: 4206 us(459 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node47-007:b191:ac86d900: 4290 us(4290 us):  open_hca: device mlx4_0 not found
+node31-037:13da5:ac86d900: 4808 us(326 us): node31-035:1ecc0:ac86d900: 4874 us(4874 us):  open_hca: device mlx4_0 not found
+node31-036:1d2a:ac86d900: 4366 us(4366 us):  open_hca: device mlx4_0 not found
+node47-010:e2db:ac86d900: 3773 us(270 us):  open_hca: device mlx4_0 not found
+node47-008:568f:ac86d900: 3079 us(250 us):  open_hca: device mlx4_0 not found
+node47-009:1b7fb:ac86d900: 5115 us(1235 us): node47-002:1a141:ac86d900: 4343 us(4343 us): node47-007:b192:ac86d900: 4265 us(4265 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-035:1ecbe:ac86d900: 7035 us(1660 us): node31-031:100e0:ac86d900: 5128 us(5128 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-034:14357:ac86d900: 6489 us(6489 us): node47-010:e2df:ac86d900: 5116 us(5116 us):  open_hca: device mlx4_0 not found
+node47-008:5691:ac86d900: 5817 us(887 us):  open_hca: device mlx4_0 not found
+node47-009:1b803:ac86d900: 5209 us(985 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node47-007:b19d:ac86d900: 4604 us(4604 us):  open_hca: device mlx4_0 not found
+node31-037:13dac:ac86d900: 4213 us(4213 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-036:1d26:ac86d900: 4338 us(4338 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node47-010:e2e0:ac86d900: 6023 us(278 us): node47-008:5692:ac86d900: 3742 us(934 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node47-002:1a146:ac86d900: 2560 us(2560 us):  open_hca: device mlx4_0 not found
+node47-007:b192:ac86d900: 4569 us(304 us): node31-037:13daf:ac86d900: 6404 us(6404 us):  open_hca: device mlx4_0 not found
+node31-035:1ecc9:ac86d900: 4484 us(4484 us):  open_hca: device mlx4_0 not found
+node31-036:1d20:ac86d900: 4043 us(4043 us):  open_hca: device mlx4_0 not found
+node31-034:14354:ac86d900: 5606 us(5606 us):  open_hca: device mlx4_0 not found
+node47-008:5695:ac86d900: 4095 us(943 us):  open_hca: device mlx4_0 not found
+node47-009:1b7fe:ac86d900: 2970 us(2970 us): node47-002:1a14d:ac86d900: 4506 us(991 us):  open_hca: device mlx4_0 not found
+node31-038:61dc:ac86d900: 4962 us(4962 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-037:13daa:ac86d900: 7058 us(7058 us):  open_hca: device mlx4_0 not found
+node31-035:1ecc8:ac86d900: 7173 us(1259 us): node31-036:1d1e:ac86d900: 2776 us(293 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node47-010:e2d9:ac86d900: 6006 us(1348 us):  open_hca: device mlx4_0 not found
+node47-008:5697:ac86d900: 2961 us(2961 us):  open_hca: device mlx4_0 not found
+node47-008:5697:ac86d900: 3240 us(279 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node47-002:1a144:ac86d900: 2603 us(2603 us):  open_hca: device mlx4_0 not found
+node47-007:b19f:ac86d900: 3357 us(904 us): node31-037:13dac:ac86d900: 4461 us(248 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-036:1d2c:ac86d900: 2188 us(325 us): node47-010:e2de:ac86d900: 3442 us(3442 us):  open_hca: device mlx4_0 not found
+node47-008:569a:ac86d900: 2958 us(2958 us):  open_hca: device mlx4_0 not found
+node31-030:1fc51:ac86d900: 7245 us(7245 us): node47-009:1b806:ac86d900: 3134 us(3134 us):  open_hca: device mlx4_0 not found
+node47-002:1a14a:ac86d900: 1861 us(1861 us):  open_hca: device mlx4_0 not found
+node31-038:61dc:ac86d900: 5284 us(322 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-037:13daf:ac86d900: 6619 us(215 us):  open_hca: device mlx4_0 not found
+node31-035:1ecbf:ac86d900: 4472 us(4472 us):  open_hca: device mlx4_0 not found
+node47-010:e2d2:ac86d900: 6349 us(1335 us):  open_hca: device mlx4_0 not found
+node47-008:569b:ac86d900: 4838 us(4838 us):  open_hca: device mlx4_0 not found
+node47-008:569b:ac86d900: 5144 us(306 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node47-009:1b7fe:ac86d900: 3319 us(349 us): node47-002:1a148:ac86d900: 4693 us(2221 us):  open_hca: device mlx4_0 not found
+node31-033:135ad:ac86d900: 6587 us(6587 us): node47-007:b197:ac86d900: 3997 us(3997 us):  open_hca: device mlx4_0 not found
+node31-032:11732:ac86d900: 4748 us(279 us):  open_hca: device mlx4_0 not found
+node31-037:13daa:ac86d900: 7267 us(209 us):  open_hca: device mlx4_0 not found
+node31-035:1ecba:ac86d900: 7601 us(1591 us): node31-031:100e4:ac86d900: 7825 us(7825 us): node31-036:1d27:ac86d900: 2298 us(2298 us):  open_hca: device mlx4_0 not found
+node31-034:14356:ac86d900: 7845 us(4052 us): node47-010:e2df:ac86d900: 5369 us(253 us):  open_hca: device mlx4_0 not found
+node47-008:569a:ac86d900: 3809 us(851 us):  open_hca: device mlx4_0 not found
+node31-030:1fc5a:ac86d900: 7406 us(7406 us):  open_hca: device mlx4_0 not found
+node47-002:1a141:ac86d900: 4666 us(323 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-032:11739:ac86d900: 4503 us(4503 us):  open_hca: device mlx4_0 not found
+node31-032:11739:ac86d900: 4837 us(334 us):  open_hca: device mlx4_0 not found
+node31-035:1ecbb:ac86d900: 4647 us(4647 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node47-010:e2d6:ac86d900: 4525 us(4525 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node47-009:1b7f9:ac86d900: 3576 us(3576 us):  open_hca: device mlx4_0 not found
+node47-002:1a149:ac86d900: 2479 us(2479 us):  open_hca: device mlx4_0 not found
+node31-033:135b2:ac86d900: 7163 us(1731 us): node47-007:b197:ac86d900: 4269 us(272 us): node31-032:1173c:ac86d900: 5468 us(5468 us):  open_hca: device mlx4_0 not found
+node31-037:13dae:ac86d900: 7307 us(3678 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-031:100d9:ac86d900: 7503 us(7503 us):  open_hca: device mlx4_0 not found
+node31-036:1d2b:ac86d900: 4869 us(1502 us):  open_hca: device mlx4_0 not found
+node47-010:e2de:ac86d900: 4801 us(1359 us):  open_hca: device mlx4_0 not found
+node31-030:1fc56:ac86d900: 5281 us(5281 us):  open_hca: device mlx4_0 not found
+node47-009:1b801:ac86d900: 3682 us(1071 us):  open_hca: device mlx4_0 not found
+node47-002:1a146:ac86d900: 2854 us(294 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-032:1173f:ac86d900: 4558 us(4558 us):  open_hca: device mlx4_0 not found
+node31-037:13db0:ac86d900: 7402 us(7402 us):  open_hca: device mlx4_0 not found
+node31-035:1ecc7:ac86d900: 6738 us(6738 us):  open_hca: device mlx4_0 not found
+node31-031:100d8:ac86d900: 7585 us(7585 us): node31-036:1d23:ac86d900: 3337 us(917 us): node47-010:e2da:ac86d900: 4756 us(4756 us):  open_hca: device mlx4_0 not found
+node47-008:5693:ac86d900: 3263 us(3263 us):  open_hca: device mlx4_0 not found
+node47-009:1b807:ac86d900: 3438 us(3438 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node47-007:b19e:ac86d900: 2648 us(2648 us):  open_hca: device mlx4_0 not found
+node31-037:13da8:ac86d900: 4032 us(4032 us):  open_hca: device mlx4_0 not found
+node31-035:1ecc4:ac86d900: 6753 us(1583 us):  open_hca: device mlx4_0 not found
+node31-036:1d24:ac86d900: 5029 us(1869 us):  open_hca: device mlx4_0 not found
+node47-010:e2d5:ac86d900: 5033 us(2040 us):  open_hca: device mlx4_0 not found
+node47-008:5693:ac86d900: 3613 us(350 us):  open_hca: device mlx4_0 not found
+node31-030:1fc5a:ac86d900: 7677 us(271 us):  open_hca: device mlx4_0 not found
+node47-009:1b7fd:ac86d900: 5028 us(1343 us):  open_hca: device mlx4_0 not found
+node47-007:b195:ac86d900: 2651 us(2651 us): node31-035:1ecc6:ac86d900: 5528 us(1306 us):  open_hca: device mlx4_0 not found
+node31-036:1d2d:ac86d900: 2483 us(2483 us):  open_hca: device mlx4_0 not found
+node47-010:e2dd:ac86d900: 3819 us(3819 us):  open_hca: device mlx4_0 not found
+node31-030:1fc56:ac86d900: 5495 us(214 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node47-002:1a147:ac86d900: 4940 us(1823 us):  open_hca: device mlx4_0 not found
+node31-032:11733:ac86d900: 5175 us(5175 us):  open_hca: device mlx4_0 not found
+node31-035:1ecc2:ac86d900: 4745 us(1144 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node47-010:e2d6:ac86d900: 4930 us(405 us):  open_hca: device mlx4_0 not found
+node47-009:1b802:ac86d900: 5757 us(1159 us):  open_hca: device mlx4_0 not found
+node47-002:1a145:ac86d900: 2780 us(2780 us):  open_hca: device mlx4_0 not found
+node47-007:b191:ac86d900: 5325 us(1035 us):  open_hca: device mlx4_0 not found
+node31-032:11733:ac86d900: 5411 us(236 us):  open_hca: device mlx4_0 not found
+node31-039:106e:ac86d900: 1845 us(1845 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-031:100e6:ac86d900: 4745 us(4745 us):  open_hca: device mlx4_0 not found
+node31-036:1d25:ac86d900: 3995 us(3995 us):  open_hca: device mlx4_0 not found
+node47-010:e2da:ac86d900: 4973 us(217 us):  open_hca: device mlx4_0 not found
+node47-009:1b806:ac86d900: 3410 us(276 us):  open_hca: device mlx4_0 not found
+node47-007:b19a:ac86d900: 1755 us(1755 us):  open_hca: device mlx4_0 not found
+node31-035:1ecc0:ac86d900: 5733 us(859 us): node31-031:100de:ac86d900: 4526 us(4526 us):  open_hca: device mlx4_0 not found
+node31-036:1d28:ac86d900: 2497 us(2497 us):  open_hca: device mlx4_0 not found
+node47-010:e2dd:ac86d900: 4058 us(239 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node47-002:1a142:ac86d900: 3553 us(1095 us): node47-007:b19b:ac86d900: 2414 us(2414 us):  open_hca: device mlx4_0 not found
+node31-037:13db1:ac86d900: 5493 us(5493 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-031:100d9:ac86d900: 7896 us(393 us):  open_hca: device mlx4_0 not found
+node31-036:1d29:ac86d900: 5268 us(976 us):  open_hca: device mlx4_0 not found
+node47-009:1b7fc:ac86d900: 3445 us(3445 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-038:61de:ac86d900: 5662 us(5662 us):  open_hca: device mlx4_0 not found
+node47-007:b19d:ac86d900: 5647 us(1043 us):  open_hca: device mlx4_0 not found
+node31-032:1173f:ac86d900: 5557 us(999 us):  open_hca: device mlx4_0 not found
+node31-035:1ecbc:ac86d900: 3385 us(3385 us): node31-031:100de:ac86d900: 4762 us(236 us):  open_hca: device mlx4_0 not found
+node31-036:1d22:ac86d900: 2507 us(2507 us):  open_hca: device mlx4_0 not found
+node47-009:1b804:ac86d900: 3347 us(3347 us): node47-002:1a14b:ac86d900: 4049 us(1211 us): node47-007:b198:ac86d900: 3906 us(1343 us):  open_hca: device mlx4_0 not found
+node31-032:1173c:ac86d900: 6730 us(1262 us):  open_hca: device mlx4_0 not found
+node31-037:13da9:ac86d900: 5052 us(5052 us):  open_hca: device mlx4_0 not found
+node31-035:1ecc1:ac86d900: 4507 us(4507 us):  open_hca: device mlx4_0 not found
+node31-031:100dd:ac86d900: 4705 us(4705 us):  open_hca: device mlx4_0 not found
+node31-036:1d27:ac86d900: 2940 us(642 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-033:135a8:ac86d900: 5981 us(5981 us):  open_hca: device mlx4_0 not found
+node47-007:b195:ac86d900: 3038 us(387 us):  open_hca: device mlx4_0 not found
+node31-037:13db2:ac86d900: 5268 us(5268 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-031:100e1:ac86d900: 5273 us(5273 us):  open_hca: device mlx4_0 not found
+node31-036:1d2a:ac86d900: 5330 us(964 us):  open_hca: device mlx4_0 not found
+node31-034:1434c:ac86d900: 6247 us(6247 us):  open_hca: device mlx4_0 not found
+node47-009:1b7fa:ac86d900: 6021 us(1351 us): node47-002:1a144:ac86d900: 3383 us(780 us): node47-007:b19a:ac86d900: 2033 us(278 us):  open_hca: device mlx4_0 not found
+node31-037:13da7:ac86d900: 2880 us(2880 us):  open_hca: device mlx4_0 not found
+node31-035:1ecc9:ac86d900: 5532 us(1048 us): node31-031:100e6:ac86d900: 5116 us(371 us):  open_hca: device mlx4_0 not found
+node31-036:1d1f:ac86d900: 2464 us(2464 us):  open_hca: device mlx4_0 not found
+node31-034:14353:ac86d900: 5568 us(5568 us):  open_hca: device mlx4_0 not found
+node47-010:e2d8:ac86d900: 5997 us(5997 us):  open_hca: device mlx4_0 not found
+node31-030:1fc51:ac86d900: 8763 us(1518 us):  open_hca: device mlx4_0 not found
+node47-009:1b7f8:ac86d900: 3890 us(946 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-038:61de:ac86d900: 5926 us(264 us):  open_hca: device mlx4_0 not found
+node31-033:135ae:ac86d900: 6434 us(6434 us): node47-007:b19b:ac86d900: 2666 us(252 us): node31-037:13da8:ac86d900: 5729 us(1697 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-031:100e3:ac86d900: 4734 us(4734 us):  open_hca: device mlx4_0 not found
+node31-036:1d26:ac86d900: 5282 us(944 us):  open_hca: device mlx4_0 not found
+node31-034:14357:ac86d900: 8155 us(1666 us):  open_hca: device mlx4_0 not found
+node47-010:e2d7:ac86d900: 2845 us(2845 us):  open_hca: device mlx4_0 not found
+node47-009:1b7ff:ac86d900: 5971 us(975 us):  open_hca: device mlx4_0 not found
+node47-002:1a149:ac86d900: 3129 us(650 us):  open_hca: device mlx4_0 not found
+node31-033:135ad:ac86d900: 7707 us(1120 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-037:13db0:ac86d900: 9108 us(1706 us):  open_hca: device mlx4_0 not found
+node31-035:1ecc1:ac86d900: 4781 us(274 us): node31-031:100e0:ac86d900: 6702 us(1574 us):  open_hca: device mlx4_0 not found
+node31-036:1d20:ac86d900: 5037 us(994 us):  open_hca: device mlx4_0 not found
+node31-034:14354:ac86d900: 7185 us(1579 us):  open_hca: device mlx4_0 not found
+node47-010:e2d7:ac86d900: 3097 us(252 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node47-002:1a143:ac86d900: 5555 us(1698 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node47-007:b19c:ac86d900: 4987 us(4987 us):  open_hca: device mlx4_0 not found
+node31-037:13db1:ac86d900: 5795 us(302 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-031:100dd:ac86d900: 4940 us(235 us):  open_hca: device mlx4_0 not found
+node31-036:1d21:ac86d900: 5442 us(1540 us): node31-034:14358:ac86d900: 6411 us(6411 us):  open_hca: device mlx4_0 not found
+node47-009:1b7fc:ac86d900: 3695 us(250 us): node47-002:1a13e:ac86d900: 2389 us(2389 us):  open_hca: device mlx4_0 not found
+node31-033:135a8:ac86d900: 6312 us(331 us):  open_hca: device mlx4_0 not found
+node47-007:b19e:ac86d900: 3795 us(1147 us):  open_hca: device mlx4_0 not found
+node31-037:13da7:ac86d900: 3133 us(253 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-031:100e1:ac86d900: 5524 us(251 us):  open_hca: device mlx4_0 not found
+node31-036:1d2d:ac86d900: 2802 us(319 us):  open_hca: device mlx4_0 not found
+node31-034:1434c:ac86d900: 6599 us(352 us): node47-010:e2d8:ac86d900: 6623 us(626 us):  open_hca: device mlx4_0 not found
+node31-030:1fc5e:ac86d900: 9771 us(9771 us):  open_hca: device mlx4_0 not found
+node47-002:1a140:ac86d900: 6257 us(6257 us):  open_hca: device mlx4_0 not found
+node31-038:61e9:ac86d900: 6272 us(6272 us): node31-033:135b0:ac86d900: 8708 us(8708 us):  open_hca: device mlx4_0 not found
+node47-007:b196:ac86d900: 3971 us(3971 us):  open_hca: device mlx4_0 not found
+node31-032:1173b:ac86d900: 6937 us(6937 us):  open_hca: device mlx4_0 not found
+node31-039:1063:ac86d900: 2865 us(2865 us):  open_hca: device mlx4_0 not found
+node31-037:13db2:ac86d900: 5563 us(295 us):  open_hca: device mlx4_0 not found
+node31-035:1ecbb:ac86d900: 5741 us(1094 us): node31-031:100e3:ac86d900: 4961 us(227 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node47-009:1b7f9:ac86d900: 4477 us(901 us):  open_hca: device mlx4_0 not found
+node47-002:1a145:ac86d900: 3503 us(723 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-033:135af:ac86d900: 5663 us(5663 us):  open_hca: device mlx4_0 not found
+node47-007:b19c:ac86d900: 5294 us(307 us):  open_hca: device mlx4_0 not found
+node31-039:106e:ac86d900: 2926 us(1081 us): node31-037:13db3:ac86d900: 3138 us(3138 us):  open_hca: device mlx4_0 not found
+node31-035:1ecc7:ac86d900: 7811 us(1073 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-036:1d25:ac86d900: 5069 us(1074 us): node31-034:14352:ac86d900: 6679 us(6679 us):  open_hca: device mlx4_0 not found
+node31-030:1fc54:ac86d900: 10089 us(10089 us): node47-009:1b807:ac86d900: 4511 us(1073 us):  open_hca: device mlx4_0 not found
+node47-002:1a14a:ac86d900: 2940 us(1079 us):  open_hca: device mlx4_0 not found
+node31-038:61da:ac86d900: 5995 us(5995 us): node31-033:135b4:ac86d900: 6818 us(6818 us):  open_hca: device mlx4_0 not found
+node47-007:b196:ac86d900: 4207 us(236 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-037:13da9:ac86d900: 5367 us(315 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-031:100dc:ac86d900: 3299 us(3299 us):  open_hca: device mlx4_0 not found
+node31-034:14352:ac86d900: 6986 us(307 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node47-009:1b804:ac86d900: 4410 us(1063 us):  open_hca: device mlx4_0 not found
+node47-002:1a13e:ac86d900: 2719 us(330 us):  open_hca: device mlx4_0 not found
+node31-033:135ae:ac86d900: 6826 us(392 us):  open_hca: device mlx4_0 not found
+node47-007:b199:ac86d900: 2301 us(2301 us):  open_hca: device mlx4_0 not found
+node31-032:1173b:ac86d900: 7189 us(252 us):  open_hca: device mlx4_0 not found
+node31-037:13db3:ac86d900: 3469 us(331 us):  open_hca: device mlx4_0 not found
+node31-035:1ecbc:ac86d900: 3911 us(526 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-036:1d22:ac86d900: 3647 us(1140 us):  open_hca: device mlx4_0 not found
+node31-034:14353:ac86d900: 6385 us(817 us):  open_hca: device mlx4_0 not found
+node31-038:61da:ac86d900: 6295 us(300 us):  open_hca: device mlx4_0 not found
+node31-033:135af:ac86d900: 5936 us(273 us):  open_hca: device mlx4_0 not found
+node47-007:b199:ac86d900: 2581 us(280 us):  open_hca: device mlx4_0 not found
+node31-035:1ecbf:ac86d900: 5807 us(1335 us):  open_hca: device mlx4_0 not found
+node31-031:100d8:ac86d900: 8719 us(1134 us): node31-036:1d1f:ac86d900: 3606 us(1142 us):  open_hca: device mlx4_0 not found
+node31-030:1fc50:ac86d900: 5967 us(5967 us):  open_hca: device mlx4_0 not found
+node47-002:1a140:ac86d900: 6585 us(328 us):  open_hca: device mlx4_0 not found
+node31-033:135b4:ac86d900: 7074 us(256 us): node31-039:1063:ac86d900: 3739 us(874 us): node31-035:1ecc3:ac86d900: 2453 us(2453 us):  open_hca: device mlx4_0 not found
+node31-036:1d28:ac86d900: 3744 us(1247 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-030:1fc59:ac86d900: 6046 us(6046 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-035:1ecc3:ac86d900: 2788 us(335 us):  open_hca: device mlx4_0 not found
+node31-034:14359:ac86d900: 6236 us(6236 us): node31-030:1fc54:ac86d900: 10433 us(344 us):  open_hca: device mlx4_0 not found
+node31-038:61e9:ac86d900: 6653 us(381 us): node31-033:135b0:ac86d900: 9586 us(878 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-030:1fc5e:ac86d900: 10488 us(717 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-031:100e5:ac86d900: 5636 us(5636 us):  open_hca: device mlx4_0 not found
+node31-034:1434d:ac86d900: 8133 us(8133 us): node31-030:1fc5c:ac86d900: 6124 us(6124 us):  open_hca: device mlx4_0 not found
+node31-038:61e0:ac86d900: 6279 us(6279 us):  open_hca: device mlx4_0 not found
+node31-033:135aa:ac86d900: 5803 us(5803 us):  open_hca: device mlx4_0 not found
+node31-039:1070:ac86d900: 3775 us(3775 us): node31-031:100db:ac86d900: 4569 us(4569 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-030:1fc50:ac86d900: 6195 us(228 us):  open_hca: device mlx4_0 not found
+node31-038:61e5:ac86d900: 6591 us(6591 us):  open_hca: device mlx4_0 not found
+node31-033:135b5:ac86d900: 5789 us(5789 us):  open_hca: device mlx4_0 not found
+node31-031:100e4:ac86d900: 9810 us(1985 us):  open_hca: device mlx4_0 not found
+node31-034:14358:ac86d900: 7507 us(1096 us): node31-030:1fc59:ac86d900: 6287 us(241 us):  open_hca: device mlx4_0 not found
+node31-031:100e5:ac86d900: 5964 us(328 us):  open_hca: device mlx4_0 not found
+node31-030:1fc5d:ac86d900: 6249 us(6249 us):  open_hca: device mlx4_0 not found
+node31-038:61e2:ac86d900: 6608 us(6608 us):  open_hca: device mlx4_0 not found
+node31-039:106a:ac86d900: 3512 us(3512 us):  open_hca: device mlx4_0 not found
+node31-034:1435a:ac86d900: 6887 us(6887 us): node31-030:1fc5c:ac86d900: 6385 us(261 us):  open_hca: device mlx4_0 not found
+node31-031:100db:ac86d900: 4821 us(252 us):  open_hca: device mlx4_0 not found
+node31-030:1fc5d:ac86d900: 6576 us(327 us):  open_hca: device mlx4_0 not found
+node31-033:135aa:ac86d900: 6095 us(292 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-034:1434d:ac86d900: 8469 us(336 us): node31-038:61e5:ac86d900: 6811 us(220 us):  open_hca: device mlx4_0 not found
+node31-033:135b5:ac86d900: 6070 us(281 us):  open_hca: device mlx4_0 not found
+node31-031:100dc:ac86d900: 4269 us(970 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-034:1435a:ac86d900: 7160 us(273 us):  open_hca: device mlx4_0 not found
+node31-034:1435b:ac86d900: 4694 us(4694 us):  open_hca: device mlx4_0 not found
+node31-034:1434f:ac86d900: 4710 us(4710 us):  open_hca: device mlx4_0 not found
+node31-030:1fc53:ac86d900: 5602 us(5602 us):  open_hca: device mlx4_0 not found
+node31-038:61e2:ac86d900: 6830 us(222 us): node31-034:14359:ac86d900: 7292 us(1056 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-039:1064:ac86d900: 4223 us(4223 us): node31-034:1434f:ac86d900: 4990 us(280 us):  open_hca: device mlx4_0 not found
+node31-038:61dd:ac86d900: 7863 us(7863 us):  open_hca: device mlx4_0 not found
+node31-038:61e3:ac86d900: 7941 us(7941 us):  open_hca: device mlx4_0 not found
+node31-030:1fc53:ac86d900: 5826 us(224 us):  open_hca: device mlx4_0 not found
+node31-029:1d56d:ac86d900: 6994 us(6994 us): node31-030:1fc57:ac86d900: 5175 us(5175 us):  open_hca: device mlx4_0 not found
+node31-038:61dd:ac86d900: 8162 us(299 us):  open_hca: device mlx4_0 not found
+node31-033:135a7:ac86d900: 5642 us(5642 us): node31-032:11736:ac86d900: 6328 us(6328 us):  open_hca: device mlx4_0 not found
+node31-039:106d:ac86d900: 4130 us(4130 us): node31-034:14355:ac86d900: 4643 us(4643 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-030:1fc57:ac86d900: 5448 us(273 us):  open_hca: device mlx4_0 not found
+node31-038:61e0:ac86d900: 7399 us(1120 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-032:1173a:ac86d900: 8502 us(8502 us):  open_hca: device mlx4_0 not found
+node31-032:1173a:ac86d900: 8783 us(281 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-034:1435b:ac86d900: 5628 us(934 us):  open_hca: device mlx4_0 not found
+node31-029:1d571:ac86d900: 6754 us(6754 us):  open_hca: device mlx4_0 not found
+node31-030:1fc5f:ac86d900: 2725 us(2725 us):  open_hca: device mlx4_0 not found
+node31-038:61e3:ac86d900: 9154 us(1213 us): node31-033:135a7:ac86d900: 5967 us(325 us):  open_hca: device mlx4_0 not found
+node31-032:11731:ac86d900: 5707 us(5707 us): node31-039:106c:ac86d900: 2467 us(2467 us):  open_hca: device mlx4_0 not found
+node31-034:14355:ac86d900: 5005 us(362 us):  open_hca: device mlx4_0 not found
+node31-029:1d56b:ac86d900: 6674 us(6674 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-033:135ab:ac86d900: 7390 us(7390 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-039:1062:ac86d900: 2465 us(2465 us):  open_hca: device mlx4_0 not found
+node31-029:1d56d:ac86d900: 7754 us(760 us):  open_hca: device mlx4_0 not found
+node31-038:61e7:ac86d900: 6474 us(6474 us):  open_hca: device mlx4_0 not found
+node31-033:135b3:ac86d900: 9385 us(9385 us):  open_hca: device mlx4_0 not found
+node31-032:1173e:ac86d900: 9042 us(9042 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-029:1d578:ac86d900: 7189 us(7189 us):  open_hca: device mlx4_0 not found
+node31-030:1fc5f:ac86d900: 3133 us(408 us):  open_hca: device mlx4_0 not found
+node31-038:61e7:ac86d900: 6767 us(293 us): node31-033:135ab:ac86d900: 7684 us(294 us):  open_hca: device mlx4_0 not found
+node31-032:11737:ac86d900: 5500 us(5500 us):  open_hca: device mlx4_0 not found
+node31-029:1d56b:ac86d900: 6936 us(262 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-033:135b3:ac86d900: 9627 us(242 us):  open_hca: device mlx4_0 not found
+node31-032:11736:ac86d900: 6724 us(396 us):  open_hca: device mlx4_0 not found
+node31-029:1d571:ac86d900: 7100 us(346 us): node31-038:61e4:ac86d900: 9089 us(9089 us):  open_hca: device mlx4_0 not found
+node31-033:135a9:ac86d900: 3637 us(3637 us):  open_hca: device mlx4_0 not found
+node31-032:1173d:ac86d900: 5355 us(5355 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-038:61db:ac86d900: 6355 us(6355 us):  open_hca: device mlx4_0 not found
+node31-033:135b1:ac86d900: 3648 us(3648 us):  open_hca: device mlx4_0 not found
+node31-032:11731:ac86d900: 5959 us(252 us):  open_hca: device mlx4_0 not found
+node31-039:1071:ac86d900: 2482 us(2482 us):  open_hca: device mlx4_0 not found
+node31-038:61e4:ac86d900: 9394 us(305 us):  open_hca: device mlx4_0 not found
+node31-033:135a9:ac86d900: 3924 us(287 us):  open_hca: device mlx4_0 not found
+node31-032:11737:ac86d900: 5723 us(223 us):  open_hca: device mlx4_0 not found
+node31-039:106a:ac86d900: 4720 us(1208 us): node31-038:61db:ac86d900: 6649 us(294 us):  open_hca: device mlx4_0 not found
+node31-033:135b1:ac86d900: 3928 us(280 us):  open_hca: device mlx4_0 not found
+node31-032:1173d:ac86d900: 5598 us(243 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-032:11734:ac86d900: 8678 us(8678 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-032:11740:ac86d900: 4640 us(4640 us):  open_hca: device mlx4_0 not found
+node31-039:1065:ac86d900: 2419 us(2419 us):  open_hca: device mlx4_0 not found
+node31-032:1173e:ac86d900: 9757 us(715 us):  open_hca: device mlx4_0 not found
+node31-039:1070:ac86d900: 5257 us(1482 us): node31-032:11734:ac86d900: 9012 us(334 us):  open_hca: device mlx4_0 not found
+node31-039:106d:ac86d900: 4977 us(847 us):  open_hca: device mlx4_0 not found
+node31-029:1d573:ac86d900: 7723 us(7723 us): node31-032:11738:ac86d900: 5534 us(5534 us):  open_hca: device mlx4_0 not found
+node31-032:11738:ac86d900: 5847 us(313 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-032:11740:ac86d900: 4911 us(271 us):  open_hca: device mlx4_0 not found
+node31-039:1068:ac86d900: 2241 us(2241 us): node31-032:11735:ac86d900: 3072 us(3072 us):  open_hca: device mlx4_0 not found
+node31-039:106c:ac86d900: 3520 us(1053 us): node31-032:11735:ac86d900: 3358 us(286 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-039:106b:ac86d900: 3166 us(3166 us):  open_hca: device mlx4_0 not found
+node31-039:1071:ac86d900: 3301 us(819 us):  open_hca: device mlx4_0 not found
+node31-039:1062:ac86d900: 3622 us(1157 us):  open_hca: device mlx4_0 not found
+node31-038:61e1:ac86d900: 4355 us(4355 us):  open_hca: device mlx4_0 not found
+node31-039:106b:ac86d900: 3477 us(311 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-039:1065:ac86d900: 3891 us(1472 us):  open_hca: device mlx4_0 not found
+node31-039:1068:ac86d900: 3200 us(959 us):  open_hca: device mlx4_0 not found
+node31-039:1069:ac86d900: 1871 us(1871 us): node31-039:1064:ac86d900: 6660 us(2437 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-029:1d573:ac86d900: 8035 us(312 us): node31-039:1067:ac86d900: 4230 us(4230 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-039:106f:ac86d900: 1704 us(1704 us):  open_hca: device mlx4_0 not found
+node31-038:61e1:ac86d900: 4586 us(231 us):  open_hca: device mlx4_0 not found
+node31-039:1069:ac86d900: 2291 us(420 us):  open_hca: device mlx4_0 not found
+node31-029:1d570:ac86d900: 6707 us(6707 us): node31-039:1067:ac86d900: 4580 us(350 us):  open_hca: device mlx4_0 not found
+node31-029:1d56e:ac86d900: 8234 us(8234 us):  open_hca: device mlx4_0 not found
+node31-039:106f:ac86d900: 1962 us(258 us):  open_hca: device mlx4_0 not found
+node31-029:1d576:ac86d900: 8219 us(8219 us):  open_hca: device mlx4_0 not found
+node31-039:1066:ac86d900: 2233 us(2233 us):  open_hca: device mlx4_0 not found
+node31-029:1d574:ac86d900: 6567 us(6567 us):  open_hca: device mlx4_0 not found
+node31-029:1d578:ac86d900: 8258 us(1069 us):  open_hca: device mlx4_0 not found
+ open_hca: device mlx4_0 not found
+node31-029:1d56f:ac86d900: 7433 us(7433 us):  open_hca: device mlx4_0 not found
+node31-029:1d56e:ac86d900: 8556 us(322 us):  open_hca: device mlx4_0 not found
+node31-029:1d576:ac86d900: 8591 us(372 us):  open_hca: device mlx4_0 not found
+node31-039:1066:ac86d900: 2600 us(367 us):  open_hca: device mlx4_0 not found
+node31-029:1d56f:ac86d900: 7773 us(340 us):  open_hca: device mlx4_0 not found
+node31-038:61e6:ac86d900: 3954 us(3954 us):  open_hca: device mlx4_0 not found
+node31-038:61df:ac86d900: 4575 us(4575 us):  open_hca: device mlx4_0 not found
+node31-038:61e8:ac86d900: 4273 us(4273 us):  open_hca: device mlx4_0 not found
+node31-038:61e6:ac86d900: 4266 us(312 us):  open_hca: device mlx4_0 not found
+node31-038:61df:ac86d900: 4846 us(271 us):  open_hca: device mlx4_0 not found
+node31-029:1d574:ac86d900: 7664 us(1097 us):  open_hca: device mlx4_0 not found
+node31-038:61e8:ac86d900: 4499 us(226 us):  open_hca: device mlx4_0 not found
+node31-029:1d575:ac86d900: 9538 us(9538 us):  open_hca: device mlx4_0 not found
+node31-029:1d570:ac86d900: 8209 us(1502 us):  open_hca: device mlx4_0 not found
+node31-029:1d575:ac86d900: 9864 us(326 us):  open_hca: device mlx4_0 not found
+node31-029:1d579:ac86d900: 6046 us(6046 us):  open_hca: device mlx4_0 not found
+node31-029:1d577:ac86d900: 6210 us(6210 us):  open_hca: device mlx4_0 not found
+node31-029:1d56c:ac86d900: 5865 us(5865 us):  open_hca: device mlx4_0 not found
+node31-029:1d56a:ac86d900: 5469 us(5469 us):  open_hca: device mlx4_0 not found
+node31-029:1d577:ac86d900: 6561 us(351 us):  open_hca: device mlx4_0 not found
+node31-029:1d579:ac86d900: 6442 us(396 us):  open_hca: device mlx4_0 not found
+node31-029:1d56c:ac86d900: 6136 us(271 us):  open_hca: device mlx4_0 not found
+node31-029:1d56a:ac86d900: 5746 us(277 us):  open_hca: device mlx4_0 not found
+node31-029:1d572:ac86d900: 5379 us(5379 us):  open_hca: device mlx4_0 not found
+node31-029:1d572:ac86d900: 5805 us(426 us):  open_hca: device mlx4_0 not found
+using row decompositionusing row decomposition
+rank 10 dims 2048 8 neighbours 11 -1 9 -1
+using row decomposition
+rank 15 dims 2048 8 neighbours 16 -1 14 -1
+using row decomposition
+rank 81 dims 2048 8 neighbours 82 -1 80 -1
+using row decompositionusing row decomposition
+rank 146 dims 2048 8 neighbours 147 -1 145 -1
+using row decomposition
+rank 1 dims 2048 8 neighbours 2 -1 0 -1
+using row decomposition
+rank 49 dims 2048 8 neighbours 50 -1 48 -1
+using row decomposition
+rank 83 dims 2048 8 neighbours 84 -1 82 -1
+using row decomposition
+rank 211 dims 2048 8 neighbours 212 -1 210 -1
+using row decomposition
+rank 138 dims 2048 8 neighbours 139 -1 137 -1
+using row decomposition
+rank 147 dims 2048 8 neighbours 148 -1 146 -1
+using row decompositionusing row decomposition
+rank 5 dims 2048 8 neighbours 6 -1 4 -1
+using row decomposition
+rank 17 dims 2048 8 neighbours 18 -1 16 -1
+using row decompositionusing row decompositionusing row decompositionusing row decompositionusing row decompositionusing row decompositionusing row decompositionusing row decompositionusing row decomposition
+rank 181 dims 2048 8 neighbours 182 -1 180 -1
+using row decomposition
+rank 7 dims 2048 8 neighbours 8 -1 6 -1
+using row decomposition
+rank 19 dims 2048 8 neighbours 20 -1 18 -1
+using row decomposition
+rank 53 dims 2048 8 neighbours 54 -1 52 -1
+using row decomposition
+rank 245 dims 2048 8 neighbours 246 -1 244 -1
+using row decomposition
+rank 35 dims 2048 8 neighbours 36 -1 34 -1
+using row decomposition
+rank 82 dims 2048 8 neighbours 83 -1 81 -1
+using row decomposition
+rank 117 dims 2048 8 neighbours 118 -1 116 -1
+using row decomposition
+rank 210 dims 2048 8 neighbours 211 -1 209 -1
+using row decomposition
+rank 99 dims 2048 8 neighbours 100 -1 98 -1
+
+rank 131 dims 2048 8 neighbours 132 -1 130 -1
+using row decomposition
+rank 227 dims 2048 8 neighbours 228 -1 226 -1
+using row decomposition
+rank 151 dims 2048 8 neighbours 152 -1 150 -1
+using row decomposition
+using row decomposition
+rank 11 dims 2048 8 neighbours 12 -1 10 -1
+using row decompositionusing row decomposition
+rank 50 dims 2048 8 neighbours 51 -1 49 -1
+using row decomposition
+rank 241 dims 2048 8 neighbours 242 -1 240 -1
+using row decomposition
+rank 37 dims 2048 8 neighbours 38 -1 36 -1
+using row decomposition
+rank 84 dims 2048 8 neighbours 85 -1 83 -1
+using row decomposition
+rank 113 dims 2048 8 neighbours 114 -1 112 -1
+using row decomposition
+rank 194 dims 2048 8 neighbours 195 -1 193 -1
+using row decomposition
+rank 212 dims 2048 8 neighbours 213 -1 211 -1
+using row decompositionusing row decomposition
+rank 133 dims 2048 8 neighbours 134 -1 132 -1
+using row decomposition
+rank 228 dims 2048 8 neighbours 229 -1 227 -1
+using row decomposition
+rank 155 dims 2048 8 neighbours 156 -1 154 -1
+using row decomposition
+rank 178 dims 2048 8 neighbours 179 -1 177 -1
+using row decomposition
+rank 2 dims 2048 8 neighbours 3 -1 1 -1
+using row decomposition
+rank 23 dims 2048 8 neighbours 24 -1 22 -1
+using row decomposition
+rank 55 dims 2048 8 neighbours 56 -1 54 -1
+using row decomposition
+rank 242 dims 2048 8 neighbours 243 -1 241 -1
+using row decomposition
+rank 39 dims 2048 8 neighbours 40 -1 38 -1
+using row decomposition
+rank 87 dims 2048 8 neighbours 88 -1 86 -1
+using row decomposition
+rank 114 dims 2048 8 neighbours 115 -1 113 -1
+using row decomposition
+rank 196 dims 2048 8 neighbours 197 -1 195 -1
+using row decomposition
+rank 65 dims 2048 8 neighbours 66 -1 64 -1
+using row decomposition
+rank 215 dims 2048 8 neighbours 216 -1 214 -1
+using row decomposition
+rank 103 dims 2048 8 neighbours 104 -1 102 -1
+using row decomposition
+rank 137 dims 2048 8 neighbours 138 -1 136 -1
+using row decomposition
+rank 163 dims 2048 8 neighbours 164 -1 162 -1
+using row decompositionusing row decomposition
+rank 157 dims 2048 8 neighbours 158 -1 156 -1
+using row decomposition
+rank 180 dims 2048 8 neighbours 181 -1 179 -1
+using row decomposition
+rank 3 dims 2048 8 neighbours 4 -1 2 -1
+using row decomposition
+rank 27 dims 2048 8 neighbours 28 -1 26 -1
+using row decomposition
+rank 59 dims 2048 8 neighbours 60 -1 58 -1
+using row decomposition
+rank 247 dims 2048 8 neighbours 248 -1 246 -1
+using row decomposition
+rank 43 dims 2048 8 neighbours 44 -1 42 -1
+using row decomposition
+rank 91 dims 2048 8 neighbours 92 -1 90 -1
+using row decomposition
+rank 116 dims 2048 8 neighbours 117 -1 115 -1
+using row decomposition
+rank 197 dims 2048 8 neighbours 198 -1 196 -1
+using row decomposition
+rank 66 dims 2048 8 neighbours 67 -1 65 -1
+using row decomposition
+rank 217 dims 2048 8 neighbours 218 -1 216 -1
+using row decomposition
+rank 106 dims 2048 8 neighbours 107 -1 105 -1
+using row decomposition
+rank 139 dims 2048 8 neighbours 140 -1 138 -1
+using row decompositionusing row decomposition
+rank 230 dims 2048 8 neighbours 231 -1 229 -1
+using row decomposition
+rank 159 dims 2048 8 neighbours 160 -1 158 -1
+using row decomposition
+rank 183 dims 2048 8 neighbours 184 -1 182 -1
+using row decomposition
+rank 13 dims 2048 8 neighbours 14 -1 12 -1
+using row decomposition
+rank 61 dims 2048 8 neighbours 62 -1 60 -1
+using row decomposition
+rank 249 dims 2048 8 neighbours 250 -1 248 -1
+using row decomposition
+rank 46 dims 2048 8 neighbours 47 -1 45 -1
+using row decomposition
+rank 93 dims 2048 8 neighbours 94 -1 92 -1
+using row decomposition
+rank 118 dims 2048 8 neighbours 119 -1 117 -1
+using row decomposition
+rank 199 dims 2048 8 neighbours 200 -1 198 -1
+using row decomposition
+rank 68 dims 2048 8 neighbours 69 -1 67 -1
+using row decomposition
+rank 219 dims 2048 8 neighbours 220 -1 218 -1
+using row decomposition
+rank 110 dims 2048 8 neighbours 111 -1 109 -1
+using row decomposition
+rank 141 dims 2048 8 neighbours 142 -1 140 -1
+using row decomposition
+rank 165 dims 2048 8 neighbours 166 -1 164 -1
+using row decomposition
+rank 231 dims 2048 8 neighbours 232 -1 230 -1
+using row decomposition
+rank 145 dims 2048 8 neighbours 146 -1 144 -1
+using row decomposition
+rank 185 dims 2048 8 neighbours 186 -1 184 -1
+using row decomposition
+rank 4 dims 2048 8 neighbours 5 -1 3 -1
+using row decomposition
+rank 52 dims 2048 8 neighbours 53 -1 51 -1
+using row decomposition
+rank 251 dims 2048 8 neighbours 252 -1 250 -1
+using row decomposition
+rank 34 dims 2048 8 neighbours 35 -1 33 -1
+using row decomposition
+rank 86 dims 2048 8 neighbours 87 -1 85 -1
+using row decomposition
+rank 119 dims 2048 8 neighbours 120 -1 118 -1
+using row decomposition
+rank 201 dims 2048 8 neighbours 202 -1 200 -1
+using row decomposition
+rank 69 dims 2048 8 neighbours 70 -1 68 -1
+using row decomposition
+rank 221 dims 2048 8 neighbours 222 -1 220 -1
+using row decomposition
+rank 96 dims 2048 8 neighbours 97 -1 95 -1
+using row decomposition
+using row decomposition
+rank 166 dims 2048 8 neighbours 167 -1 165 -1
+using row decomposition
+rank 225 dims 2048 8 neighbours 226 -1 224 -1
+using row decomposition
+rank 187 dims 2048 8 neighbours 188 -1 186 -1
+using row decomposition
+rank 12 dims 2048 8 neighbours 13 -1 11 -1
+using row decomposition
+rank 253 dims 2048 8 neighbours 254 -1 252 -1
+using row decomposition
+rank 36 dims 2048 8 neighbours 37 -1 35 -1
+using row decomposition
+rank 89 dims 2048 8 neighbours 90 -1 88 -1
+using row decomposition
+rank 121 dims 2048 8 neighbours 122 -1 120 -1
+using row decomposition
+rank 203 dims 2048 8 neighbours 204 -1 202 -1
+using row decompositionusing row decomposition
+rank 209 dims 2048 8 neighbours 210 -1 208 -1
+using row decomposition
+rank 97 dims 2048 8 neighbours 98 -1 96 -1
+using row decomposition
+rank 129 dims 2048 8 neighbours 130 -1 128 -1
+using row decomposition
+rank 167 dims 2048 8 neighbours 168 -1 166 -1
+using row decomposition
+rank 226 dims 2048 8 neighbours 227 -1 225 -1
+using row decomposition
+rank 189 dims 2048 8 neighbours 190 -1 188 -1
+using row decomposition
+rank 14 dims 2048 8 neighbours 15 -1 13 -1
+using row decomposition
+rank 255 dims 2048 8 neighbours -1 -1 254 -1
+using row decomposition
+rank 38 dims 2048 8 neighbours 39 -1 37 -1
+using row decomposition
+rank 90 dims 2048 8 neighbours 91 -1 89 -1
+using row decomposition
+rank 122 dims 2048 8 neighbours 123 -1 121 -1
+using row decomposition
+rank 205 dims 2048 8 neighbours 206 -1 204 -1
+using row decomposition
+rank 75 dims 2048 8 neighbours 76 -1 74 -1
+using row decomposition
+rank 98 dims 2048 8 neighbours 99 -1 97 -1
+using row decomposition
+rank 132 dims 2048 8 neighbours 133 -1 131 -1
+using row decomposition
+rank 170 dims 2048 8 neighbours 171 -1 169 -1
+using row decomposition
+rank 233 dims 2048 8 neighbours 234 -1 232 -1
+using row decomposition
+rank 150 dims 2048 8 neighbours 151 -1 149 -1
+rank 177 dims 2048 8 neighbours 178 -1 176 -1
+using row decomposition
+using row decomposition
+rank 244 dims 2048 8 neighbours 245 -1 243 -1
+using row decomposition
+rank 41 dims 2048 8 neighbours 42 -1 40 -1
+using row decomposition
+rank 92 dims 2048 8 neighbours 93 -1 91 -1
+using row decomposition
+rank 123 dims 2048 8 neighbours 124 -1 122 -1
+using row decomposition
+rank 192 dims 2048 8 neighbours 193 -1 191 -1
+using row decomposition
+rank 77 dims 2048 8 neighbours 78 -1 76 -1
+using row decomposition
+rank 100 dims 2048 8 neighbours 101 -1 99 -1
+using row decomposition
+rank 134 dims 2048 8 neighbours 135 -1 133 -1
+using row decomposition
+rank 171 dims 2048 8 neighbours 172 -1 170 -1
+using row decomposition
+rank 234 dims 2048 8 neighbours 235 -1 233 -1
+using row decomposition
+rank 154 dims 2048 8 neighbours 155 -1 153 -1
+using row decomposition
+rank 182 dims 2048 8 neighbours 183 -1 181 -1
+rank 8 dims 2048 8 neighbours 9 -1 7 -1
+using row decomposition
+rank 246 dims 2048 8 neighbours 247 -1 245 -1
+using row decomposition
+rank 42 dims 2048 8 neighbours 43 -1 41 -1
+using row decomposition
+rank 95 dims 2048 8 neighbours 96 -1 94 -1
+using row decomposition
+rank 124 dims 2048 8 neighbours 125 -1 123 -1
+using row decomposition
+rank 193 dims 2048 8 neighbours 194 -1 192 -1
+using row decomposition
+rank 64 dims 2048 8 neighbours 65 -1 63 -1
+using row decomposition
+rank 214 dims 2048 8 neighbours 215 -1 213 -1
+using row decomposition
+rank 102 dims 2048 8 neighbours 103 -1 101 -1
+using row decomposition
+rank 135 dims 2048 8 neighbours 136 -1 134 -1
+using row decomposition
+rank 172 dims 2048 8 neighbours 173 -1 171 -1
+using row decomposition
+rank 235 dims 2048 8 neighbours 236 -1 234 -1
+using row decomposition
+rank 156 dims 2048 8 neighbours 157 -1 155 -1
+using row decomposition
+rank 186 dims 2048 8 neighbours 187 -1 185 -1
+using row decomposition
+using row decomposition
+rank 250 dims 2048 8 neighbours 251 -1 249 -1
+using row decomposition
+rank 44 dims 2048 8 neighbours 45 -1 43 -1
+using row decomposition
+rank 94 dims 2048 8 neighbours 95 -1 93 -1
+using row decomposition
+rank 125 dims 2048 8 neighbours 126 -1 124 -1
+using row decomposition
+rank 198 dims 2048 8 neighbours 199 -1 197 -1
+using row decomposition
+rank 67 dims 2048 8 neighbours 68 -1 66 -1
+using row decomposition
+rank 218 dims 2048 8 neighbours 219 -1 217 -1
+using row decomposition
+rank 105 dims 2048 8 neighbours 106 -1 104 -1
+using row decomposition
+rank 140 dims 2048 8 neighbours 141 -1 139 -1
+using row decomposition
+rank 174 dims 2048 8 neighbours 175 -1 173 -1
+using row decomposition
+rank 236 dims 2048 8 neighbours 237 -1 235 -1
+using row decomposition
+rank 148 dims 2048 8 neighbours 149 -1 147 -1
+using row decomposition
+rank 188 dims 2048 8 neighbours 189 -1 187 -1
+rank 0 dims 2048 8 neighbours 1 -1 -1 -1
+Problem dimensions 2048x2048 for 100 iterations.
+using row decomposition
+rank 252 dims 2048 8 neighbours 253 -1 251 -1
+using row decomposition
+rank 45 dims 2048 8 neighbours 46 -1 44 -1
+using row decomposition
+rank 80 dims 2048 8 neighbours 81 -1 79 -1
+using row decomposition
+rank 127 dims 2048 8 neighbours 128 -1 126 -1
+using row decomposition
+rank 200 dims 2048 8 neighbours 201 -1 199 -1
+using row decomposition
+rank 70 dims 2048 8 neighbours 71 -1 69 -1
+using row decomposition
+rank 220 dims 2048 8 neighbours 221 -1 219 -1
+using row decomposition
+rank 107 dims 2048 8 neighbours 108 -1 106 -1
+using row decomposition
+rank 142 dims 2048 8 neighbours 143 -1 141 -1
+using row decomposition
+rank 175 dims 2048 8 neighbours 176 -1 174 -1
+using row decomposition
+rank 237 dims 2048 8 neighbours 238 -1 236 -1
+using row decomposition
+rank 153 dims 2048 8 neighbours 154 -1 152 -1
+using row decomposition
+rank 190 dims 2048 8 neighbours 191 -1 189 -1
+
+using row decomposition
+rank 254 dims 2048 8 neighbours 255 -1 253 -1
+using row decomposition
+rank 47 dims 2048 8 neighbours 48 -1 46 -1
+
+using row decomposition
+rank 112 dims 2048 8 neighbours 113 -1 111 -1
+using row decomposition
+rank 202 dims 2048 8 neighbours 203 -1 201 -1
+using row decomposition
+rank 72 dims 2048 8 neighbours 73 -1 71 -1
+using row decomposition
+rank 222 dims 2048 8 neighbours 223 -1 221 -1
+using row decomposition
+rank 108 dims 2048 8 neighbours 109 -1 107 -1
+using row decomposition
+rank 143 dims 2048 8 neighbours 144 -1 142 -1
+using row decomposition
+rank 160 dims 2048 8 neighbours 161 -1 159 -1
+using row decomposition
+rank 238 dims 2048 8 neighbours 239 -1 237 -1
+using row decomposition
+rank 158 dims 2048 8 neighbours 159 -1 157 -1
+using row decomposition
+rank 191 dims 2048 8 neighbours 192 -1 190 -1
+rank 6 dims 2048 8 neighbours 7 -1 5 -1
+using row decompositionusing row decomposition
+rank 32 dims 2048 8 neighbours 33 -1 31 -1
+rank 85 dims 2048 8 neighbours 86 -1 84 -1
+using row decomposition
+rank 126 dims 2048 8 neighbours 127 -1 125 -1
+using row decomposition
+rank 204 dims 2048 8 neighbours 205 -1 203 -1
+using row decomposition
+rank 73 dims 2048 8 neighbours 74 -1 72 -1
+using row decomposition
+rank 223 dims 2048 8 neighbours 224 -1 222 -1
+using row decomposition
+rank 109 dims 2048 8 neighbours 110 -1 108 -1
+rank 128 dims 2048 8 neighbours 129 -1 127 -1
+using row decomposition
+rank 161 dims 2048 8 neighbours 162 -1 160 -1
+using row decomposition
+rank 239 dims 2048 8 neighbours 240 -1 238 -1
+using row decomposition
+rank 144 dims 2048 8 neighbours 145 -1 143 -1
+using row decomposition
+rank 176 dims 2048 8 neighbours 177 -1 175 -1
+using row decomposition
+rank 243 dims 2048 8 neighbours 244 -1 242 -1
+using row decomposition
+rank 40 dims 2048 8 neighbours 41 -1 39 -1
+using row decomposition
+using row decomposition
+rank 206 dims 2048 8 neighbours 207 -1 205 -1
+using row decomposition
+rank 74 dims 2048 8 neighbours 75 -1 73 -1
+using row decomposition
+using row decomposition
+rank 111 dims 2048 8 neighbours 112 -1 110 -1
+using row decomposition
+rank 136 dims 2048 8 neighbours 137 -1 135 -1
+using row decomposition
+rank 162 dims 2048 8 neighbours 163 -1 161 -1
+using row decomposition
+rank 224 dims 2048 8 neighbours 225 -1 223 -1
+
+
+
+
+
+
+rank 115 dims 2048 8 neighbours 116 -1 114 -1
+using row decomposition
+rank 207 dims 2048 8 neighbours 208 -1 206 -1
+using row decomposition
+rank 76 dims 2048 8 neighbours 77 -1 75 -1
+rank 208 dims 2048 8 neighbours 209 -1 207 -1
+using row decomposition
+rank 104 dims 2048 8 neighbours 105 -1 103 -1
+
+using row decomposition
+rank 168 dims 2048 8 neighbours 169 -1 167 -1
+using row decomposition
+rank 232 dims 2048 8 neighbours 233 -1 231 -1
+rank 149 dims 2048 8 neighbours 150 -1 148 -1
+rank 179 dims 2048 8 neighbours 180 -1 178 -1
+rank 9 dims 2048 8 neighbours 10 -1 8 -1
+rank 240 dims 2048 8 neighbours 241 -1 239 -1
+rank 33 dims 2048 8 neighbours 34 -1 32 -1
+using row decompositionusing row decompositionusing row decomposition
+rank 78 dims 2048 8 neighbours 79 -1 77 -1
+
+
+rank 130 dims 2048 8 neighbours 131 -1 129 -1
+using row decomposition
+rank 169 dims 2048 8 neighbours 170 -1 168 -1
+
+using row decompositionusing row decompositionusing row decomposition
+
+using row decomposition
+rank 79 dims 2048 8 neighbours 80 -1 78 -1
+rank 213 dims 2048 8 neighbours 214 -1 212 -1
+rank 101 dims 2048 8 neighbours 102 -1 100 -1
+using row decomposition
+rank 173 dims 2048 8 neighbours 174 -1 172 -1
+rank 229 dims 2048 8 neighbours 230 -1 228 -1
+
+
+
+rank 120 dims 2048 8 neighbours 121 -1 119 -1
+rank 195 dims 2048 8 neighbours 196 -1 194 -1
+
+using row decomposition
+rank 152 dims 2048 8 neighbours 153 -1 151 -1
+rank 184 dims 2048 8 neighbours 185 -1 183 -1
+rank 248 dims 2048 8 neighbours 249 -1 247 -1
+rank 88 dims 2048 8 neighbours 89 -1 87 -1
+rank 71 dims 2048 8 neighbours 72 -1 70 -1
+
+rank 164 dims 2048 8 neighbours 165 -1 163 -1
+rank 216 dims 2048 8 neighbours 217 -1 215 -1
+Iteration 1
+dt 1.219009463912e-03 dt_h 1.238018927825e-03
+using row decomposition
+rank 54 dims 2048 8 neighbours 55 -1 53 -1
+using row decomposition
+rank 57 dims 2048 8 neighbours 58 -1 56 -1
+using row decomposition
+rank 58 dims 2048 8 neighbours 59 -1 57 -1
+using row decomposition
+rank 60 dims 2048 8 neighbours 61 -1 59 -1
+using row decomposition
+rank 63 dims 2048 8 neighbours 64 -1 62 -1
+using row decomposition
+rank 48 dims 2048 8 neighbours 49 -1 47 -1
+using row decomposition
+rank 62 dims 2048 8 neighbours 63 -1 61 -1
+
+rank 51 dims 2048 8 neighbours 52 -1 50 -1
+using row decomposition
+rank 56 dims 2048 8 neighbours 57 -1 55 -1
+using row decomposition
+rank 18 dims 2048 8 neighbours 19 -1 17 -1
+using row decomposition
+rank 20 dims 2048 8 neighbours 21 -1 19 -1
+using row decomposition
+rank 22 dims 2048 8 neighbours 23 -1 21 -1
+using row decomposition
+rank 26 dims 2048 8 neighbours 27 -1 25 -1
+using row decomposition
+rank 28 dims 2048 8 neighbours 29 -1 27 -1
+using row decomposition
+rank 29 dims 2048 8 neighbours 30 -1 28 -1
+using row decomposition
+rank 30 dims 2048 8 neighbours 31 -1 29 -1
+using row decomposition
+rank 31 dims 2048 8 neighbours 32 -1 30 -1
+using row decomposition
+rank 16 dims 2048 8 neighbours 17 -1 15 -1
+using row decomposition
+rank 25 dims 2048 8 neighbours 26 -1 24 -1
+
+rank 21 dims 2048 8 neighbours 22 -1 20 -1
+using row decomposition
+rank 24 dims 2048 8 neighbours 25 -1 23 -1
+total mass: 5.543737500000e+05
+total energy: 1.275905652802e+06
+simulation time: 0.0000(s)
+Iteration 2
+dt 1.121451333939e-03 dt_h 1.121451333939e-03
+total mass: 5.543737500000e+05
+total energy: 1.275704201281e+06
+simulation time: 0.0011(s)
+Iteration 3
+dt 1.082440329811e-03 dt_h 1.043429325682e-03
+total mass: 5.543737500000e+05
+total energy: 1.275507570837e+06
+simulation time: 0.0022(s)
+Iteration 4
+dt 9.919520779377e-04 dt_h 9.404748301933e-04
+total mass: 5.543737500000e+05
+total energy: 1.275333408338e+06
+simulation time: 0.0032(s)
+Iteration 5
+dt 9.403940204763e-04 dt_h 9.403132107592e-04
+total mass: 5.543737500000e+05
+total energy: 1.275160318005e+06
+simulation time: 0.0041(s)
+Iteration 6
+dt 9.289165451430e-04 dt_h 9.175198795269e-04
+total mass: 5.543737500000e+05
+total energy: 1.274989631068e+06
+simulation time: 0.0051(s)
+Iteration 7
+dt 9.691512489777e-04 dt_h 1.020782618429e-03
+total mass: 5.543737500000e+05
+total energy: 1.274803505780e+06
+simulation time: 0.0060(s)
+Iteration 8
+dt 9.865535918245e-04 dt_h 9.523245652204e-04
+total mass: 5.543737500000e+05
+total energy: 1.274629695106e+06
+simulation time: 0.0070(s)
+Iteration 9
+dt 9.589055091026e-04 dt_h 9.654864529847e-04
+total mass: 5.543737500000e+05
+total energy: 1.274452492419e+06
+simulation time: 0.0080(s)
+Iteration 10
+dt 9.876847568316e-04 dt_h 1.009883060679e-03
+total mass: 5.543737500000e+05
+total energy: 1.274267458775e+06
+simulation time: 0.0090(s)
+Iteration 11
+dt 1.022681129562e-03 dt_h 1.035479198446e-03
+total mass: 5.543737500000e+05
+total energy: 1.274078789170e+06
+simulation time: 0.0100(s)
+Iteration 12
+dt 1.014250747976e-03 dt_h 9.930222975056e-04
+total mass: 5.543737500000e+05
+total energy: 1.273898864513e+06
+simulation time: 0.0110(s)
+Iteration 13
+dt 9.832030835951e-04 dt_h 9.733838696846e-04
+total mass: 5.543737500000e+05
+total energy: 1.273721503056e+06
+simulation time: 0.0120(s)
+Iteration 14
+dt 9.952235591818e-04 dt_h 1.017063248679e-03
+total mass: 5.543737500000e+05
+total energy: 1.273532786819e+06
+simulation time: 0.0130(s)
+Iteration 15
+dt 1.047057992772e-03 dt_h 1.077052736865e-03
+total mass: 5.543737500000e+05
+total energy: 1.273337804377e+06
+simulation time: 0.0140(s)
+Iteration 16
+dt 1.061256952244e-03 dt_h 1.045461167623e-03
+total mass: 5.543737500000e+05
+total energy: 1.273147634769e+06
+simulation time: 0.0151(s)
+Iteration 17
+dt 1.051028618751e-03 dt_h 1.056596069880e-03
+total mass: 5.543737500000e+05
+total energy: 1.272954918131e+06
+simulation time: 0.0161(s)
+Iteration 18
+dt 1.057445673250e-03 dt_h 1.058295276619e-03
+total mass: 5.543737500000e+05
+total energy: 1.272764228547e+06
+simulation time: 0.0172(s)
+Iteration 19
+dt 1.035829536477e-03 dt_h 1.013363796335e-03
+total mass: 5.543737500000e+05
+total energy: 1.272580568966e+06
+simulation time: 0.0182(s)
+Iteration 20
+dt 1.017235632830e-03 dt_h 1.021107469325e-03
+total mass: 5.543737500000e+05
+total energy: 1.272395506358e+06
+simulation time: 0.0193(s)
+Iteration 21
+dt 1.034400630026e-03 dt_h 1.047693790727e-03
+total mass: 5.543737500000e+05
+total energy: 1.272205246541e+06
+simulation time: 0.0203(s)
+Iteration 22
+dt 1.042805824447e-03 dt_h 1.037917858168e-03
+total mass: 5.543737500000e+05
+total energy: 1.272016620405e+06
+simulation time: 0.0213(s)
+Iteration 23
+dt 1.021651640941e-03 dt_h 1.005385423714e-03
+total mass: 5.543737500000e+05
+total energy: 1.271835273813e+06
+simulation time: 0.0224(s)
+Iteration 24
+dt 1.015308973287e-03 dt_h 1.025232522859e-03
+total mass: 5.543737500000e+05
+total energy: 1.271647703615e+06
+simulation time: 0.0234(s)
+Iteration 25
+dt 1.041504851779e-03 dt_h 1.057777180700e-03
+total mass: 5.543737500000e+05
+total energy: 1.271453726379e+06
+simulation time: 0.0244(s)
+Iteration 26
+dt 1.061566605057e-03 dt_h 1.065356029415e-03
+total mass: 5.543737500000e+05
+total energy: 1.271261136583e+06
+simulation time: 0.0255(s)
+Iteration 27
+dt 1.057017746752e-03 dt_h 1.048679464090e-03
+total mass: 5.543737500000e+05
+total energy: 1.271069258253e+06
+simulation time: 0.0265(s)
+Iteration 28
+dt 1.062319942710e-03 dt_h 1.075960421330e-03
+total mass: 5.543737500000e+05
+total energy: 1.270874867050e+06
+simulation time: 0.0276(s)
+Iteration 29
+dt 1.066222487986e-03 dt_h 1.056484554642e-03
+total mass: 5.543737500000e+05
+total energy: 1.270685152170e+06
+simulation time: 0.0287(s)
+Iteration 30
+dt 1.036683861088e-03 dt_h 1.016883167535e-03
+total mass: 5.543737500000e+05
+total energy: 1.270501476306e+06
+simulation time: 0.0297(s)
+Iteration 31
+dt 1.025921256933e-03 dt_h 1.034959346332e-03
+total mass: 5.543737500000e+05
+total energy: 1.270313923553e+06
+simulation time: 0.0307(s)
+Iteration 32
+dt 1.037555572191e-03 dt_h 1.040151798050e-03
+total mass: 5.543737500000e+05
+total energy: 1.270124628288e+06
+simulation time: 0.0318(s)
+Iteration 33
+dt 1.035719884000e-03 dt_h 1.031287969949e-03
+total mass: 5.543737500000e+05
+total energy: 1.269939074897e+06
+simulation time: 0.0328(s)
+Iteration 34
+dt 1.023790659762e-03 dt_h 1.016293349574e-03
+total mass: 5.543737500000e+05
+total energy: 1.269755624185e+06
+simulation time: 0.0338(s)
+Iteration 35
+dt 1.028675661928e-03 dt_h 1.041057974283e-03
+total mass: 5.543737500000e+05
+total energy: 1.269564471925e+06
+simulation time: 0.0348(s)
+Iteration 36
+dt 1.062378383127e-03 dt_h 1.083698791971e-03
+total mass: 5.543737500000e+05
+total energy: 1.269368496075e+06
+simulation time: 0.0359(s)
+Iteration 37
+dt 1.071492899535e-03 dt_h 1.059287007100e-03
+total mass: 5.543737500000e+05
+total energy: 1.269177050003e+06
+simulation time: 0.0370(s)
+Iteration 38
+dt 1.056079954883e-03 dt_h 1.052872902667e-03
+total mass: 5.543737500000e+05
+total energy: 1.268985601180e+06
+simulation time: 0.0380(s)
+Iteration 39
+dt 1.063643055478e-03 dt_h 1.074413208288e-03
+total mass: 5.543737500000e+05
+total energy: 1.268792703714e+06
+simulation time: 0.0391(s)
+Iteration 40
+dt 1.051938061721e-03 dt_h 1.029462915153e-03
+total mass: 5.543737500000e+05
+total energy: 1.268607429401e+06
+simulation time: 0.0401(s)
+Iteration 41
+dt 1.020100160264e-03 dt_h 1.010737405374e-03
+total mass: 5.543737500000e+05
+total energy: 1.268425465826e+06
+simulation time: 0.0412(s)
+Iteration 42
+dt 1.032591578583e-03 dt_h 1.054445751792e-03
+total mass: 5.543737500000e+05
+total energy: 1.268234748914e+06
+simulation time: 0.0422(s)
+Iteration 43
+dt 1.057713159988e-03 dt_h 1.060980568184e-03
+total mass: 5.543737500000e+05
+total energy: 1.268043113904e+06
+simulation time: 0.0433(s)
+Iteration 44
+dt 1.039560333372e-03 dt_h 1.018140098560e-03
+total mass: 5.543737500000e+05
+total energy: 1.267860691539e+06
+simulation time: 0.0443(s)
+Iteration 45
+dt 1.019456639008e-03 dt_h 1.020773179456e-03
+total mass: 5.543737500000e+05
+total energy: 1.267675588390e+06
+simulation time: 0.0453(s)
+Iteration 46
+dt 1.043135536554e-03 dt_h 1.065497893652e-03
+total mass: 5.543737500000e+05
+total energy: 1.267481102528e+06
+simulation time: 0.0464(s)
+Iteration 47
+dt 1.070979962423e-03 dt_h 1.076462031194e-03
+total mass: 5.543737500000e+05
+total energy: 1.267287534143e+06
+simulation time: 0.0474(s)
+Iteration 48
+dt 1.060956738586e-03 dt_h 1.045451445978e-03
+total mass: 5.543737500000e+05
+total energy: 1.267097540818e+06
+simulation time: 0.0485(s)
+Iteration 49
+dt 1.062763053930e-03 dt_h 1.080074661882e-03
+total mass: 5.543737500000e+05
+total energy: 1.266903295831e+06
+simulation time: 0.0496(s)
+Iteration 50
+dt 1.074490357192e-03 dt_h 1.068906052501e-03
+total mass: 5.543737500000e+05
+total energy: 1.266712165470e+06
+simulation time: 0.0506(s)
+Iteration 51
+dt 1.039347435994e-03 dt_h 1.009788819486e-03
+total mass: 5.543737500000e+05
+total energy: 1.266530680518e+06
+simulation time: 0.0517(s)
+Iteration 52
+dt 1.024542734120e-03 dt_h 1.039296648754e-03
+total mass: 5.543737500000e+05
+total energy: 1.266343527362e+06
+simulation time: 0.0527(s)
+Iteration 53
+dt 1.051533805006e-03 dt_h 1.063770961259e-03
+total mass: 5.543737500000e+05
+total energy: 1.266151444530e+06
+simulation time: 0.0537(s)
+Iteration 54
+dt 1.058083489790e-03 dt_h 1.052396018321e-03
+total mass: 5.543737500000e+05
+total energy: 1.265963069581e+06
+simulation time: 0.0548(s)
+Iteration 55
+dt 1.031257060309e-03 dt_h 1.010118102297e-03
+total mass: 5.543737500000e+05
+total energy: 1.265781897769e+06
+simulation time: 0.0558(s)
+Iteration 56
+dt 1.029833989377e-03 dt_h 1.049549876456e-03
+total mass: 5.543737500000e+05
+total energy: 1.265590435562e+06
+simulation time: 0.0569(s)
+Iteration 57
+dt 1.071309543737e-03 dt_h 1.093069211017e-03
+total mass: 5.543737500000e+05
+total energy: 1.265393485588e+06
+simulation time: 0.0579(s)
+Iteration 58
+dt 1.081567309388e-03 dt_h 1.070065407758e-03
+total mass: 5.543737500000e+05
+total energy: 1.265201337463e+06
+simulation time: 0.0590(s)
+Iteration 59
+dt 1.070181141815e-03 dt_h 1.070296875872e-03
+total mass: 5.543737500000e+05
+total energy: 1.265007711643e+06
+simulation time: 0.0601(s)
+Iteration 60
+dt 1.077056672480e-03 dt_h 1.083816469087e-03
+total mass: 5.543737500000e+05
+total energy: 1.264814005655e+06
+simulation time: 0.0612(s)
+Iteration 61
+dt 1.059416293167e-03 dt_h 1.035016117247e-03
+total mass: 5.543737500000e+05
+total energy: 1.264629056716e+06
+simulation time: 0.0622(s)
+Iteration 62
+dt 1.030490479682e-03 dt_h 1.025964842116e-03
+total mass: 5.543737500000e+05
+total energy: 1.264445575925e+06
+simulation time: 0.0633(s)
+Iteration 63
+dt 1.039360604462e-03 dt_h 1.052756366808e-03
+total mass: 5.543737500000e+05
+total energy: 1.264256617549e+06
+simulation time: 0.0643(s)
+Iteration 64
+dt 1.054832125635e-03 dt_h 1.056907884462e-03
+total mass: 5.543737500000e+05
+total energy: 1.264066269994e+06
+simulation time: 0.0653(s)
+Iteration 65
+dt 1.039385235130e-03 dt_h 1.021862585798e-03
+total mass: 5.543737500000e+05
+total energy: 1.263884272847e+06
+simulation time: 0.0664(s)
+Iteration 66
+dt 1.027978655881e-03 dt_h 1.034094725963e-03
+total mass: 5.543737500000e+05
+total energy: 1.263698457613e+06
+simulation time: 0.0674(s)
+Iteration 67
+dt 1.050415829693e-03 dt_h 1.066736933423e-03
+total mass: 5.543737500000e+05
+total energy: 1.263504859940e+06
+simulation time: 0.0685(s)
+Iteration 68
+dt 1.077853533245e-03 dt_h 1.088970133067e-03
+total mass: 5.543737500000e+05
+total energy: 1.263310340838e+06
+simulation time: 0.0695(s)
+Iteration 69
+dt 1.076396969385e-03 dt_h 1.063823805703e-03
+total mass: 5.543737500000e+05
+total energy: 1.263119073321e+06
+simulation time: 0.0706(s)
+Iteration 70
+dt 1.075912410015e-03 dt_h 1.088001014328e-03
+total mass: 5.543737500000e+05
+total energy: 1.262924176878e+06
+simulation time: 0.0717(s)
+Iteration 71
+dt 1.083858347643e-03 dt_h 1.079715680958e-03
+total mass: 5.543737500000e+05
+total energy: 1.262732494290e+06
+simulation time: 0.0728(s)
+Iteration 72
+dt 1.052760675552e-03 dt_h 1.025805670147e-03
+total mass: 5.543737500000e+05
+total energy: 1.262549424732e+06
+simulation time: 0.0738(s)
+Iteration 73
+dt 1.028381072702e-03 dt_h 1.030956475257e-03
+total mass: 5.543737500000e+05
+total energy: 1.262365403330e+06
+simulation time: 0.0749(s)
+Iteration 74
+dt 1.049370857954e-03 dt_h 1.067785240650e-03
+total mass: 5.543737500000e+05
+total energy: 1.262174127307e+06
+simulation time: 0.0759(s)
+Iteration 75
+dt 1.067553320173e-03 dt_h 1.067321399697e-03
+total mass: 5.543737500000e+05
+total energy: 1.261984059951e+06
+simulation time: 0.0770(s)
+Iteration 76
+dt 1.045821867525e-03 dt_h 1.024322335353e-03
+total mass: 5.543737500000e+05
+total energy: 1.261802070524e+06
+simulation time: 0.0780(s)
+Iteration 77
+dt 1.033592673477e-03 dt_h 1.042863011600e-03
+total mass: 5.543737500000e+05
+total energy: 1.261614223626e+06
+simulation time: 0.0791(s)
+Iteration 78
+dt 1.063427189127e-03 dt_h 1.083991366655e-03
+total mass: 5.543737500000e+05
+total energy: 1.261419523507e+06
+simulation time: 0.0801(s)
+Iteration 79
+dt 1.081143926093e-03 dt_h 1.078296485531e-03
+total mass: 5.543737500000e+05
+total energy: 1.261227737600e+06
+simulation time: 0.0812(s)
+Iteration 80
+dt 1.068103513306e-03 dt_h 1.057910541082e-03
+total mass: 5.543737500000e+05
+total energy: 1.261037549879e+06
+simulation time: 0.0823(s)
+Iteration 81
+dt 1.072485292163e-03 dt_h 1.087060043244e-03
+total mass: 5.543737500000e+05
+total energy: 1.260844579027e+06
+simulation time: 0.0833(s)
+Iteration 82
+dt 1.072503131229e-03 dt_h 1.057946219215e-03
+total mass: 5.543737500000e+05
+total energy: 1.260657570600e+06
+simulation time: 0.0844(s)
+Iteration 83
+dt 1.036231473937e-03 dt_h 1.014516728659e-03
+total mass: 5.543737500000e+05
+total energy: 1.260477439999e+06
+simulation time: 0.0855(s)
+Iteration 84
+dt 1.032568949109e-03 dt_h 1.050621169559e-03
+total mass: 5.543737500000e+05
+total energy: 1.260290303170e+06
+simulation time: 0.0865(s)
+Iteration 85
+dt 1.057103031085e-03 dt_h 1.063584892611e-03
+total mass: 5.543737500000e+05
+total energy: 1.260100514398e+06
+simulation time: 0.0875(s)
+Iteration 86
+dt 1.050765310784e-03 dt_h 1.037945728958e-03
+total mass: 5.543737500000e+05
+total energy: 1.259917227067e+06
+simulation time: 0.0886(s)
+Iteration 87
+dt 1.029031954537e-03 dt_h 1.020118180117e-03
+total mass: 5.543737500000e+05
+total energy: 1.259736171947e+06
+simulation time: 0.0896(s)
+Iteration 88
+dt 1.039529155983e-03 dt_h 1.058940131849e-03
+total mass: 5.543737500000e+05
+total energy: 1.259545117893e+06
+simulation time: 0.0907(s)
+Iteration 89
+dt 1.076564423309e-03 dt_h 1.094188714768e-03
+total mass: 5.543737500000e+05
+total energy: 1.259351203988e+06
+simulation time: 0.0917(s)
+Iteration 90
+dt 1.076582809222e-03 dt_h 1.058976903677e-03
+total mass: 5.543737500000e+05
+total energy: 1.259162978749e+06
+simulation time: 0.0928(s)
+Iteration 91
+dt 1.067332759568e-03 dt_h 1.075688615459e-03
+total mass: 5.543737500000e+05
+total energy: 1.258971537612e+06
+simulation time: 0.0939(s)
+Iteration 92
+dt 1.078385891235e-03 dt_h 1.081083167010e-03
+total mass: 5.543737500000e+05
+total energy: 1.258781146686e+06
+simulation time: 0.0950(s)
+Iteration 93
+dt 1.051518433518e-03 dt_h 1.021953700026e-03
+total mass: 5.543737500000e+05
+total energy: 1.258600382190e+06
+simulation time: 0.0960(s)
+Iteration 94
+dt 1.027108084331e-03 dt_h 1.032262468636e-03
+total mass: 5.543737500000e+05
+total energy: 1.258418030618e+06
+simulation time: 0.0970(s)
+Iteration 95
+dt 1.047772299098e-03 dt_h 1.063282129561e-03
+total mass: 5.543737500000e+05
+total energy: 1.258229640023e+06
+simulation time: 0.0981(s)
+Iteration 96
+dt 1.060089245745e-03 dt_h 1.056896361929e-03
+total mass: 5.543737500000e+05
+total energy: 1.258042458809e+06
+simulation time: 0.0991(s)
+Iteration 97
+dt 1.036378573839e-03 dt_h 1.015860785749e-03
+total mass: 5.543737500000e+05
+total energy: 1.257863822307e+06
+simulation time: 0.1002(s)
+Iteration 98
+dt 1.027707841936e-03 dt_h 1.039554898124e-03
+total mass: 5.543737500000e+05
+total energy: 1.257678743484e+06
+simulation time: 0.1012(s)
+Iteration 99
+dt 1.057417757749e-03 dt_h 1.075280617374e-03
+total mass: 5.543737500000e+05
+total energy: 1.257486720745e+06
+simulation time: 0.1023(s)
+Iteration 100
+dt 1.077268087547e-03 dt_h 1.079255557720e-03
+total mass: 5.543737500000e+05
+total energy: 1.257296555800e+06
+simulation time: 0.1033(s)
+
+-------------------------------------------------------------
+
+Profiling Results:
+
+Kernel Name                               Calls                 Runtime (s)
+set_timestep                                101                  0.01349058
+communications                              101                  0.03447261
+equation_of_state                           100                  0.25791212
+pressure_acceleration                       100                  0.01669926
+artificial_viscosity                        200                  0.01892041
+shock_heating_and_work                      100                  0.00561848
+advect_mass_and_energy                      400                  0.04484017
+advect_momentum                             250                  0.10897057
+
+Total elapsed time: 0.501s, entries * are excluded.
+
+-------------------------------------------------------------
+
+
+-------------------------------------------------------------
+
+Profiling Results:
+
+Kernel Name                               Calls                 Runtime (s)
+handle_boundary_2d                         1900                  0.20563407
+
+Total elapsed time: 0.206s, entries * are excluded.
+
+-------------------------------------------------------------
+
+Wallclock 0.6274s, Elapsed Simulation Time 0.1044s
+writing results to visit file density

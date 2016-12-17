@@ -1,0 +1,566 @@
+using row decompositionusing row decomposition
+rank 12 dims 2048 128 neighbours 13 -1 11 -1
+using row decomposition
+rank 14 dims 2048 128 neighbours 15 -1 13 -1
+using row decomposition
+rank 1 dims 2048 128 neighbours 2 -1 0 -1
+using row decomposition
+rank 2 dims 2048 128 neighbours 3 -1 1 -1
+using row decomposition
+rank 3 dims 2048 128 neighbours 4 -1 2 -1
+using row decomposition
+rank 5 dims 2048 128 neighbours 6 -1 4 -1
+using row decomposition
+rank 6 dims 2048 128 neighbours 7 -1 5 -1
+using row decomposition
+rank 7 dims 2048 128 neighbours 8 -1 6 -1
+using row decomposition
+rank 8 dims 2048 128 neighbours 9 -1 7 -1
+using row decomposition
+rank 9 dims 2048 128 neighbours 10 -1 8 -1
+using row decomposition
+rank 10 dims 2048 128 neighbours 11 -1 9 -1
+using row decomposition
+rank 13 dims 2048 128 neighbours 14 -1 12 -1
+using row decomposition
+rank 15 dims 2048 128 neighbours -1 -1 14 -1
+using row decomposition
+using row decomposition
+rank 11 dims 2048 128 neighbours 12 -1 10 -1
+rank 0 dims 2048 128 neighbours 1 -1 -1 -1
+Problem dimensions 2048x2048 for 100 iterations.
+
+rank 4 dims 2048 128 neighbours 5 -1 3 -1
+Iteration 1
+dt 1.219009463912e-03 dt_h 1.238018927825e-03
+total mass: 1.072354500000e+06
+total energy: 2.467577511301e+06
+simulation time: 0.0000(s)
+Iteration 2
+dt 1.121451333939e-03 dt_h 1.121451333939e-03
+total mass: 1.072354500000e+06
+total energy: 2.467284824877e+06
+simulation time: 0.0011(s)
+Iteration 3
+dt 1.128092253798e-03 dt_h 1.134733173658e-03
+total mass: 1.072354500000e+06
+total energy: 2.467017235822e+06
+simulation time: 0.0022(s)
+Iteration 4
+dt 1.027364996123e-03 dt_h 9.199968185889e-04
+total mass: 1.072354500000e+06
+total energy: 2.466795757773e+06
+simulation time: 0.0033(s)
+Iteration 5
+dt 9.388032908912e-04 dt_h 9.576097631936e-04
+total mass: 1.072354500000e+06
+total energy: 2.466560728252e+06
+simulation time: 0.0042(s)
+Iteration 6
+dt 9.966224273375e-04 dt_h 1.035635091481e-03
+total mass: 1.072354500000e+06
+total energy: 2.466312218347e+06
+simulation time: 0.0052(s)
+Iteration 7
+dt 1.033505794093e-03 dt_h 1.031376496704e-03
+total mass: 1.072354500000e+06
+total energy: 2.466066706722e+06
+simulation time: 0.0062(s)
+Iteration 8
+dt 1.007404179994e-03 dt_h 9.834318632834e-04
+total mass: 1.072354500000e+06
+total energy: 2.465825467166e+06
+simulation time: 0.0073(s)
+Iteration 9
+dt 1.007469021649e-03 dt_h 1.031506180015e-03
+total mass: 1.072354500000e+06
+total energy: 2.465579655614e+06
+simulation time: 0.0083(s)
+Iteration 10
+dt 1.042563672722e-03 dt_h 1.053621165430e-03
+total mass: 1.072354500000e+06
+total energy: 2.465332153093e+06
+simulation time: 0.0093(s)
+Iteration 11
+dt 1.026357508494e-03 dt_h 9.990938515575e-04
+total mass: 1.072354500000e+06
+total energy: 2.465089439413e+06
+simulation time: 0.0103(s)
+Iteration 12
+dt 1.033621776087e-03 dt_h 1.068149700617e-03
+total mass: 1.072354500000e+06
+total energy: 2.464840448042e+06
+simulation time: 0.0114(s)
+Iteration 13
+dt 1.051170081176e-03 dt_h 1.034190461735e-03
+total mass: 1.072354500000e+06
+total energy: 2.464594958704e+06
+simulation time: 0.0124(s)
+Iteration 14
+dt 1.031067709161e-03 dt_h 1.027944956587e-03
+total mass: 1.072354500000e+06
+total energy: 2.464349582188e+06
+simulation time: 0.0134(s)
+Iteration 15
+dt 1.042395208567e-03 dt_h 1.056845460547e-03
+total mass: 1.072354500000e+06
+total energy: 2.464101608206e+06
+simulation time: 0.0145(s)
+Iteration 16
+dt 1.043524183070e-03 dt_h 1.030202905592e-03
+total mass: 1.072354500000e+06
+total energy: 2.463853251885e+06
+simulation time: 0.0155(s)
+Iteration 17
+dt 1.046616862988e-03 dt_h 1.063030820383e-03
+total mass: 1.072354500000e+06
+total energy: 2.463603069093e+06
+simulation time: 0.0166(s)
+Iteration 18
+dt 1.055912384994e-03 dt_h 1.048793949605e-03
+total mass: 1.072354500000e+06
+total energy: 2.463354511202e+06
+simulation time: 0.0176(s)
+Iteration 19
+dt 1.044550034144e-03 dt_h 1.040306118682e-03
+total mass: 1.072354500000e+06
+total energy: 2.463104013101e+06
+simulation time: 0.0187(s)
+Iteration 20
+dt 1.054417309152e-03 dt_h 1.068528499621e-03
+total mass: 1.072354500000e+06
+total energy: 2.462853664664e+06
+simulation time: 0.0197(s)
+Iteration 21
+dt 1.053876168782e-03 dt_h 1.039223837942e-03
+total mass: 1.072354500000e+06
+total energy: 2.462604222704e+06
+simulation time: 0.0208(s)
+Iteration 22
+dt 1.050011047495e-03 dt_h 1.060798257049e-03
+total mass: 1.072354500000e+06
+total energy: 2.462352885447e+06
+simulation time: 0.0218(s)
+Iteration 23
+dt 1.058077182451e-03 dt_h 1.055356107854e-03
+total mass: 1.072354500000e+06
+total energy: 2.462104233639e+06
+simulation time: 0.0229(s)
+Iteration 24
+dt 1.045470210970e-03 dt_h 1.035584314086e-03
+total mass: 1.072354500000e+06
+total energy: 2.461853572105e+06
+simulation time: 0.0239(s)
+Iteration 25
+dt 1.060055829906e-03 dt_h 1.084527345725e-03
+total mass: 1.072354500000e+06
+total energy: 2.461600192775e+06
+simulation time: 0.0250(s)
+Iteration 26
+dt 1.064982494633e-03 dt_h 1.045437643540e-03
+total mass: 1.072354500000e+06
+total energy: 2.461351280149e+06
+simulation time: 0.0261(s)
+Iteration 27
+dt 1.049238072943e-03 dt_h 1.053038502346e-03
+total mass: 1.072354500000e+06
+total energy: 2.461100566940e+06
+simulation time: 0.0271(s)
+Iteration 28
+dt 1.060519249718e-03 dt_h 1.067999997090e-03
+total mass: 1.072354500000e+06
+total energy: 2.460850109839e+06
+simulation time: 0.0282(s)
+Iteration 29
+dt 1.052181092087e-03 dt_h 1.036362187083e-03
+total mass: 1.072354500000e+06
+total energy: 2.460599942242e+06
+simulation time: 0.0292(s)
+Iteration 30
+dt 1.058637322037e-03 dt_h 1.080912456990e-03
+total mass: 1.072354500000e+06
+total energy: 2.460346499483e+06
+simulation time: 0.0303(s)
+Iteration 31
+dt 1.069474037057e-03 dt_h 1.058035617123e-03
+total mass: 1.072354500000e+06
+total energy: 2.460096293891e+06
+simulation time: 0.0314(s)
+Iteration 32
+dt 1.050475515643e-03 dt_h 1.042915414162e-03
+total mass: 1.072354500000e+06
+total energy: 2.459846453420e+06
+simulation time: 0.0324(s)
+Iteration 33
+dt 1.059341196923e-03 dt_h 1.075766979684e-03
+total mass: 1.072354500000e+06
+total energy: 2.459594864698e+06
+simulation time: 0.0335(s)
+Iteration 34
+dt 1.057214711485e-03 dt_h 1.038662443285e-03
+total mass: 1.072354500000e+06
+total energy: 2.459345781682e+06
+simulation time: 0.0345(s)
+Iteration 35
+dt 1.053044561783e-03 dt_h 1.067426680281e-03
+total mass: 1.072354500000e+06
+total energy: 2.459093911867e+06
+simulation time: 0.0356(s)
+Iteration 36
+dt 1.065939243249e-03 dt_h 1.064451806217e-03
+total mass: 1.072354500000e+06
+total energy: 2.458843403416e+06
+simulation time: 0.0366(s)
+Iteration 37
+dt 1.051615600128e-03 dt_h 1.038779394039e-03
+total mass: 1.072354500000e+06
+total energy: 2.458593167580e+06
+simulation time: 0.0377(s)
+Iteration 38
+dt 1.062368405788e-03 dt_h 1.085957417538e-03
+total mass: 1.072354500000e+06
+total energy: 2.458339533428e+06
+simulation time: 0.0388(s)
+Iteration 39
+dt 1.066880143044e-03 dt_h 1.047802868550e-03
+total mass: 1.072354500000e+06
+total energy: 2.458090058080e+06
+simulation time: 0.0398(s)
+Iteration 40
+dt 1.053519017844e-03 dt_h 1.059235167137e-03
+total mass: 1.072354500000e+06
+total energy: 2.457838700266e+06
+simulation time: 0.0409(s)
+Iteration 41
+dt 1.066137907031e-03 dt_h 1.073040646926e-03
+total mass: 1.072354500000e+06
+total energy: 2.457587023900e+06
+simulation time: 0.0419(s)
+Iteration 42
+dt 1.057288275898e-03 dt_h 1.041535904870e-03
+total mass: 1.072354500000e+06
+total energy: 2.457335741923e+06
+simulation time: 0.0430(s)
+Iteration 43
+dt 1.065385802103e-03 dt_h 1.089235699337e-03
+total mass: 1.072354500000e+06
+total energy: 2.457080887915e+06
+simulation time: 0.0441(s)
+Iteration 44
+dt 1.075897972425e-03 dt_h 1.062560245514e-03
+total mass: 1.072354500000e+06
+total energy: 2.456829501430e+06
+simulation time: 0.0451(s)
+Iteration 45
+dt 1.057228143102e-03 dt_h 1.051896040691e-03
+total mass: 1.072354500000e+06
+total energy: 2.456578457536e+06
+simulation time: 0.0462(s)
+Iteration 46
+dt 1.066740178199e-03 dt_h 1.081584315706e-03
+total mass: 1.072354500000e+06
+total energy: 2.456325382944e+06
+simulation time: 0.0473(s)
+Iteration 47
+dt 1.063899546815e-03 dt_h 1.046214777923e-03
+total mass: 1.072354500000e+06
+total energy: 2.456074636578e+06
+simulation time: 0.0483(s)
+Iteration 48
+dt 1.063147231984e-03 dt_h 1.080079686045e-03
+total mass: 1.072354500000e+06
+total energy: 2.455820359601e+06
+simulation time: 0.0494(s)
+Iteration 49
+dt 1.076350034430e-03 dt_h 1.072620382815e-03
+total mass: 1.072354500000e+06
+total energy: 2.455567859518e+06
+simulation time: 0.0505(s)
+Iteration 50
+dt 1.061693078137e-03 dt_h 1.050765773459e-03
+total mass: 1.072354500000e+06
+total energy: 2.455315667265e+06
+simulation time: 0.0515(s)
+Iteration 51
+dt 1.071152822679e-03 dt_h 1.091539871899e-03
+total mass: 1.072354500000e+06
+total energy: 2.455060716141e+06
+simulation time: 0.0526(s)
+Iteration 52
+dt 1.073532401261e-03 dt_h 1.055524930623e-03
+total mass: 1.072354500000e+06
+total energy: 2.454809584967e+06
+simulation time: 0.0537(s)
+Iteration 53
+dt 1.062619285310e-03 dt_h 1.069713639997e-03
+total mass: 1.072354500000e+06
+total energy: 2.454556329757e+06
+simulation time: 0.0547(s)
+Iteration 54
+dt 1.074757633554e-03 dt_h 1.079801627112e-03
+total mass: 1.072354500000e+06
+total energy: 2.454303188848e+06
+simulation time: 0.0558(s)
+Iteration 55
+dt 1.065204974451e-03 dt_h 1.050608321791e-03
+total mass: 1.072354500000e+06
+total energy: 2.454050393984e+06
+simulation time: 0.0569(s)
+Iteration 56
+dt 1.074364283905e-03 dt_h 1.098120246019e-03
+total mass: 1.072354500000e+06
+total energy: 2.453793833748e+06
+simulation time: 0.0580(s)
+Iteration 57
+dt 1.083962813993e-03 dt_h 1.069805381967e-03
+total mass: 1.072354500000e+06
+total energy: 2.453541180403e+06
+simulation time: 0.0590(s)
+Iteration 58
+dt 1.066004604151e-03 dt_h 1.062203826335e-03
+total mass: 1.072354500000e+06
+total energy: 2.453288407215e+06
+simulation time: 0.0601(s)
+Iteration 59
+dt 1.074560726864e-03 dt_h 1.086917627393e-03
+total mass: 1.072354500000e+06
+total energy: 2.453034491230e+06
+simulation time: 0.0612(s)
+Iteration 60
+dt 1.070536182963e-03 dt_h 1.054154738534e-03
+total mass: 1.072354500000e+06
+total energy: 2.452782685252e+06
+simulation time: 0.0622(s)
+Iteration 61
+dt 1.070074259164e-03 dt_h 1.085993779795e-03
+total mass: 1.072354500000e+06
+total energy: 2.452527536644e+06
+simulation time: 0.0633(s)
+Iteration 62
+dt 1.081966793294e-03 dt_h 1.077939806794e-03
+total mass: 1.072354500000e+06
+total energy: 2.452274442973e+06
+simulation time: 0.0644(s)
+Iteration 63
+dt 1.067413933523e-03 dt_h 1.056888060252e-03
+total mass: 1.072354500000e+06
+total energy: 2.452021514841e+06
+simulation time: 0.0655(s)
+Iteration 64
+dt 1.076669118656e-03 dt_h 1.096450177061e-03
+total mass: 1.072354500000e+06
+total energy: 2.451766028362e+06
+simulation time: 0.0665(s)
+Iteration 65
+dt 1.078799951745e-03 dt_h 1.061149726429e-03
+total mass: 1.072354500000e+06
+total energy: 2.451514536736e+06
+simulation time: 0.0676(s)
+Iteration 66
+dt 1.067794973989e-03 dt_h 1.074440221549e-03
+total mass: 1.072354500000e+06
+total energy: 2.451260775916e+06
+simulation time: 0.0687(s)
+Iteration 67
+dt 1.078991588608e-03 dt_h 1.083542955666e-03
+total mass: 1.072354500000e+06
+total energy: 2.451007618216e+06
+simulation time: 0.0698(s)
+Iteration 68
+dt 1.069303614327e-03 dt_h 1.055064272987e-03
+total mass: 1.072354500000e+06
+total energy: 2.450754938753e+06
+simulation time: 0.0708(s)
+Iteration 69
+dt 1.077053478107e-03 dt_h 1.099042683227e-03
+total mass: 1.072354500000e+06
+total energy: 2.450498693830e+06
+simulation time: 0.0719(s)
+Iteration 70
+dt 1.087707678047e-03 dt_h 1.076372672867e-03
+total mass: 1.072354500000e+06
+total energy: 2.450245633259e+06
+simulation time: 0.0730(s)
+Iteration 71
+dt 1.069919993533e-03 dt_h 1.063467314199e-03
+total mass: 1.072354500000e+06
+total energy: 2.449993201742e+06
+simulation time: 0.0741(s)
+Iteration 72
+dt 1.076447940843e-03 dt_h 1.089428567488e-03
+total mass: 1.072354500000e+06
+total energy: 2.449739684472e+06
+simulation time: 0.0751(s)
+Iteration 73
+dt 1.072870506429e-03 dt_h 1.056312445371e-03
+total mass: 1.072354500000e+06
+total energy: 2.449488628805e+06
+simulation time: 0.0762(s)
+Iteration 74
+dt 1.070707416052e-03 dt_h 1.085102386733e-03
+total mass: 1.072354500000e+06
+total energy: 2.449234357382e+06
+simulation time: 0.0773(s)
+Iteration 75
+dt 1.082109590563e-03 dt_h 1.079116794392e-03
+total mass: 1.072354500000e+06
+total energy: 2.448982183286e+06
+simulation time: 0.0784(s)
+Iteration 76
+dt 1.067939361800e-03 dt_h 1.056761929208e-03
+total mass: 1.072354500000e+06
+total energy: 2.448729980744e+06
+simulation time: 0.0794(s)
+Iteration 77
+dt 1.077333671677e-03 dt_h 1.097905414147e-03
+total mass: 1.072354500000e+06
+total energy: 2.448475263861e+06
+simulation time: 0.0805(s)
+Iteration 78
+dt 1.080138644855e-03 dt_h 1.062371875563e-03
+total mass: 1.072354500000e+06
+total energy: 2.448224865761e+06
+simulation time: 0.0816(s)
+Iteration 79
+dt 1.066928180993e-03 dt_h 1.071484486423e-03
+total mass: 1.072354500000e+06
+total energy: 2.447972588139e+06
+simulation time: 0.0827(s)
+Iteration 80
+dt 1.077259832788e-03 dt_h 1.083035179153e-03
+total mass: 1.072354500000e+06
+total energy: 2.447720823021e+06
+simulation time: 0.0837(s)
+Iteration 81
+dt 1.068293438707e-03 dt_h 1.053551698260e-03
+total mass: 1.072354500000e+06
+total energy: 2.447469838271e+06
+simulation time: 0.0848(s)
+Iteration 82
+dt 1.074229186058e-03 dt_h 1.094906673856e-03
+total mass: 1.072354500000e+06
+total energy: 2.447215411643e+06
+simulation time: 0.0859(s)
+Iteration 83
+dt 1.084929731962e-03 dt_h 1.074952790069e-03
+total mass: 1.072354500000e+06
+total energy: 2.446964027404e+06
+simulation time: 0.0870(s)
+Iteration 84
+dt 1.067521373102e-03 dt_h 1.060089956135e-03
+total mass: 1.072354500000e+06
+total energy: 2.446713187415e+06
+simulation time: 0.0880(s)
+Iteration 85
+dt 1.074286930707e-03 dt_h 1.088483905280e-03
+total mass: 1.072354500000e+06
+total energy: 2.446461156145e+06
+simulation time: 0.0891(s)
+Iteration 86
+dt 1.071718644037e-03 dt_h 1.054953382794e-03
+total mass: 1.072354500000e+06
+total energy: 2.446211786408e+06
+simulation time: 0.0902(s)
+Iteration 87
+dt 1.067809599483e-03 dt_h 1.080665816172e-03
+total mass: 1.072354500000e+06
+total energy: 2.445959458875e+06
+simulation time: 0.0913(s)
+Iteration 88
+dt 1.079193843284e-03 dt_h 1.077721870396e-03
+total mass: 1.072354500000e+06
+total energy: 2.445708932263e+06
+simulation time: 0.0923(s)
+Iteration 89
+dt 1.065748443477e-03 dt_h 1.053775016558e-03
+total mass: 1.072354500000e+06
+total energy: 2.445458282219e+06
+simulation time: 0.0934(s)
+Iteration 90
+dt 1.075364755248e-03 dt_h 1.096954493939e-03
+total mass: 1.072354500000e+06
+total energy: 2.445205019516e+06
+simulation time: 0.0945(s)
+Iteration 91
+dt 1.079077470826e-03 dt_h 1.061200447712e-03
+total mass: 1.072354500000e+06
+total energy: 2.444956235665e+06
+simulation time: 0.0956(s)
+Iteration 92
+dt 1.064160904221e-03 dt_h 1.067121360729e-03
+total mass: 1.072354500000e+06
+total energy: 2.444705906986e+06
+simulation time: 0.0966(s)
+Iteration 93
+dt 1.074274686388e-03 dt_h 1.081428012047e-03
+total mass: 1.072354500000e+06
+total energy: 2.444455769649e+06
+simulation time: 0.0977(s)
+Iteration 94
+dt 1.066154952037e-03 dt_h 1.050881892027e-03
+total mass: 1.072354500000e+06
+total energy: 2.444206660345e+06
+simulation time: 0.0988(s)
+Iteration 95
+dt 1.070770758268e-03 dt_h 1.090659624509e-03
+total mass: 1.072354500000e+06
+total energy: 2.443954205115e+06
+simulation time: 0.0998(s)
+Iteration 96
+dt 1.081856008838e-03 dt_h 1.073052393167e-03
+total mass: 1.072354500000e+06
+total energy: 2.443704518359e+06
+simulation time: 0.1009(s)
+Iteration 97
+dt 1.064940128794e-03 dt_h 1.056827864421e-03
+total mass: 1.072354500000e+06
+total energy: 2.443455346499e+06
+simulation time: 0.1020(s)
+Iteration 98
+dt 1.071901142221e-03 dt_h 1.086974420021e-03
+total mass: 1.072354500000e+06
+total energy: 2.443204840733e+06
+simulation time: 0.1030(s)
+Iteration 99
+dt 1.070142440447e-03 dt_h 1.053310460873e-03
+total mass: 1.072354500000e+06
+total energy: 2.442957051158e+06
+simulation time: 0.1041(s)
+Iteration 100
+dt 1.065009662589e-03 dt_h 1.076708864305e-03
+total mass: 1.072354500000e+06
+total energy: 2.442706603087e+06
+simulation time: 0.1052(s)
+
+-------------------------------------------------------------
+
+Profiling Results:
+
+Kernel Name                               Calls                 Runtime (s)
+set_timestep                                101                  0.42027281
+communications                              101                  0.05437948
+equation_of_state                           100                  0.69182626
+pressure_acceleration                       100                  0.49161961
+artificial_viscosity                        200                  0.83766311
+shock_heating_and_work                      100                  0.41754922
+advect_mass_and_energy                      400                  1.63773357
+advect_momentum                             250                  1.90227741
+
+Total elapsed time: 6.453s, entries * are excluded.
+
+-------------------------------------------------------------
+
+
+-------------------------------------------------------------
+
+Profiling Results:
+
+Kernel Name                               Calls                 Runtime (s)
+handle_boundary_2d                         1900                  0.25732999
+
+Total elapsed time: 0.257s, entries * are excluded.
+
+-------------------------------------------------------------
+
+Wallclock 6.3611s, Elapsed Simulation Time 0.1063s
+writing results to visit file density
