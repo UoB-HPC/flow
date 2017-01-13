@@ -2,11 +2,14 @@
 KERNELS          = omp3
 COMPILER         = INTEL
 MPI              = yes
-CFLAGS_INTEL     = -O3 -g -qopenmp -no-prec-div -std=gnu99 -DINTEL -xhost -Wall -qopt-report=5
-CFLAGS_INTEL_KNL = -O3 -g -qopenmp -no-prec-div -std=gnu99 -DINTEL -xMIC-AVX512 -Wall -qopt-report=5
+MAC_RPATH				 = -Wl,-rpath,${COMPILER_ROOT}/lib 
+CFLAGS_INTEL     = -O3 -g -qopenmp -no-prec-div -std=gnu99 -DINTEL \
+									 $(MAC_RPATH) -xhost -Wall -qopt-report=5
+CFLAGS_INTEL_KNL = -O3 -g -qopenmp -no-prec-div -std=gnu99 -DINTEL \
+									 -xMIC-AVX512 -Wall -qopt-report=5
 CFLAGS_GCC       = -O3 -g -std=gnu99 -fopenmp -march=native -Wall #-std=gnu99
 CFLAGS_CRAY      = -lrt -hlist=a
-OPTIONS          = -DENABLE_PROFILING -DDEBUG
+OPTIONS          = -DENABLE_PROFILING
 
 ifeq ($(MPI), yes)
   OPTIONS += -DMPI

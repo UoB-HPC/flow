@@ -1,6 +1,7 @@
+#include "wet_data.h" // An important part of the interface
 #include "../shared.h"
 #include "../mesh.h"
-#include "../state.h"
+#include "../shared_data.h"
 
 // Controllable parameters for the application
 #define GAM 1.4
