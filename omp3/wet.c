@@ -15,8 +15,9 @@ void solve_hydro_2d(
     double* Qxx, double* Qyy, double* F_x, double* F_y, double* uF_x, 
     double* uF_y, double* vF_x, double* vF_y, double* reduce_array)
 {
-  if(mesh->rank == MASTER)
+  if(mesh->rank == MASTER) {
     printf("dt %.12e dt_h %.12e\n", mesh->dt, mesh->dt_h);
+  }
 
   equation_of_state(
       mesh->local_nx, mesh->local_ny, P, rho, e);
@@ -74,7 +75,7 @@ void set_timestep(
     const double* e, Mesh* mesh, double* reduce_array, const int first_step,
     const double* celldx, const double* celldy)
 {
-  double local_min_dt = MAX_DT;
+  double local_min_dt = mesh->max_dt;
 
   START_PROFILING(&compute_profile);
   // Check the minimum timestep from the sound speed in the nx and ny directions
@@ -84,8 +85,10 @@ void set_timestep(
     for(int jj = PAD; jj < nx-PAD; ++jj) {
       // Constrain based on the sound speed within the system
       const double c_s = sqrt(GAM*(GAM - 1.0)*e[ind0]);
-      const double thread_min_dt_x = celldx[jj]/sqrt(c_s*c_s + 2.0*Qxx[ind0]/rho[ind0]);
-      const double thread_min_dt_y = celldy[ii]/sqrt(c_s*c_s + 2.0*Qyy[ind0]/rho[ind0]);
+      const double thread_min_dt_x = 
+        celldx[jj]/sqrt(c_s*c_s + 2.0*Qxx[ind0]/rho[ind0]);
+      const double thread_min_dt_y = 
+        celldy[ii]/sqrt(c_s*c_s + 2.0*Qyy[ind0]/rho[ind0]);
       const double thread_min_dt = min(thread_min_dt_x, thread_min_dt_y);
       local_min_dt = min(local_min_dt, thread_min_dt);
     }

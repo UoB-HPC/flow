@@ -7,6 +7,7 @@
 #include "../mesh.h"
 #include "../shared_data.h"
 #include "../comms.h"
+#include "../params.h"
 
 int main(int argc, char** argv)
 {
@@ -16,6 +17,12 @@ int main(int argc, char** argv)
   mesh.global_ny = atoi(argv[2]);
   mesh.local_nx = atoi(argv[1]) + 2*PAD;
   mesh.local_ny = atoi(argv[2]) + 2*PAD;
+  mesh.width = get_double_parameter("width", ARCH_ROOT_PARAMS);
+  mesh.height = get_double_parameter("height", ARCH_ROOT_PARAMS);
+  mesh.max_dt = get_double_parameter("max_dt", ARCH_ROOT_PARAMS);
+  mesh.sim_end = get_double_parameter("sim_end", ARCH_ROOT_PARAMS);
+  mesh.dt = C_T*mesh.max_dt;
+  mesh.dt_h = C_T*mesh.max_dt;
   mesh.rank = MASTER;
   mesh.nranks = 1;
   mesh.niters = atoi(argv[3]);
@@ -23,8 +30,7 @@ int main(int argc, char** argv)
   initialise_mpi(argc, argv, &mesh.rank, &mesh.nranks);
 
   if(argc != 4 && mesh.rank == MASTER) {
-    printf("usage: ./wet.exe <local_nx> <local_y> <niters>\n");
-    exit(1);
+    TERMINATE("usage: ./wet.exe <local_nx> <local_y> <niters>\n");
   }
 
   initialise_comms(&mesh);
@@ -44,25 +50,19 @@ int main(int argc, char** argv)
       shared_data.rho, shared_data.e, &mesh, shared_data.reduce_array, 
       0, mesh.celldx, mesh.celldy);
 
-#if 0
-  write_all_ranks_to_visit(
-      mesh.global_nx+2*PAD, mesh.global_ny+2*PAD, mesh.local_nx, mesh.local_ny, 
-      mesh.x_off, mesh.y_off, mesh.rank, mesh.nranks, mesh.neighbours, 
-      shared_data.rho, "initial_density", 0, 0.0);
-#endif // if 0
-
   // Prepare for solve
-  struct Profile wallclock = {0};
+  double wallclock = 0.0;
   double elapsed_sim_time = 0.0;
-
-  START_PROFILING(&wallclock);
 
   // Main timestep loop
   int tt;
   for(tt = 0; tt < mesh.niters; ++tt) {
 
-    if(mesh.rank == MASTER) 
+    if(mesh.rank == MASTER) {
       printf("Iteration %d\n", tt+1);
+    }
+
+    double w0 = omp_get_wtime();
 
     solve_hydro_2d(
         &mesh, tt, shared_data.P, shared_data.rho, shared_data.rho_old, 
@@ -79,8 +79,9 @@ int main(int argc, char** argv)
       printf("simulation time: %.4lf(s)\n", elapsed_sim_time);
     }
 
+    wallclock += omp_get_wtime()-w0;
     elapsed_sim_time += mesh.dt;
-    if(elapsed_sim_time >= SIM_END) {
+    if(elapsed_sim_time >= mesh.sim_end) {
       if(mesh.rank == MASTER)
         printf("reached end of simulation time\n");
       break;
@@ -89,14 +90,11 @@ int main(int argc, char** argv)
 
   barrier();
 
-  STOP_PROFILING(&wallclock, "wallclock");
-
   if(mesh.rank == MASTER) {
-    struct ProfileEntry pe = profiler_get_profile_entry(&wallclock, "wallclock");
     PRINT_PROFILING_RESULTS(&compute_profile);
     PRINT_PROFILING_RESULTS(&comms_profile);
     printf("Wallclock %.4fs, Elapsed Simulation Time %.4fs\n", 
-        pe.time, elapsed_sim_time);
+        wallclock, elapsed_sim_time);
   }
 
   write_all_ranks_to_visit(

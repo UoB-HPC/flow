@@ -1,5 +1,9 @@
 #pragma once
 
+#define C_T 0.3
+#define ARCH_ROOT_PARAMS "../arch.params"
+#define WET_PARAMS "wet.params"
+
 typedef struct {
   // Wet-specific state
   double* rho_u;    // Momentum in the x direction
