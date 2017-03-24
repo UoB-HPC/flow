@@ -18,19 +18,21 @@ int main(int argc, char** argv)
   // Store the dimensions of the mesh
   Mesh mesh = {0};
   const char* wet_params = argv[1];
-  mesh.global_nx = get_int_parameter("global_nx", wet_params);
-  mesh.global_ny = get_int_parameter("global_ny", wet_params);
-  mesh.niters = get_int_parameter("niters", wet_params);
+  mesh.global_nx = get_int_parameter("nx", wet_params);
+  mesh.global_ny = get_int_parameter("ny", wet_params);
+  mesh.niters = get_int_parameter("iterations", wet_params);
   mesh.local_nx = mesh.global_nx+2*PAD;
   mesh.local_ny = mesh.global_ny+2*PAD;
   mesh.width = get_double_parameter("width", ARCH_ROOT_PARAMS);
   mesh.height = get_double_parameter("height", ARCH_ROOT_PARAMS);
   mesh.max_dt = get_double_parameter("max_dt", ARCH_ROOT_PARAMS);
   mesh.sim_end = get_double_parameter("sim_end", ARCH_ROOT_PARAMS);
-  mesh.dt = C_T*mesh.max_dt;
-  mesh.dt_h = C_T*mesh.max_dt;
+  mesh.dt = C_T*get_double_parameter("dt", wet_params);
+  mesh.dt_h = mesh.dt;
   mesh.rank = MASTER;
   mesh.nranks = 1;
+
+  const int visit_dump = get_int_parameter("visit_dump", wet_params);
 
   initialise_mpi(argc, argv, &mesh.rank, &mesh.nranks);
   initialise_comms(&mesh);
@@ -42,6 +44,11 @@ int main(int argc, char** argv)
       mesh.global_nx, mesh.global_ny, mesh.local_nx, mesh.local_ny, 
       mesh.x_off, mesh.y_off, mesh.width, mesh.height,
       wet_params, mesh.edgex, mesh.edgey, &shared_data);
+
+  handle_boundary_2d(
+      mesh.local_nx, mesh.local_ny, &mesh, shared_data.rho, NO_INVERT, PACK);
+  handle_boundary_2d(
+      mesh.local_nx, mesh.local_ny, &mesh, shared_data.e, NO_INVERT, PACK);
 
   WetData wet_data = {0};
   initialise_wet_data_2d(mesh.local_nx, mesh.local_ny, &wet_data);
@@ -98,10 +105,12 @@ int main(int argc, char** argv)
         wallclock, elapsed_sim_time);
   }
 
-  write_all_ranks_to_visit(
-      mesh.global_nx+2*PAD, mesh.global_ny+2*PAD, mesh.local_nx, mesh.local_ny, 
-      mesh.x_off, mesh.y_off, mesh.rank, mesh.nranks, mesh.neighbours, 
-      shared_data.rho, "density", 0, elapsed_sim_time);
+  if(visit_dump) {
+    write_all_ranks_to_visit(
+        mesh.global_nx+2*PAD, mesh.global_ny+2*PAD, mesh.local_nx, mesh.local_ny, 
+        mesh.x_off, mesh.y_off, mesh.rank, mesh.nranks, mesh.neighbours, 
+        shared_data.rho, "density", 0, elapsed_sim_time);
+  }
 
   finalise_shared_data(&shared_data);
   finalise_mesh(&mesh);
