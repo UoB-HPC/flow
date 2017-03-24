@@ -9,7 +9,7 @@
 #define ind1 (ii*(nx+1) + jj)
 
 // Solve a single timestep on the given mesh
-void solve_hydro(
+void solve_hydro_2d(
     Mesh* mesh, int tt, double* P, double* rho, double* rho_old, 
     double* e, double* u, double* v, double* rho_u, double* rho_v, 
     double* Qxx, double* Qyy, double* F_x, double* F_y, double* uF_x, 
@@ -73,7 +73,7 @@ void set_timestep(
     const double* e, Mesh* mesh, double* reduce_array, const int first_step,
     const double* celldx, const double* celldy)
 {
-  double local_min_dt = MAX_DT;
+  double local_min_dt = mesh->max_dt;
 
   START_PROFILING(&compute_profile);
   // Check the minimum timestep from the sound speed in the nx and ny directions
@@ -130,8 +130,8 @@ void pressure_acceleration(
 
   STOP_PROFILING(&compute_profile, __func__);
 
-  handle_boundary(nx+1, ny, mesh, u, INVERT_X, PACK);
-  handle_boundary(nx, ny+1, mesh, v, INVERT_Y, PACK);
+  handle_boundary_2d(nx+1, ny, mesh, u, INVERT_X, PACK);
+  handle_boundary_2d(nx, ny+1, mesh, v, INVERT_Y, PACK);
 }
 
 void artificial_viscosity(
@@ -161,8 +161,8 @@ void artificial_viscosity(
 
   STOP_PROFILING(&compute_profile, __func__);
 
-  handle_boundary(nx, ny, mesh, Qxx, NO_INVERT, PACK);
-  handle_boundary(nx, ny, mesh, Qyy, NO_INVERT, PACK);
+  handle_boundary_2d(nx, ny, mesh, Qxx, NO_INVERT, PACK);
+  handle_boundary_2d(nx, ny, mesh, Qyy, NO_INVERT, PACK);
 
   START_PROFILING(&compute_profile);
 
@@ -188,8 +188,8 @@ void artificial_viscosity(
   }
   STOP_PROFILING(&compute_profile, __func__);
 
-  handle_boundary(nx+1, ny, mesh, u, INVERT_X, PACK);
-  handle_boundary(nx, ny+1, mesh, v, INVERT_Y, PACK);
+  handle_boundary_2d(nx+1, ny, mesh, u, INVERT_X, PACK);
+  handle_boundary_2d(nx, ny+1, mesh, v, INVERT_Y, PACK);
 }
 
 // Calculates the work done due to forces within the element
@@ -218,7 +218,7 @@ void shock_heating_and_work(
 
   STOP_PROFILING(&compute_profile, __func__);
 
-  handle_boundary(nx, ny, mesh, e, NO_INVERT, PACK);
+  handle_boundary_2d(nx, ny, mesh, e, NO_INVERT, PACK);
 }
 
 // Perform advection with monotonicity improvement
@@ -302,7 +302,7 @@ void x_mass_and_energy_flux(
   }
   STOP_PROFILING(&compute_profile, "advect_mass_and_energy");
 
-  handle_boundary(nx+1, ny, mesh, F_x, INVERT_X, PACK);
+  handle_boundary_2d(nx+1, ny, mesh, F_x, INVERT_X, PACK);
 
   // Calculate the new density values
   START_PROFILING(&compute_profile);
@@ -321,8 +321,8 @@ void x_mass_and_energy_flux(
   }
   STOP_PROFILING(&compute_profile, "advect_mass_and_energy");
 
-  handle_boundary(nx, ny, mesh, rho, NO_INVERT, PACK);
-  handle_boundary(nx, ny, mesh, e, NO_INVERT, PACK);
+  handle_boundary_2d(nx, ny, mesh, rho, NO_INVERT, PACK);
+  handle_boundary_2d(nx, ny, mesh, e, NO_INVERT, PACK);
 }
 
 // Calculate the flux in the y direction
@@ -379,7 +379,7 @@ void y_mass_and_energy_flux(
   }
   STOP_PROFILING(&compute_profile, "advect_mass_and_energy");
 
-  handle_boundary(nx, ny+1, mesh, F_y, INVERT_Y, PACK);
+  handle_boundary_2d(nx, ny+1, mesh, F_y, INVERT_Y, PACK);
 
   // Calculate the new density values
   START_PROFILING(&compute_profile);
@@ -398,8 +398,8 @@ void y_mass_and_energy_flux(
   }
   STOP_PROFILING(&compute_profile, "advect_mass_and_energy");
 
-  handle_boundary(nx, ny, mesh, rho, NO_INVERT, PACK);
-  handle_boundary(nx, ny, mesh, e, NO_INVERT, PACK);
+  handle_boundary_2d(nx, ny, mesh, rho, NO_INVERT, PACK);
+  handle_boundary_2d(nx, ny, mesh, e, NO_INVERT, PACK);
 }
 
 // Advect momentum according to the velocity
@@ -427,7 +427,7 @@ void advect_momentum(
     }
     STOP_PROFILING(&compute_profile, __func__);
 
-    handle_boundary(nx+1, ny, mesh, u, INVERT_X, PACK);
+    handle_boundary_2d(nx+1, ny, mesh, u, INVERT_X, PACK);
 
     START_PROFILING(&compute_profile);
     uy_momentum_flux(
@@ -456,7 +456,7 @@ void advect_momentum(
     }
     STOP_PROFILING(&compute_profile, __func__);
 
-    handle_boundary(nx, ny+1, mesh, v, INVERT_Y, PACK);
+    handle_boundary_2d(nx, ny+1, mesh, v, INVERT_Y, PACK);
 
     START_PROFILING(&compute_profile);
     vy_momentum_flux(
@@ -486,7 +486,7 @@ void advect_momentum(
     }
     STOP_PROFILING(&compute_profile, __func__);
 
-    handle_boundary(nx+1, ny, mesh, u, INVERT_X, PACK);
+    handle_boundary_2d(nx+1, ny, mesh, u, INVERT_X, PACK);
 
     START_PROFILING(&compute_profile);
     ux_momentum_flux(
@@ -514,7 +514,7 @@ void advect_momentum(
     }
     STOP_PROFILING(&compute_profile, __func__);
 
-    handle_boundary(nx, ny+1, mesh, v, INVERT_Y, PACK);
+    handle_boundary_2d(nx, ny+1, mesh, v, INVERT_Y, PACK);
 
     START_PROFILING(&compute_profile);
     vx_momentum_flux(
@@ -558,7 +558,7 @@ void ux_momentum_flux(
     }
   }
 
-  handle_boundary(nx, ny, mesh, uF_x, NO_INVERT, PACK);
+  handle_boundary_2d(nx, ny, mesh, uF_x, NO_INVERT, PACK);
 }
 
 void uy_momentum_flux(
@@ -588,7 +588,7 @@ void uy_momentum_flux(
     }
   }
 
-  handle_boundary(nx+1, ny+1, mesh, uF_y, NO_INVERT, PACK);
+  handle_boundary_2d(nx+1, ny+1, mesh, uF_y, NO_INVERT, PACK);
 }
 
 void vx_momentum_flux(
@@ -621,7 +621,7 @@ void vx_momentum_flux(
     }
   }
 
-  handle_boundary(nx+1, ny+1, mesh, vF_x, NO_INVERT, PACK);
+  handle_boundary_2d(nx+1, ny+1, mesh, vF_x, NO_INVERT, PACK);
 }
 
 void vy_momentum_flux(
@@ -650,7 +650,7 @@ void vy_momentum_flux(
     }
   }
 
-  handle_boundary(nx, ny, mesh, vF_y, NO_INVERT, PACK);
+  handle_boundary_2d(nx, ny, mesh, vF_y, NO_INVERT, PACK);
 }
 
 // Prints some conservation values
