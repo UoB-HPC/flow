@@ -8,9 +8,10 @@
 __global__ void equation_of_state(
     const int nx, const int ny, double* P, const double* rho, const double* e)
 {
-  set_cuda_indices(0);
-
+  const int gid = threadIdx.x+blockIdx.x*blockDim.x;
   if(gid >= nx*ny) return;
+  const int jj = (gid % (nx));
+  const int ii = (gid / (nx));
 
   // Only invoke simple GAMma law at the moment
   P[ind0] = (GAM - 1.0)*rho[ind0]*e[ind0];
@@ -23,7 +24,9 @@ __global__ void pressure_acceleration(
     double* rho_v, double* u, double* v, const double* P, const double* rho,
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
-  set_cuda_indices(1);
+  const int gid = threadIdx.x+blockIdx.x*blockDim.x;
+  const int jj = (gid % (nx+1));
+  const int ii = (gid / (nx+1));
 
   if(ii < PAD || jj < PAD || jj >= (nx+1)-PAD || ii >= (ny+1)-PAD) 
     return;
@@ -50,7 +53,9 @@ __global__ void calc_viscous_stresses(
     double* Qyy, double* u, double* v, double* rho_u, double* rho_v, const double* rho, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
-  set_cuda_indices(0);
+  const int gid = threadIdx.x+blockIdx.x*blockDim.x;
+  const int jj = (gid % (nx));
+  const int ii = (gid / (nx));
 
   if(ii < PAD || jj < PAD || jj >= nx-PAD || ii >= ny-PAD) 
     return;
@@ -72,7 +77,9 @@ __global__ void viscous_acceleration(
     double* Qyy, double* u, double* v, double* rho_u, double* rho_v, const double* rho, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
-  set_cuda_indices(1);
+  const int gid = threadIdx.x+blockIdx.x*blockDim.x;
+  const int jj = (gid % (nx+1));
+  const int ii = (gid / (nx+1));
 
   if(ii < PAD || jj < PAD || jj >= (nx+1)-PAD || ii >= (ny+1)-PAD) 
     return;
@@ -99,7 +106,9 @@ __global__ void shock_heating_and_work(
     const double* P, const double* u, const double* v, const double* rho, 
     const double* Qxx, const double* Qyy, const double* celldx, const double* celldy)
 {
-  set_cuda_indices(0);
+  const int gid = threadIdx.x+blockIdx.x*blockDim.x;
+  const int jj = (gid % (nx));
+  const int ii = (gid / (nx));
 
   if(ii < PAD || jj < PAD || jj >= nx-PAD || ii >= ny-PAD) 
     return;
@@ -119,7 +128,9 @@ __global__ void shock_heating_and_work(
 __global__ void store_old_rho(
     const int nx, const int ny, double* rho, double* rho_old)
 {
-  set_cuda_indices(0);
+  const int gid = threadIdx.x+blockIdx.x*blockDim.x;
+  const int jj = (gid % (nx));
+  const int ii = (gid / (nx));
 
   if(ii < PAD || jj < PAD || jj >= nx-PAD || ii >= ny-PAD) 
     return;
@@ -134,7 +145,9 @@ __global__ void calc_x_mass_and_energy_flux(
     double* F_x, double* eF_x, const double* celldx, const double* edgedx, 
     const double* celldy, const double* edgedy)
 {
-  set_cuda_indices(1);
+  const int gid = threadIdx.x+blockIdx.x*blockDim.x;
+  const int jj = (gid % (nx+1));
+  const int ii = (gid / (nx+1));
 
   if(ii < PAD || jj < PAD || jj >= (nx+1)-PAD || ii >= ny-PAD) 
     return;
@@ -185,7 +198,9 @@ __global__ void advect_mass_and_energy_in_x(
     double* F_x, double* eF_x, const double* celldx, const double* edgedx, 
     const double* celldy, const double* edgedy)
 {
-  set_cuda_indices(0);
+  const int gid = threadIdx.x+blockIdx.x*blockDim.x;
+  const int jj = (gid % (nx));
+  const int ii = (gid / (nx));
 
   if(ii < PAD || jj < PAD || jj >= nx-PAD || ii >= ny-PAD) 
     return;
@@ -206,7 +221,9 @@ __global__ void calc_y_mass_and_energy_flux(
     double* F_y, double* eF_y, const double* celldx, const double* edgedx, 
     const double* celldy, const double* edgedy)
 {
-  set_cuda_indices(0);
+  const int gid = threadIdx.x+blockIdx.x*blockDim.x;
+  const int jj = (gid % (nx));
+  const int ii = (gid / (nx));
 
   if(ii < PAD || jj < PAD || jj >= nx-PAD || ii >= (ny+1)-PAD) 
     return;
@@ -257,7 +274,9 @@ __global__ void advect_mass_and_energy_in_y(
     double* F_y, double* eF_y, const double* celldx, const double* edgedx, 
     const double* celldy, const double* edgedy)
 {
-  set_cuda_indices(0);
+  const int gid = threadIdx.x+blockIdx.x*blockDim.x;
+  const int jj = (gid % (nx));
+  const int ii = (gid / (nx));
 
   if(ii < PAD || jj < PAD || jj >= nx-PAD || ii >= ny-PAD) 
     return;
@@ -277,7 +296,9 @@ __global__ void ux_momentum_flux(
     double* u, double* v, double* uF_x, double* rho_u, const double* rho, const double* F_x, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
-  set_cuda_indices(0);
+  const int gid = threadIdx.x+blockIdx.x*blockDim.x;
+  const int jj = (gid % (nx));
+  const int ii = (gid / (nx));
 
   if(ii < PAD || jj < PAD || jj >= nx-PAD || ii >= ny-PAD) 
     return;
@@ -309,7 +330,9 @@ __global__ void advect_rho_u_in_x(
     const double* rho, const double* F_x, const double* F_y, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
-  set_cuda_indices(1);
+  const int gid = threadIdx.x+blockIdx.x*blockDim.x;
+  const int jj = (gid % (nx+1));
+  const int ii = (gid / (nx+1));
 
   if(ii < PAD || jj < PAD || jj >= (nx+1)-PAD || ii >= ny-PAD) 
     return;
@@ -324,7 +347,9 @@ __global__ void advect_rho_u_and_u_in_x(
     const double* rho, const double* F_x, const double* F_y, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
-  set_cuda_indices(1);
+  const int gid = threadIdx.x+blockIdx.x*blockDim.x;
+  const int jj = (gid % (nx+1));
+  const int ii = (gid / (nx+1));
 
   if(ii < PAD || jj < PAD || jj >= (nx+1)-PAD || ii >= ny-PAD) 
     return;
@@ -343,8 +368,9 @@ __global__ void advect_rho_u_in_y(
     const double* rho, const double* F_x, const double* F_y, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
-  set_cuda_indices(1);
-
+  const int gid = threadIdx.x+blockIdx.x*blockDim.x;
+  const int jj = (gid % (nx+1));
+  const int ii = (gid / (nx+1));
   if(ii < PAD || jj < PAD || jj >= (nx+1)-PAD || ii >= ny-PAD) 
     return;
 
@@ -358,7 +384,9 @@ __global__ void advect_rho_u_and_u_in_y(
     const double* rho, const double* F_x, const double* F_y, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
-  set_cuda_indices(1);
+  const int gid = threadIdx.x+blockIdx.x*blockDim.x;
+  const int jj = (gid % (nx+1));
+  const int ii = (gid / (nx+1));
 
   if(ii < PAD || jj < PAD || jj >= (nx+1)-PAD || ii >= ny-PAD) 
     return;
@@ -376,7 +404,9 @@ __global__ void uy_momentum_flux(
     const double* F_y, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
-  set_cuda_indices(1);
+  const int gid = threadIdx.x+blockIdx.x*blockDim.x;
+  const int jj = (gid % (nx+1));
+  const int ii = (gid / (nx+1));
 
   if(ii < PAD || jj < PAD || jj >= (nx+1)-PAD || ii >= (ny+1)-PAD) 
     return;
@@ -404,10 +434,13 @@ __global__ void vx_momentum_flux(
     const double* F_x, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
-  set_cuda_indices(1);
+  const int gid = threadIdx.x+blockIdx.x*blockDim.x;
+  const int jj = (gid % (nx+1));
+  const int ii = (gid / (nx+1));
 
-  if(ii < PAD || jj < PAD || jj >= (nx+1)-PAD || ii >= (ny+1)-PAD) 
+  if(ii < PAD || jj < PAD || jj >= (nx+1)-PAD || ii >= (ny+1)-PAD) {
     return;
+  }
 
   // Use MC limiter to get slope of velocity
   const double invdx = 1.0/edgedx[jj];
@@ -432,7 +465,9 @@ __global__ void advect_rho_v_and_v_in_y(
     double* u, double* v, double* vF_y, double* rho_v, const double* rho, const double* F_y, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
-  set_cuda_indices(0);
+  const int gid = threadIdx.x+blockIdx.x*blockDim.x;
+  const int jj = (gid % (nx));
+  const int ii = (gid / (nx));
 
   if(ii < PAD || jj < PAD || jj >= nx-PAD || ii >= (ny+1)-PAD) 
     return;
@@ -450,7 +485,9 @@ __global__ void advect_rho_v_and_v_in_x(
     const double* F_x, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
-  set_cuda_indices(0);
+  const int gid = threadIdx.x+blockIdx.x*blockDim.x;
+  const int jj = (gid % (nx));
+  const int ii = (gid / (nx));
 
   if(ii < PAD || jj < PAD || jj >= nx-PAD || ii >= (ny+1)-PAD) 
     return;
@@ -468,7 +505,9 @@ __global__ void advect_rho_v_in_x(
     const double* F_x, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
-  set_cuda_indices(0);
+  const int gid = threadIdx.x+blockIdx.x*blockDim.x;
+  const int jj = (gid % (nx));
+  const int ii = (gid / (nx));
 
   if(ii < PAD || jj < PAD || jj >= nx-PAD || ii >= (ny+1)-PAD) 
     return;
@@ -481,7 +520,9 @@ __global__ void vy_momentum_flux(
     double* u, double* v, double* vF_y, double* rho_v, const double* rho, const double* F_y, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
-  set_cuda_indices(0);
+  const int gid = threadIdx.x+blockIdx.x*blockDim.x;
+  const int jj = (gid % (nx));
+  const int ii = (gid / (nx));
 
   if(ii < PAD || jj < PAD || jj >= nx-PAD || ii >= ny-PAD) 
     return;
@@ -508,7 +549,9 @@ __global__ void advect_rho_v_in_y(
     double* u, double* v, double* vF_y, double* rho_v, const double* rho, const double* F_y, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
-  set_cuda_indices(0);
+  const int gid = threadIdx.x+blockIdx.x*blockDim.x;
+  const int jj = (gid % (nx));
+  const int ii = (gid / (nx));
 
   if(ii < PAD || jj < PAD || jj >= nx-PAD || ii >= (ny+1)-PAD) 
     return;
@@ -516,17 +559,19 @@ __global__ void advect_rho_v_in_y(
   rho_v[ind0] -= dt_h*(vF_y[ind0] - vF_y[ind0-nx])/(celldx[jj]*edgedy[ii]);
 }
 
-
 __global__ void calc_min_timestep(
-    const int nx, const int ny, double* Qxx, double* Qyy, const double* rho, 
-    const double* e, Mesh* mesh, double* reduce_array, const int first_step,
-    const double* celldx, const double* celldy)
+    const int nx, const int ny, const double max_dt, double* Qxx, double* Qyy, 
+    const double* rho, const double* e, Mesh* mesh, double* reduce_array, 
+    const int first_step, const double* celldx, const double* celldy)
 {
-  set_cuda_indices(0);
+  const int gid = threadIdx.x+blockIdx.x*blockDim.x;
+  const int jj = (gid % (nx));
+  const int ii = (gid / (nx));
+
   const int tid = threadIdx.x;
 
   __shared__ double sdata[NTHREADS];
-  sdata[tid] = MAX_DT;
+  sdata[tid] = max_dt;
 
   if(ii >= PAD && ii < ny-PAD && jj >= PAD && jj < nx-PAD) {
     // Constrain based on the sound speed within the system
@@ -537,7 +582,7 @@ __global__ void calc_min_timestep(
   }
   __syncthreads();
 
-  min_reduce_in_shared<NTHREADS>(tid, sdata);
+  min_reduce_in_shared<double, NTHREADS>(tid, sdata);
   if (tid == 0) 
     reduce_array[blockIdx.x] = sdata[0];
 }
@@ -545,7 +590,9 @@ __global__ void calc_min_timestep(
 __global__ void calc_mass_sum(
     const int nx, const int ny, const double* rho, double* reduce_array)
 {
-  set_cuda_indices(0);
+  const int gid = threadIdx.x+blockIdx.x*blockDim.x;
+  const int jj = (gid % (nx));
+  const int ii = (gid / (nx));
   const int tid = threadIdx.x;
 
   __shared__ double sdata[NTHREADS];
@@ -557,7 +604,7 @@ __global__ void calc_mass_sum(
 
   __syncthreads();
 
-  sum_reduce_in_shared<NTHREADS>(tid, sdata);
+  sum_reduce_in_shared<double, NTHREADS>(tid, sdata);
   if (tid == 0) 
     reduce_array[blockIdx.x] = sdata[0];
 }

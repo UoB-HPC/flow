@@ -6,7 +6,7 @@
 #include "../../comms.h"
 
 // Solve a single timestep on the given mesh
-void solve_hydro(
+void solve_hydro_2d(
     Mesh* mesh, int tt, double* P, double* rho, double* rho_old, 
     double* e, double* u, double* v, double* rho_u, double* rho_v, 
     double* Qxx, double* Qyy, double* F_x, double* F_y, double* uF_x, 
@@ -27,8 +27,8 @@ void solve_hydro(
       mesh->celldx, mesh->celldy);
   gpu_check(cudaDeviceSynchronize());
 
-  handle_boundary(mesh->local_nx+1, mesh->local_ny, mesh, u, INVERT_X, PACK);
-  handle_boundary(mesh->local_nx, mesh->local_ny+1, mesh, v, INVERT_Y, PACK);
+  handle_boundary_2d(mesh->local_nx+1, mesh->local_ny, mesh, u, INVERT_X, PACK);
+  handle_boundary_2d(mesh->local_nx, mesh->local_ny+1, mesh, v, INVERT_Y, PACK);
 
   artificial_viscosity(
       mesh->local_nx, mesh->local_ny, mesh, mesh->dt, Qxx, Qyy, 
@@ -42,7 +42,7 @@ void solve_hydro(
       v, rho, Qxx, Qyy, mesh->celldx, mesh->celldy);
   gpu_check(cudaDeviceSynchronize());
 
-  handle_boundary(mesh->local_nx, mesh->local_ny, mesh, e, NO_INVERT, PACK);
+  handle_boundary_2d(mesh->local_nx, mesh->local_ny, mesh, e, NO_INVERT, PACK);
 
   set_timestep(
       mesh->local_nx, mesh->local_ny, Qxx, Qyy, rho, 
@@ -73,8 +73,8 @@ void artificial_viscosity(
       edgedx, edgedy, celldx, celldy);
   gpu_check(cudaDeviceSynchronize());
 
-  handle_boundary(nx, ny, mesh, Qxx, NO_INVERT, PACK);
-  handle_boundary(nx, ny, mesh, Qyy, NO_INVERT, PACK);
+  handle_boundary_2d(nx, ny, mesh, Qxx, NO_INVERT, PACK);
+  handle_boundary_2d(nx, ny, mesh, Qyy, NO_INVERT, PACK);
 
   nblocks = ceil((nx+1)*(ny+1)/(double)NTHREADS);
   viscous_acceleration<<<nblocks, NTHREADS>>>(
@@ -82,19 +82,20 @@ void artificial_viscosity(
       edgedx, edgedy, celldx, celldy);
   gpu_check(cudaDeviceSynchronize());
 
-  handle_boundary(nx+1, ny, mesh, u, INVERT_X, PACK);
-  handle_boundary(nx, ny+1, mesh, v, INVERT_Y, PACK);
+  handle_boundary_2d(nx+1, ny, mesh, u, INVERT_X, PACK);
+  handle_boundary_2d(nx, ny+1, mesh, v, INVERT_Y, PACK);
 }
 
 // Calculates the timestep from the current state
 void set_timestep(
-    const int nx, const int ny, double* Qxx, double* Qyy, const double* rho, 
-    const double* e, Mesh* mesh, double* reduce_array, const int first_step,
-    const double* celldx, const double* celldy)
+    const int nx, const int ny, double* Qxx, double* Qyy, 
+    const double* rho, const double* e, Mesh* mesh, double* reduce_array, 
+    const int first_step, const double* celldx, const double* celldy)
 {
   int nblocks = ceil((nx+1)*(ny+1)/(double)NTHREADS);
   calc_min_timestep<<<nblocks, NTHREADS>>>(
-      nx, ny, Qxx, Qyy, rho, e, mesh, reduce_array, first_step, celldx, celldy);
+      nx, ny, mesh->max_dt, Qxx, Qyy, rho, e, mesh, reduce_array, 
+      first_step, celldx, celldy);
 
   double local_min_dt;
   finish_min_reduce(nblocks, reduce_array, &local_min_dt);
@@ -147,7 +148,7 @@ void mass_and_energy_x_advection(
       F_x, eF_x, celldx, edgedx, celldy, edgedy);
   gpu_check(cudaDeviceSynchronize());
 
-  handle_boundary(nx+1, ny, mesh, F_x, INVERT_X, PACK);
+  handle_boundary_2d(nx+1, ny, mesh, F_x, INVERT_X, PACK);
 
   nblocks = ceil(nx*ny/(double)NTHREADS);
   advect_mass_and_energy_in_x<<<nblocks, NTHREADS>>>(
@@ -155,8 +156,8 @@ void mass_and_energy_x_advection(
       F_x, eF_x, celldx, edgedx, celldy, edgedy);
   gpu_check(cudaDeviceSynchronize());
 
-  handle_boundary(nx, ny, mesh, rho, NO_INVERT, PACK);
-  handle_boundary(nx, ny, mesh, e, NO_INVERT, PACK);
+  handle_boundary_2d(nx, ny, mesh, rho, NO_INVERT, PACK);
+  handle_boundary_2d(nx, ny, mesh, e, NO_INVERT, PACK);
 }
 
 // Advect energy and mass in the y direction
@@ -172,7 +173,7 @@ void mass_and_energy_y_advection(
       F_y, eF_y, celldx, edgedx, celldy, edgedy);
   gpu_check(cudaDeviceSynchronize());
 
-  handle_boundary(nx, ny+1, mesh, F_y, INVERT_Y, PACK);
+  handle_boundary_2d(nx, ny+1, mesh, F_y, INVERT_Y, PACK);
 
   nblocks = ceil(nx*ny/(double)NTHREADS);
   advect_mass_and_energy_in_y<<<nblocks, NTHREADS>>>(
@@ -180,10 +181,9 @@ void mass_and_energy_y_advection(
       F_y, eF_y, celldx, edgedx, celldy, edgedy);
   gpu_check(cudaDeviceSynchronize());
 
-  handle_boundary(nx, ny, mesh, rho, NO_INVERT, PACK);
-  handle_boundary(nx, ny, mesh, e, NO_INVERT, PACK);
+  handle_boundary_2d(nx, ny, mesh, rho, NO_INVERT, PACK);
+  handle_boundary_2d(nx, ny, mesh, e, NO_INVERT, PACK);
 }
-
 
 // Advect momentum according to the velocity
 void advect_momentum(
@@ -200,7 +200,7 @@ void advect_momentum(
         nx, ny, mesh, dt_h, dt, u, v, uF_x, rho_u, rho, F_x, edgedx, edgedy, celldx, celldy);
     gpu_check(cudaDeviceSynchronize());
 
-    handle_boundary(nx, ny, mesh, uF_x, NO_INVERT, PACK);
+    handle_boundary_2d(nx, ny, mesh, uF_x, NO_INVERT, PACK);
 
     nblocks = ceil((nx+1)*ny/(double)NTHREADS);
     advect_rho_u_and_u_in_x<<<nblocks, NTHREADS>>>(
@@ -208,14 +208,14 @@ void advect_momentum(
         vF_x, vF_y, rho_u, rho_v, rho, F_x, F_y, edgedx, edgedy, celldx, celldy);
     gpu_check(cudaDeviceSynchronize());
 
-    handle_boundary(nx+1, ny, mesh, u, INVERT_X, PACK);
+    handle_boundary_2d(nx+1, ny, mesh, u, INVERT_X, PACK);
 
     nblocks = ceil((nx+1)*(ny+1)/(double)NTHREADS);
     uy_momentum_flux<<<nblocks, NTHREADS>>>(
         nx, ny, mesh, dt_h, dt, u, v, uF_y, rho_u, rho, F_y, edgedx, edgedy, celldx, celldy);
     gpu_check(cudaDeviceSynchronize());
 
-    handle_boundary(nx+1, ny+1, mesh, uF_y, NO_INVERT, PACK);
+    handle_boundary_2d(nx+1, ny+1, mesh, uF_y, NO_INVERT, PACK);
 
     nblocks = ceil((nx+1)*ny/(double)NTHREADS);
     advect_rho_u_in_y<<<nblocks, NTHREADS>>>(
@@ -228,7 +228,7 @@ void advect_momentum(
         nx, ny, mesh, dt_h, dt, u, v, vF_x, rho_v, rho, F_x, edgedx, edgedy, celldx, celldy);
     gpu_check(cudaDeviceSynchronize());
 
-    handle_boundary(nx+1, ny+1, mesh, vF_x, NO_INVERT, PACK);
+    handle_boundary_2d(nx+1, ny+1, mesh, vF_x, NO_INVERT, PACK);
 
     nblocks = ceil(nx*(ny+1)/(double)NTHREADS);
     advect_rho_v_and_v_in_x<<<nblocks, NTHREADS>>>(
@@ -236,14 +236,14 @@ void advect_momentum(
         edgedx, edgedy, celldx, celldy);
     gpu_check(cudaDeviceSynchronize());
 
-    handle_boundary(nx, ny+1, mesh, v, INVERT_Y, PACK);
+    handle_boundary_2d(nx, ny+1, mesh, v, INVERT_Y, PACK);
 
     nblocks = ceil(nx*ny/(double)NTHREADS);
     vy_momentum_flux<<<nblocks, NTHREADS>>>(
         nx, ny, mesh, dt_h, dt, u, v, vF_y, rho_v, rho, F_y, edgedx, edgedy, celldx, celldy);
     gpu_check(cudaDeviceSynchronize());
 
-    handle_boundary(nx, ny, mesh, vF_y, NO_INVERT, PACK);
+    handle_boundary_2d(nx, ny, mesh, vF_y, NO_INVERT, PACK);
 
     nblocks = ceil(nx*(ny+1)/(double)NTHREADS);
     advect_rho_v_in_y<<<nblocks, NTHREADS>>>(
@@ -257,7 +257,7 @@ void advect_momentum(
         nx, ny, mesh, dt_h, dt, u, v, uF_y, rho_u, rho, F_y, edgedx, edgedy, celldx, celldy);
     gpu_check(cudaDeviceSynchronize());
 
-    handle_boundary(nx+1, ny+1, mesh, uF_y, NO_INVERT, PACK);
+    handle_boundary_2d(nx+1, ny+1, mesh, uF_y, NO_INVERT, PACK);
 
     nblocks = ceil((nx+1)*ny/(double)NTHREADS);
     advect_rho_u_and_u_in_y<<<nblocks, NTHREADS>>>(
@@ -265,7 +265,7 @@ void advect_momentum(
         rho_v, rho, F_x, F_y, edgedx, edgedy, celldx, celldy);
     gpu_check(cudaDeviceSynchronize());
 
-    handle_boundary(nx+1, ny, mesh, u, INVERT_X, PACK);
+    handle_boundary_2d(nx+1, ny, mesh, u, INVERT_X, PACK);
 
     nblocks = ceil(nx*ny/(double)NTHREADS);
     ux_momentum_flux<<<nblocks, NTHREADS>>>(
@@ -273,7 +273,7 @@ void advect_momentum(
         F_x, edgedx, edgedy, celldx, celldy);
     gpu_check(cudaDeviceSynchronize());
 
-    handle_boundary(nx, ny, mesh, uF_x, NO_INVERT, PACK);
+    handle_boundary_2d(nx, ny, mesh, uF_x, NO_INVERT, PACK);
 
     nblocks = ceil((nx+1)*ny/(double)NTHREADS);
     advect_rho_u_in_x<<<nblocks, NTHREADS>>>(
@@ -286,7 +286,7 @@ void advect_momentum(
         nx, ny, mesh, dt_h, dt, u, v, vF_y, rho_v, rho, F_y, edgedx, edgedy, celldx, celldy);
     gpu_check(cudaDeviceSynchronize());
 
-    handle_boundary(nx, ny, mesh, vF_y, NO_INVERT, PACK);
+    handle_boundary_2d(nx, ny, mesh, vF_y, NO_INVERT, PACK);
 
     nblocks = ceil(nx*(ny+1)/(double)NTHREADS);
     advect_rho_v_and_v_in_y<<<nblocks, NTHREADS>>>(
@@ -294,14 +294,14 @@ void advect_momentum(
         edgedx, edgedy, celldx, celldy);
     gpu_check(cudaDeviceSynchronize());
 
-    handle_boundary(nx, ny+1, mesh, v, INVERT_Y, PACK);
+    handle_boundary_2d(nx, ny+1, mesh, v, INVERT_Y, PACK);
 
     nblocks = ceil((nx+1)*(ny+1)/(double)NTHREADS);
     vx_momentum_flux<<<nblocks, NTHREADS>>>(
         nx, ny, mesh, dt_h, dt, u, v, vF_x, rho_v, rho, F_x, edgedx, edgedy, celldx, celldy);
     gpu_check(cudaDeviceSynchronize());
 
-    handle_boundary(nx+1, ny+1, mesh, vF_x, NO_INVERT, PACK);
+    handle_boundary_2d(nx+1, ny+1, mesh, vF_x, NO_INVERT, PACK);
 
     nblocks = ceil(nx*(ny+1)/(double)NTHREADS);
     advect_rho_v_in_x<<<nblocks, NTHREADS>>>(

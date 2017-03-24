@@ -1,6 +1,6 @@
 # User defined parameters
-KERNELS          = omp3
-COMPILER         = INTEL
+KERNELS          = cuda
+COMPILER         = GCC
 MPI              = yes
 DECOMP					 = TILES
 MAC_RPATH				 = -Wl,-rpath,${COMPILER_ROOT}/lib 
