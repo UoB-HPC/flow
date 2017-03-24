@@ -47,8 +47,8 @@ SRC 			+= $(subst main.c,, $(wildcard $(ARCH_DIR)/*.c))
 SRC_CLEAN  = $(subst $(ARCH_DIR)/,,$(SRC))
 OBJS 			+= $(patsubst %.c, $(ARCH_BUILD_DIR)/%.o, $(SRC_CLEAN))
 
-wet: make_build_dir $(OBJS) Makefile
-	$(ARCH_LINKER) $(OBJS) $(ARCH_LDFLAGS) -o wet.$(KERNELS)
+flow: make_build_dir $(OBJS) Makefile
+	$(ARCH_LINKER) $(OBJS) $(ARCH_LDFLAGS) -o flow.$(KERNELS)
 
 # Rule to make controlling code
 $(ARCH_BUILD_DIR)/%.o: %.c Makefile 
@@ -62,5 +62,5 @@ make_build_dir:
 	@mkdir -p $(ARCH_BUILD_DIR)/$(KERNELS)
 
 clean:
-	rm -rf $(ARCH_BUILD_DIR)/* wet.exe *.vtk *.bov *.dat *.optrpt *.cub *.ptx
+	rm -rf $(ARCH_BUILD_DIR)/* flow.exe *.vtk *.bov *.dat *.optrpt *.cub *.ptx
 

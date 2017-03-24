@@ -1,7 +1,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "../wet_interface.h"
+#include "../flow_interface.h"
 #include "../../cuda/shared.h"
 #include "../../cuda/reduction.k"
 

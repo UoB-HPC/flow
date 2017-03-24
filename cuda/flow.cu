@@ -1,8 +1,8 @@
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "wet.h"
-#include "kernels.k"
+#include "flow.h"
+#include "flow.k"
 #include "../../comms.h"
 
 // Solve a single timestep on the given mesh

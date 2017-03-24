@@ -2,10 +2,10 @@
 
 #define C_T 0.3
 #define ARCH_ROOT_PARAMS "../arch.params"
-#define WET_PARAMS "wet.params"
+#define flow_PARAMS "flow.params"
 
 typedef struct {
-  // Wet-specific state
+  // Flow-specific state
   double* rho_u;    // Momentum in the x direction
   double* rho_v;    // Momentum in the y direction
 
@@ -20,16 +20,16 @@ typedef struct {
 
   double* wF_x;     // Momentum in the z direction flux in the x direction
   double* wF_y;     // Momentum in the z direction flux in the y direction
-} WetData;
+} FlowData;
 
 // Initialises the state variables for two dimensional applications
-void initialise_wet_data_2d(
-    const int local_nx, const int local_ny, WetData* wet_data);
-void deallocate_wet_data_2d(
-    WetData* wet_data);
+void initialise_flow_data_2d(
+    const int local_nx, const int local_ny, FlowData* flow_data);
+void deallocate_flow_data_2d(
+    FlowData* flow_data);
 
 #if 0
-// TODO: Make Wet 3d
+// TODO: Make Flow 3d
 double* rho_u;    // Momentum in the x direction
 double* rho_v;    // Momentum in the y direction
 double* rho_w;    // Momentum in the z direction
@@ -50,7 +50,7 @@ double* wF_x;     // Momentum in the z direction flux in the x direction
 double* wF_y;     // Momentum in the z direction flux in the y direction
 double* wF_z;     // Momentum in the z direction flux in the z direction
 
-// Wet-specific state
+// Flow-specific state
 allocate_data(&state->rho_u, (local_nx+1)*(local_ny+1)*(local_nz+1));
 allocate_data(&state->rho_v, (local_nx+1)*(local_ny+1)*(local_nz+1));
 allocate_data(&state->rho_w, (local_nx+1)*(local_ny+1)*(local_nz+1));
