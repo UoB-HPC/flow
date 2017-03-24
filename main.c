@@ -11,12 +11,18 @@
 
 int main(int argc, char** argv)
 {
+  if(argc != 2) {
+    TERMINATE("usage: ./wet <parameter_filename>\n");
+  }
+
   // Store the dimensions of the mesh
   Mesh mesh = {0};
-  mesh.global_nx = atoi(argv[1]);
-  mesh.global_ny = atoi(argv[2]);
-  mesh.local_nx = atoi(argv[1]) + 2*PAD;
-  mesh.local_ny = atoi(argv[2]) + 2*PAD;
+  const char* wet_params = argv[1];
+  mesh.global_nx = get_int_parameter("global_nx", wet_params);
+  mesh.global_ny = get_int_parameter("global_ny", wet_params);
+  mesh.niters = get_int_parameter("niters", wet_params);
+  mesh.local_nx = mesh.global_nx+2*PAD;
+  mesh.local_ny = mesh.global_ny+2*PAD;
   mesh.width = get_double_parameter("width", ARCH_ROOT_PARAMS);
   mesh.height = get_double_parameter("height", ARCH_ROOT_PARAMS);
   mesh.max_dt = get_double_parameter("max_dt", ARCH_ROOT_PARAMS);
@@ -25,14 +31,8 @@ int main(int argc, char** argv)
   mesh.dt_h = C_T*mesh.max_dt;
   mesh.rank = MASTER;
   mesh.nranks = 1;
-  mesh.niters = atoi(argv[3]);
 
   initialise_mpi(argc, argv, &mesh.rank, &mesh.nranks);
-
-  if(argc != 4 && mesh.rank == MASTER) {
-    TERMINATE("usage: ./wet.exe <local_nx> <local_y> <niters>\n");
-  }
-
   initialise_comms(&mesh);
   initialise_devices(mesh.rank);
   initialise_mesh_2d(&mesh);
@@ -40,14 +40,15 @@ int main(int argc, char** argv)
   SharedData shared_data = {0};
   initialise_shared_data_2d(
       mesh.global_nx, mesh.global_ny, mesh.local_nx, mesh.local_ny, 
-      mesh.x_off, mesh.y_off, &shared_data);
+      mesh.x_off, mesh.y_off, mesh.width, mesh.height,
+      wet_params, mesh.edgex, mesh.edgey, &shared_data);
 
   WetData wet_data = {0};
   initialise_wet_data_2d(mesh.local_nx, mesh.local_ny, &wet_data);
 
   set_timestep(
       mesh.local_nx, mesh.local_ny, shared_data.Qxx, shared_data.Qyy, 
-      shared_data.rho, shared_data.e, &mesh, shared_data.reduce_array, 
+      shared_data.rho, shared_data.e, &mesh, shared_data.reduce_array0, 
       0, mesh.celldx, mesh.celldy);
 
   // Prepare for solve
@@ -69,11 +70,11 @@ int main(int argc, char** argv)
         shared_data.e, shared_data.u, shared_data.v, wet_data.rho_u, 
         wet_data.rho_v, shared_data.Qxx, shared_data.Qyy, wet_data.F_x, 
         wet_data.F_y, wet_data.uF_x, wet_data.uF_y, wet_data.vF_x, 
-        wet_data.vF_y, shared_data.reduce_array);
+        wet_data.vF_y, shared_data.reduce_array0);
 
     print_conservation(
         mesh.local_nx, mesh.local_ny, shared_data.rho, shared_data.e, 
-        shared_data.reduce_array, &mesh);
+        shared_data.reduce_array0, &mesh);
 
     if(mesh.rank == MASTER) {
       printf("simulation time: %.4lf(s)\n", elapsed_sim_time);
