@@ -1,6 +1,6 @@
 # User defined parameters
-KERNELS          = omp4
-COMPILER         = CRAY
+KERNELS          = omp3
+COMPILER         = INTEL
 MPI              = yes
 DECOMP					 = TILES
 MAC_RPATH				 = -Wl,-rpath,${COMPILER_ROOT}/lib 
@@ -27,8 +27,8 @@ OPTIONS += -DCOLS
 endif
 
 # Default compiler
-ARCH_COMPILER_CC   = cc
-ARCH_COMPILER_CPP  = CC
+ARCH_COMPILER_CC   = mpicc
+ARCH_COMPILER_CPP  = mpic++
 ARCH_LINKER    		= $(ARCH_COMPILER_CC)
 ARCH_FLAGS     		= $(CFLAGS_$(COMPILER))
 ARCH_LDFLAGS   		= $(ARCH_FLAGS) -lm

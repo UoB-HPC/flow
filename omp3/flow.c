@@ -5,9 +5,6 @@
 #include "../flow_interface.h"
 #include "../../comms.h"
 
-#define ind0 (ii*nx + jj)
-#define ind1 (ii*(nx+1) + jj)
-
 // Solve a single timestep on the given mesh
 void solve_hydro_2d(
     Mesh* mesh, int tt, double* P, double* rho, double* rho_old, 
@@ -62,7 +59,7 @@ void equation_of_state(
 #pragma omp simd
     for(int jj = 0; jj < nx; ++jj) {
       // Only invoke simple GAMma law at the moment
-      P[ind0] = (GAM - 1.0)*rho[ind0]*e[ind0];
+      P[(ii*nx+jj)] = (GAM - 1.0)*rho[(ii*nx+jj)]*e[(ii*nx+jj)];
     }
   }
 
@@ -84,11 +81,11 @@ void set_timestep(
 #pragma omp simd 
     for(int jj = PAD; jj < nx-PAD; ++jj) {
       // Constrain based on the sound speed within the system
-      const double c_s = sqrt(GAM*(GAM - 1.0)*e[ind0]);
+      const double c_s = sqrt(GAM*(GAM - 1.0)*e[(ii*nx+jj)]);
       const double thread_min_dt_x = 
-        celldx[jj]/sqrt(c_s*c_s + 2.0*Qxx[ind0]/rho[ind0]);
+        celldx[jj]/sqrt(c_s*c_s + 2.0*Qxx[(ii*nx+jj)]/rho[(ii*nx+jj)]);
       const double thread_min_dt_y = 
-        celldy[ii]/sqrt(c_s*c_s + 2.0*Qyy[ind0]/rho[ind0]);
+        celldy[ii]/sqrt(c_s*c_s + 2.0*Qyy[(ii*nx+jj)]/rho[(ii*nx+jj)]);
       const double thread_min_dt = min(thread_min_dt_x, thread_min_dt_y);
       local_min_dt = min(local_min_dt, thread_min_dt);
     }
@@ -117,20 +114,20 @@ void pressure_acceleration(
 #pragma omp simd
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
       // Update the momenta using the pressure gradients
-      rho_u[ind1] -= dt*(P[ind0] - P[ind0-1])/edgedx[jj];
-      rho_v[ind0] -= dt*(P[ind0] - P[ind0-nx])/edgedy[ii];
+      rho_u[(ii*(nx+1)+jj)] -= dt*(P[(ii*nx+jj)] - P[(ii*nx+jj)-1])/edgedx[jj];
+      rho_v[(ii*nx+jj)] -= dt*(P[(ii*nx+jj)] - P[(ii*nx+jj)-nx])/edgedy[ii];
 
       // Calculate the zone edge centered density
       const double rho_edge_x = 
-        (rho[ind0]*celldx[jj]*celldy[ii] + rho[ind0-1]*celldx[jj - 1]*celldy[ii])/ 
+        (rho[(ii*nx+jj)]*celldx[jj]*celldy[ii] + rho[(ii*nx+jj)-1]*celldx[jj - 1]*celldy[ii])/ 
         (2.0*edgedx[jj]*celldy[ii]);
       const double rho_edge_y = 
-        (rho[ind0]*celldx[jj]*celldy[ii] + rho[ind0-nx]*celldx[jj]*celldy[ii - 1])/ 
+        (rho[(ii*nx+jj)]*celldx[jj]*celldy[ii] + rho[(ii*nx+jj)-nx]*celldx[jj]*celldy[ii - 1])/ 
         (2.0*celldx[jj]*edgedy[ii]);
 
       // Find the velocities from the momenta and edge centered mass densities
-      u[ind1] = (rho_edge_x == 0.0) ? 0.0 : rho_u[ind1] / rho_edge_x;
-      v[ind0] = (rho_edge_y == 0.0) ? 0.0 : rho_v[ind0] / rho_edge_y;
+      u[(ii*(nx+1)+jj)] = (rho_edge_x == 0.0) ? 0.0 : rho_u[(ii*(nx+1)+jj)] / rho_edge_x;
+      v[(ii*nx+jj)] = (rho_edge_y == 0.0) ? 0.0 : rho_v[(ii*nx+jj)] / rho_edge_y;
     }
   }
 
@@ -153,16 +150,16 @@ void artificial_viscosity(
   for(int ii = PAD; ii < ny-PAD; ++ii) {
 #pragma omp simd
     for(int jj = PAD; jj < nx-PAD; ++jj) {
-      const double u_i = min(0.0, u[ind1+1] - u[ind1]);
+      const double u_i = min(0.0, u[(ii*(nx+1)+jj)+1] - u[(ii*(nx+1)+jj)]);
       const double u_ii = 0.5*(
-          fabs(min(0.0, (u[ind1+2]-u[ind1+1])) - min(0.0, (u[ind1+1]-u[ind1]))) + 
-          fabs(min(0.0, (u[ind1+1]-u[ind1])) - min(0.0, (u[ind1]-u[ind1-1]))));
-      const double v_i = min(0.0, v[ind0+nx] - v[ind0]);
+          fabs(min(0.0, (u[(ii*(nx+1)+jj)+2]-u[(ii*(nx+1)+jj)+1])) - min(0.0, (u[(ii*(nx+1)+jj)+1]-u[(ii*(nx+1)+jj)]))) + 
+          fabs(min(0.0, (u[(ii*(nx+1)+jj)+1]-u[(ii*(nx+1)+jj)])) - min(0.0, (u[(ii*(nx+1)+jj)]-u[(ii*(nx+1)+jj)-1]))));
+      const double v_i = min(0.0, v[(ii*nx+jj)+nx] - v[(ii*nx+jj)]);
       const double v_ii = 0.5*(
-          fabs(min(0.0, (v[ind0+2*nx]-v[ind0+nx])) - min(0.0, (v[ind0+nx]-v[ind0]))) + 
-          fabs(min(0.0, (v[ind0+nx]-v[ind0])) - min(0.0, (v[ind0]-v[ind0-nx]))));
-      Qxx[ind0] = -C_Q*rho[ind0]*u_i*u_ii;
-      Qyy[ind0] = -C_Q*rho[ind0]*v_i*v_ii;
+          fabs(min(0.0, (v[(ii*nx+jj)+2*nx]-v[(ii*nx+jj)+nx])) - min(0.0, (v[(ii*nx+jj)+nx]-v[(ii*nx+jj)]))) + 
+          fabs(min(0.0, (v[(ii*nx+jj)+nx]-v[(ii*nx+jj)])) - min(0.0, (v[(ii*nx+jj)]-v[(ii*nx+jj)-nx]))));
+      Qxx[(ii*nx+jj)] = -C_Q*rho[(ii*nx+jj)]*u_i*u_ii;
+      Qyy[(ii*nx+jj)] = -C_Q*rho[(ii*nx+jj)]*v_i*v_ii;
     }
   }
 
@@ -178,20 +175,20 @@ void artificial_viscosity(
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
 #pragma omp simd
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
-      rho_u[ind1] -= dt*(Qxx[ind0] - Qxx[ind0-1])/celldx[jj];
-      rho_v[ind0] -= dt*(Qyy[ind0] - Qyy[ind0-nx])/celldy[ii];
+      rho_u[(ii*(nx+1)+jj)] -= dt*(Qxx[(ii*nx+jj)] - Qxx[(ii*nx+jj)-1])/celldx[jj];
+      rho_v[(ii*nx+jj)] -= dt*(Qyy[(ii*nx+jj)] - Qyy[(ii*nx+jj)-nx])/celldy[ii];
 
       // Calculate the zone edge centered density
       const double rho_edge_x = 
-        (rho[ind0]*celldx[jj]*celldy[ii] + rho[ind0-1]*celldx[jj-1]*celldy[ii]) / 
+        (rho[(ii*nx+jj)]*celldx[jj]*celldy[ii] + rho[(ii*nx+jj)-1]*celldx[jj-1]*celldy[ii]) / 
         (2.0*edgedx[jj]*celldy[ii]);
       const double rho_edge_y = 
-        (rho[ind0]*celldx[jj]*celldy[ii] + rho[ind0-nx]*celldx[jj]*celldy[ii-1]) / 
+        (rho[(ii*nx+jj)]*celldx[jj]*celldy[ii] + rho[(ii*nx+jj)-nx]*celldx[jj]*celldy[ii-1]) / 
         (2.0*celldx[jj]*edgedy[ii]);
 
       // Find the velocities from the momenta and edge centered mass densities
-      u[ind1] = (rho_edge_x == 0.0) ? 0.0 : rho_u[ind1] / rho_edge_x;
-      v[ind0] = (rho_edge_y == 0.0) ? 0.0 : rho_v[ind0] / rho_edge_y;
+      u[(ii*(nx+1)+jj)] = (rho_edge_x == 0.0) ? 0.0 : rho_u[(ii*(nx+1)+jj)] / rho_edge_x;
+      v[(ii*nx+jj)] = (rho_edge_y == 0.0) ? 0.0 : rho_v[(ii*nx+jj)] / rho_edge_y;
     }
   }
   STOP_PROFILING(&compute_profile, __func__);
@@ -212,16 +209,16 @@ void shock_heating_and_work(
   for(int ii = PAD; ii < ny-PAD; ++ii) {
 #pragma omp simd
     for(int jj = PAD; jj < nx-PAD; ++jj) {
-      const double div_vel_x = (u[ind1+1] - u[ind1])/celldx[jj];
-      const double div_vel_y = (v[ind0+nx] - v[ind0])/celldy[ii];
+      const double div_vel_x = (u[(ii*(nx+1)+jj)+1] - u[(ii*(nx+1)+jj)])/celldx[jj];
+      const double div_vel_y = (v[(ii*nx+jj)+nx] - v[(ii*nx+jj)])/celldy[ii];
       const double div_vel_dt = (div_vel_x + div_vel_y)*dt_h;
-      const double e_q = e[ind0] - dt_h*(Qxx[ind0]*div_vel_x + Qyy[ind0]*div_vel_y)/rho[ind0];
+      const double e_q = e[(ii*nx+jj)] - dt_h*(Qxx[(ii*nx+jj)]*div_vel_x + Qyy[(ii*nx+jj)]*div_vel_y)/rho[(ii*nx+jj)];
 
       /// A working formulation that is second order in time for Pressure!?
-      const double rho_c = rho[ind0]/(1.0 + div_vel_dt);
-      const double e_c = e_q - (P[ind0]*div_vel_dt)/rho[ind0];
-      const double work = 0.5*div_vel_dt*(P[ind0] + (GAM-1.0)*e_c*rho_c)/rho[ind0];
-      e[ind0] = (rho[ind0] == 0.0) ? 0.0 : e_q-work;
+      const double rho_c = rho[(ii*nx+jj)]/(1.0 + div_vel_dt);
+      const double e_c = e_q - (P[(ii*nx+jj)]*div_vel_dt)/rho[(ii*nx+jj)];
+      const double work = 0.5*div_vel_dt*(P[(ii*nx+jj)] + (GAM-1.0)*e_c*rho_c)/rho[(ii*nx+jj)];
+      e[(ii*nx+jj)] = (rho[(ii*nx+jj)] == 0.0) ? 0.0 : e_q-work;
     }
   }
 
@@ -273,41 +270,41 @@ void x_mass_and_energy_flux(
 
       // Interpolate to make second order in time
       const double invdx = 1.0/edgedx[jj];
-      const double suc0 = 0.5*invdx*(u[ind1+1]-u[ind1-1]);
-      const double sur0 = 2.0*invdx*(u[ind1]-u[ind1-1]);
-      const double sul0 = 2.0*invdx*(u[ind1+1]-u[ind1]);
-      const double u_tc = u[ind1] - 0.5*u[ind1]*dt*minmod(suc0, minmod(sur0, sul0));
+      const double suc0 = 0.5*invdx*(u[(ii*(nx+1)+jj)+1]-u[(ii*(nx+1)+jj)-1]);
+      const double sur0 = 2.0*invdx*(u[(ii*(nx+1)+jj)]-u[(ii*(nx+1)+jj)-1]);
+      const double sul0 = 2.0*invdx*(u[(ii*(nx+1)+jj)+1]-u[(ii*(nx+1)+jj)]);
+      const double u_tc = u[(ii*(nx+1)+jj)] - 0.5*u[(ii*(nx+1)+jj)]*dt*minmod(suc0, minmod(sur0, sul0));
 
       // Van leer limiter
       double limiter = 0.0;
-      const double rho_diff = (rho[ind0]-rho[ind0-1]);
+      const double rho_diff = (rho[(ii*nx+jj)]-rho[(ii*nx+jj)-1]);
       if(rho_diff) {
         const double smoothness = (u_tc >= 0.0) 
-          ? (rho[ind0-1]-rho[ind0-2])/rho_diff
-          : (rho[ind0+1]-rho[ind0])/rho_diff;
+          ? (rho[(ii*nx+jj)-1]-rho[(ii*nx+jj)-2])/rho_diff
+          : (rho[(ii*nx+jj)+1]-rho[(ii*nx+jj)])/rho_diff;
         limiter = (smoothness + fabs(smoothness))/(1.0+fabs(smoothness));
       }
 
       // Calculate the flux
-      const double rho_upwind = (u_tc >= 0.0) ? rho[ind0-1] : rho[ind0];
-      F_x[ind1] = (u_tc*rho_upwind+
+      const double rho_upwind = (u_tc >= 0.0) ? rho[(ii*nx+jj)-1] : rho[(ii*nx+jj)];
+      F_x[(ii*(nx+1)+jj)] = (u_tc*rho_upwind+
           0.5*fabs(u_tc)*(1.0-fabs((u_tc*dt_h)/celldx[jj]))*limiter*rho_diff);
 
       // Use MC limiter to get slope of energy
-      const double a_x_0 = 0.5*invdx*(e[ind0]-e[ind0-2]);
-      const double b_x_0 = 2.0*invdx*(e[ind0-1]-e[ind0-2]);
-      const double c_x_0 = 2.0*invdx*(e[ind0]-e[ind0-1]);
-      const double a_x_1 = 0.5*invdx*(e[ind0+1]-e[ind0-1]);
-      const double b_x_1 = 2.0*invdx*(e[ind0]-e[ind0-1]);
-      const double c_x_1 = 2.0*invdx*(e[ind0+1]-e[ind0]);
+      const double a_x_0 = 0.5*invdx*(e[(ii*nx+jj)]-e[(ii*nx+jj)-2]);
+      const double b_x_0 = 2.0*invdx*(e[(ii*nx+jj)-1]-e[(ii*nx+jj)-2]);
+      const double c_x_0 = 2.0*invdx*(e[(ii*nx+jj)]-e[(ii*nx+jj)-1]);
+      const double a_x_1 = 0.5*invdx*(e[(ii*nx+jj)+1]-e[(ii*nx+jj)-1]);
+      const double b_x_1 = 2.0*invdx*(e[(ii*nx+jj)]-e[(ii*nx+jj)-1]);
+      const double c_x_1 = 2.0*invdx*(e[(ii*nx+jj)+1]-e[(ii*nx+jj)]);
 
       // Calculate the interpolated densities
       const double edge_e_x = (u_tc > 0.0)
-        ? e[ind0-1] + 0.5*minmod(minmod(a_x_0, b_x_0), c_x_0)*(celldx[jj-1] - u_tc*dt_h)
-        : e[ind0] - 0.5*minmod(minmod(a_x_1, b_x_1), c_x_1)*(celldx[jj] + u_tc*dt_h);
+        ? e[(ii*nx+jj)-1] + 0.5*minmod(minmod(a_x_0, b_x_0), c_x_0)*(celldx[jj-1] - u_tc*dt_h)
+        : e[(ii*nx+jj)] - 0.5*minmod(minmod(a_x_1, b_x_1), c_x_1)*(celldx[jj] + u_tc*dt_h);
 
       // Update the fluxes to now include the contribution from energy
-      eF_x[ind1] = edgedy[ii]*edge_e_x*F_x[ind1]; 
+      eF_x[(ii*(nx+1)+jj)] = edgedy[ii]*edge_e_x*F_x[(ii*(nx+1)+jj)]; 
     }
   }
   STOP_PROFILING(&compute_profile, "advect_mass_and_energy");
@@ -320,14 +317,14 @@ void x_mass_and_energy_flux(
   for(int ii = PAD; ii < ny-PAD; ++ii) {
 #pragma omp simd
     for(int jj = PAD; jj < nx-PAD; ++jj) {
-      rho[ind0] -= dt_h*
-        (edgedy[ii+1]*F_x[ind1+1] - edgedy[ii]*F_x[ind1])/ 
+      rho[(ii*nx+jj)] -= dt_h*
+        (edgedy[ii+1]*F_x[(ii*(nx+1)+jj)+1] - edgedy[ii]*F_x[(ii*(nx+1)+jj)])/ 
         (celldx[jj]*celldy[ii]);
-      const double rho_e = (rho_old[ind0]*e[ind0] - 
-          (dt_h*(eF_x[ind1+1] - eF_x[ind1]))/(celldx[jj]*celldy[ii]));
-      e[ind0] = (first) 
-        ? (rho_old[ind0] == 0.0) ? 0.0 : rho_e/rho_old[ind0]
-        : (rho[ind0] == 0.0) ? 0.0 : rho_e/rho[ind0];
+      const double rho_e = (rho_old[(ii*nx+jj)]*e[(ii*nx+jj)] - 
+          (dt_h*(eF_x[(ii*(nx+1)+jj)+1] - eF_x[(ii*(nx+1)+jj)]))/(celldx[jj]*celldy[ii]));
+      e[(ii*nx+jj)] = (first) 
+        ? (rho_old[(ii*nx+jj)] == 0.0) ? 0.0 : rho_e/rho_old[(ii*nx+jj)]
+        : (rho[(ii*nx+jj)] == 0.0) ? 0.0 : rho_e/rho[(ii*nx+jj)];
     }
   }
   STOP_PROFILING(&compute_profile, "advect_mass_and_energy");
@@ -353,40 +350,40 @@ void y_mass_and_energy_flux(
 
       // Interpolate the velocity to make second order in time
       const double invdy = 1.0/edgedy[ii];
-      const double svc0 = 0.5*invdy*(v[ind0+nx]-v[ind0-nx]);
-      const double svr0 = 2.0*invdy*(v[ind0]-v[ind0-nx]);
-      const double svl0 = 2.0*invdy*(v[ind0+nx]-v[ind0]);
-      const double v_tc = v[ind0] - 0.5*v[ind0]*dt*minmod(svc0, minmod(svr0, svl0));
+      const double svc0 = 0.5*invdy*(v[(ii*nx+jj)+nx]-v[(ii*nx+jj)-nx]);
+      const double svr0 = 2.0*invdy*(v[(ii*nx+jj)]-v[(ii*nx+jj)-nx]);
+      const double svl0 = 2.0*invdy*(v[(ii*nx+jj)+nx]-v[(ii*nx+jj)]);
+      const double v_tc = v[(ii*nx+jj)] - 0.5*v[(ii*nx+jj)]*dt*minmod(svc0, minmod(svr0, svl0));
 
       // Van leer limiter
-      const double rho_diff = (rho[ind0]-rho[ind0-nx]);
+      const double rho_diff = (rho[(ii*nx+jj)]-rho[(ii*nx+jj)-nx]);
       double limiter = 0.0;
       if(rho_diff) {
-        const double smoothness = (v[ind0] >= 0.0) 
-          ? (rho[ind0-nx]-rho[ind0-2*nx])/rho_diff
-          : (rho[ind0+nx]-rho[ind0])/rho_diff;
+        const double smoothness = (v[(ii*nx+jj)] >= 0.0) 
+          ? (rho[(ii*nx+jj)-nx]-rho[(ii*nx+jj)-2*nx])/rho_diff
+          : (rho[(ii*nx+jj)+nx]-rho[(ii*nx+jj)])/rho_diff;
         limiter = (smoothness + fabs(smoothness))/(1.0+fabs(smoothness));
       }
 
       // Calculate the flux
-      const double rho_upwind = (v_tc >= 0.0) ? rho[ind0-nx] : rho[ind0];
-      F_y[ind0] = (v_tc*rho_upwind+
+      const double rho_upwind = (v_tc >= 0.0) ? rho[(ii*nx+jj)-nx] : rho[(ii*nx+jj)];
+      F_y[(ii*nx+jj)] = (v_tc*rho_upwind+
           0.5*fabs(v_tc)*(1.0-fabs((v_tc*dt_h)/celldy[ii]))*limiter*rho_diff);
 
       // Use MC limiter to get slope of energy
-      const double a_y_0 = 0.5*invdy*(e[ind0]-e[ind0-2*nx]);
-      const double b_y_0 = 2.0*invdy*(e[ind0-nx]-e[ind0-2*nx]);
-      const double c_y_0 = 2.0*invdy*(e[ind0]-e[ind0-nx]);
-      const double a_y_1 = 0.5*invdy*(e[ind0+nx]-e[ind0-nx]);
-      const double b_y_1 = 2.0*invdy*(e[ind0]-e[ind0-nx]);
-      const double c_y_1 = 2.0*invdy*(e[ind0+nx]-e[ind0]);
+      const double a_y_0 = 0.5*invdy*(e[(ii*nx+jj)]-e[(ii*nx+jj)-2*nx]);
+      const double b_y_0 = 2.0*invdy*(e[(ii*nx+jj)-nx]-e[(ii*nx+jj)-2*nx]);
+      const double c_y_0 = 2.0*invdy*(e[(ii*nx+jj)]-e[(ii*nx+jj)-nx]);
+      const double a_y_1 = 0.5*invdy*(e[(ii*nx+jj)+nx]-e[(ii*nx+jj)-nx]);
+      const double b_y_1 = 2.0*invdy*(e[(ii*nx+jj)]-e[(ii*nx+jj)-nx]);
+      const double c_y_1 = 2.0*invdy*(e[(ii*nx+jj)+nx]-e[(ii*nx+jj)]);
 
       const double edge_e_y = (v_tc > 0.0)
-        ? e[ind0-nx] + 0.5*minmod(minmod(a_y_0, b_y_0), c_y_0)*(celldy[ii-1] - v_tc*dt_h)
-        : e[ind0] - 0.5*minmod(minmod(a_y_1, b_y_1), c_y_1)*(celldy[ii] + v_tc*dt_h);
+        ? e[(ii*nx+jj)-nx] + 0.5*minmod(minmod(a_y_0, b_y_0), c_y_0)*(celldy[ii-1] - v_tc*dt_h)
+        : e[(ii*nx+jj)] - 0.5*minmod(minmod(a_y_1, b_y_1), c_y_1)*(celldy[ii] + v_tc*dt_h);
 
       // Update the fluxes to now include the contribution from energy
-      eF_y[ind0] = edgedx[jj]*edge_e_y*F_y[ind0]; 
+      eF_y[(ii*nx+jj)] = edgedx[jj]*edge_e_y*F_y[(ii*nx+jj)]; 
     }
   }
   STOP_PROFILING(&compute_profile, "advect_mass_and_energy");
@@ -399,14 +396,14 @@ void y_mass_and_energy_flux(
   for(int ii = PAD; ii < ny-PAD; ++ii) {
 #pragma omp simd
     for(int jj = PAD; jj < nx-PAD; ++jj) {
-      rho[ind0] -= dt_h*
-        (edgedx[jj+1]*F_y[ind0+nx] - edgedx[jj]*F_y[ind0])/
+      rho[(ii*nx+jj)] -= dt_h*
+        (edgedx[jj+1]*F_y[(ii*nx+jj)+nx] - edgedx[jj]*F_y[(ii*nx+jj)])/
         (celldx[jj]*celldy[ii]);
-      const double rho_e = (rho_old[ind0]*e[ind0] - 
-          (dt_h*(eF_y[ind0+nx] - eF_y[ind0]))/(celldx[jj]*celldy[ii]));
-      e[ind0] = (first) 
-        ? (rho_old[ind0] == 0.0) ? 0.0 : rho_e/rho_old[ind0]
-        : (rho[ind0] == 0.0) ? 0.0 : rho_e/rho[ind0];
+      const double rho_e = (rho_old[(ii*nx+jj)]*e[(ii*nx+jj)] - 
+          (dt_h*(eF_y[(ii*nx+jj)+nx] - eF_y[(ii*nx+jj)]))/(celldx[jj]*celldy[ii]));
+      e[(ii*nx+jj)] = (first) 
+        ? (rho_old[(ii*nx+jj)] == 0.0) ? 0.0 : rho_e/rho_old[(ii*nx+jj)]
+        : (rho[(ii*nx+jj)] == 0.0) ? 0.0 : rho_e/rho[(ii*nx+jj)];
     }
   }
   STOP_PROFILING(&compute_profile, "advect_mass_and_energy");
@@ -432,11 +429,11 @@ void advect_momentum(
     for(int ii = PAD; ii < ny-PAD; ++ii) {
 #pragma omp simd
       for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
-        rho_u[ind1] -= dt_h*(uF_x[ind0] - uF_x[ind0-1])/(edgedx[jj]*celldy[ii]);
+        rho_u[(ii*(nx+1)+jj)] -= dt_h*(uF_x[(ii*nx+jj)] - uF_x[(ii*nx+jj)-1])/(edgedx[jj]*celldy[ii]);
         const double rho_edge_x = 
-          (rho[ind0]*celldx[jj]*celldy[ii] + rho[ind0-1]*celldx[jj - 1]*celldy[ii])/ 
+          (rho[(ii*nx+jj)]*celldx[jj]*celldy[ii] + rho[(ii*nx+jj)-1]*celldx[jj - 1]*celldy[ii])/ 
           (2.0*edgedx[jj]*celldy[ii]);
-        u[ind1] = (rho_edge_x == 0.0) ? 0.0 : rho_u[ind1] / rho_edge_x;
+        u[(ii*(nx+1)+jj)] = (rho_edge_x == 0.0) ? 0.0 : rho_u[(ii*(nx+1)+jj)] / rho_edge_x;
       }
     }
     STOP_PROFILING(&compute_profile, __func__);
@@ -452,7 +449,7 @@ void advect_momentum(
     for(int ii = PAD; ii < ny-PAD; ++ii) {
 #pragma omp simd
       for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
-        rho_u[ind1] -= dt_h*(uF_y[ind1+(nx+1)] - uF_y[ind1])/(celldx[jj]*edgedy[ii]);
+        rho_u[(ii*(nx+1)+jj)] -= dt_h*(uF_y[(ii*(nx+1)+jj)+(nx+1)] - uF_y[(ii*(nx+1)+jj)])/(celldx[jj]*edgedy[ii]);
       }
     }
 
@@ -463,11 +460,11 @@ void advect_momentum(
     for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
 #pragma omp simd
       for(int jj = PAD; jj < nx-PAD; ++jj) {
-        rho_v[ind0] -= dt_h*(vF_x[ind1+1] - vF_x[ind1])/(edgedx[jj]*celldy[ii]);
+        rho_v[(ii*nx+jj)] -= dt_h*(vF_x[(ii*(nx+1)+jj)+1] - vF_x[(ii*(nx+1)+jj)])/(edgedx[jj]*celldy[ii]);
         const double rho_edge_y = 
-          (rho[ind0]*celldx[jj]*celldy[ii] + rho[ind0-nx]*celldx[jj]*celldy[ii - 1])/ 
+          (rho[(ii*nx+jj)]*celldx[jj]*celldy[ii] + rho[(ii*nx+jj)-nx]*celldx[jj]*celldy[ii - 1])/ 
           (2.0*celldx[jj]*edgedy[ii]);
-        v[ind0] = (rho_edge_y == 0.0) ? 0.0 : rho_v[ind0] / rho_edge_y;
+        v[(ii*nx+jj)] = (rho_edge_y == 0.0) ? 0.0 : rho_v[(ii*nx+jj)] / rho_edge_y;
       }
     }
     STOP_PROFILING(&compute_profile, __func__);
@@ -482,7 +479,7 @@ void advect_momentum(
     for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
 #pragma omp simd
       for(int jj = PAD; jj < nx-PAD; ++jj) {
-        rho_v[ind0] -= dt_h*(vF_y[ind0] - vF_y[ind0-nx])/(celldx[jj]*edgedy[ii]);
+        rho_v[(ii*nx+jj)] -= dt_h*(vF_y[(ii*nx+jj)] - vF_y[(ii*nx+jj)-nx])/(celldx[jj]*edgedy[ii]);
       }
     }
   }
@@ -495,11 +492,11 @@ void advect_momentum(
     for(int ii = PAD; ii < ny-PAD; ++ii) {
 #pragma omp simd
       for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
-        rho_u[ind1] -= dt_h*(uF_y[ind1+(nx+1)] - uF_y[ind1])/(celldx[jj]*edgedy[ii]);
+        rho_u[(ii*(nx+1)+jj)] -= dt_h*(uF_y[(ii*(nx+1)+jj)+(nx+1)] - uF_y[(ii*(nx+1)+jj)])/(celldx[jj]*edgedy[ii]);
         const double rho_edge_x = 
-          (rho[ind0]*celldx[jj]*celldy[ii] + rho[ind0-1]*celldx[jj - 1]*celldy[ii])/ 
+          (rho[(ii*nx+jj)]*celldx[jj]*celldy[ii] + rho[(ii*nx+jj)-1]*celldx[jj - 1]*celldy[ii])/ 
           (2.0*edgedx[jj]*celldy[ii]);
-        u[ind1] = (rho_edge_x == 0.0) ? 0.0 : rho_u[ind1] / rho_edge_x;
+        u[(ii*(nx+1)+jj)] = (rho_edge_x == 0.0) ? 0.0 : rho_u[(ii*(nx+1)+jj)] / rho_edge_x;
       }
     }
     STOP_PROFILING(&compute_profile, __func__);
@@ -514,7 +511,7 @@ void advect_momentum(
     for(int ii = PAD; ii < ny-PAD; ++ii) {
 #pragma omp simd
       for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
-        rho_u[ind1] -= dt_h*(uF_x[ind0] - uF_x[ind0-1])/(edgedx[jj]*celldy[ii]);
+        rho_u[(ii*(nx+1)+jj)] -= dt_h*(uF_x[(ii*nx+jj)] - uF_x[(ii*nx+jj)-1])/(edgedx[jj]*celldy[ii]);
       }
     }
 
@@ -525,11 +522,11 @@ void advect_momentum(
     for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
 #pragma omp simd
       for(int jj = PAD; jj < nx-PAD; ++jj) {
-        rho_v[ind0] -= dt_h*(vF_y[ind0] - vF_y[ind0-nx])/(celldx[jj]*edgedy[ii]);
+        rho_v[(ii*nx+jj)] -= dt_h*(vF_y[(ii*nx+jj)] - vF_y[(ii*nx+jj)-nx])/(celldx[jj]*edgedy[ii]);
         const double rho_edge_y = 
-          (rho[ind0]*celldx[jj]*celldy[ii] + rho[ind0-nx]*celldx[jj]*celldy[ii - 1])/ 
+          (rho[(ii*nx+jj)]*celldx[jj]*celldy[ii] + rho[(ii*nx+jj)-nx]*celldx[jj]*celldy[ii - 1])/ 
           (2.0*celldx[jj]*edgedy[ii]);
-        v[ind0] = (rho_edge_y == 0.0) ? 0.0 : rho_v[ind0] / rho_edge_y;
+        v[(ii*nx+jj)] = (rho_edge_y == 0.0) ? 0.0 : rho_v[(ii*nx+jj)] / rho_edge_y;
       }
     }
     STOP_PROFILING(&compute_profile, __func__);
@@ -544,7 +541,7 @@ void advect_momentum(
     for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
 #pragma omp simd
       for(int jj = PAD; jj < nx-PAD; ++jj) {
-        rho_v[ind0] -= dt_h*(vF_x[ind1+1] - vF_x[ind1])/(edgedx[jj]*celldy[ii]);
+        rho_v[(ii*nx+jj)] -= dt_h*(vF_x[(ii*(nx+1)+jj)+1] - vF_x[(ii*(nx+1)+jj)])/(edgedx[jj]*celldy[ii]);
       }
     }
     STOP_PROFILING(&compute_profile, __func__);
@@ -563,20 +560,20 @@ void ux_momentum_flux(
     for(int jj = PAD; jj < nx-PAD; ++jj) {
       // Use MC limiter to get slope of velocity
       const double invdx = 1.0/edgedx[jj];
-      const double a_x_0 = 0.5*invdx*(u[ind1+1]-u[ind1-1]);
-      const double b_x_0 = 2.0*invdx*(u[ind1]-u[ind1-1]);
-      const double c_x_0 = 2.0*invdx*(u[ind1+1]-u[ind1]);
-      const double a_x_1 = 0.5*invdx*(u[ind1+2]-u[ind1]);
-      const double b_x_1 = 2.0*invdx*(u[ind1+1]-u[ind1]);
-      const double c_x_1 = 2.0*invdx*(u[ind1+2]-u[ind1+1]);
+      const double a_x_0 = 0.5*invdx*(u[(ii*(nx+1)+jj)+1]-u[(ii*(nx+1)+jj)-1]);
+      const double b_x_0 = 2.0*invdx*(u[(ii*(nx+1)+jj)]-u[(ii*(nx+1)+jj)-1]);
+      const double c_x_0 = 2.0*invdx*(u[(ii*(nx+1)+jj)+1]-u[(ii*(nx+1)+jj)]);
+      const double a_x_1 = 0.5*invdx*(u[(ii*(nx+1)+jj)+2]-u[(ii*(nx+1)+jj)]);
+      const double b_x_1 = 2.0*invdx*(u[(ii*(nx+1)+jj)+1]-u[(ii*(nx+1)+jj)]);
+      const double c_x_1 = 2.0*invdx*(u[(ii*(nx+1)+jj)+2]-u[(ii*(nx+1)+jj)+1]);
 
       // Calculate the interpolated densities
-      const double u_cell_x = 0.5*(u[ind1]+u[ind1+1]);
-      const double f_x = edgedy[ii]*0.5*(F_x[ind1] + F_x[ind1+1]); 
+      const double u_cell_x = 0.5*(u[(ii*(nx+1)+jj)]+u[(ii*(nx+1)+jj)+1]);
+      const double f_x = edgedy[ii]*0.5*(F_x[(ii*(nx+1)+jj)] + F_x[(ii*(nx+1)+jj)+1]); 
       const double u_cell_x_interp = (u_cell_x > 0.0)
-        ? u[ind1] + 0.5*minmod(minmod(a_x_0, b_x_0), c_x_0)*(celldx[jj-1] - u_cell_x*dt_h)
-        : u[ind1+1] - 0.5*minmod(minmod(a_x_1, b_x_1), c_x_1)*(celldx[jj] + u_cell_x*dt_h);
-      uF_x[ind0] = f_x*u_cell_x_interp;
+        ? u[(ii*(nx+1)+jj)] + 0.5*minmod(minmod(a_x_0, b_x_0), c_x_0)*(celldx[jj-1] - u_cell_x*dt_h)
+        : u[(ii*(nx+1)+jj)+1] - 0.5*minmod(minmod(a_x_1, b_x_1), c_x_1)*(celldx[jj] + u_cell_x*dt_h);
+      uF_x[(ii*nx+jj)] = f_x*u_cell_x_interp;
     }
   }
 
@@ -595,19 +592,19 @@ void uy_momentum_flux(
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
       // Use MC limiter to get slope of velocity
       const double invdy = 1.0/edgedy[ii];
-      const double a_y_0 = 0.5*invdy*(u[ind1]-u[ind1-2*(nx+1)]);
-      const double b_y_0 = 2.0*invdy*(u[ind1-(nx+1)]-u[ind1-2*(nx+1)]);
-      const double c_y_0 = 2.0*invdy*(u[ind1]-u[ind1-(nx+1)]);
-      const double a_y_1 = 0.5*invdy*(u[ind1+(nx+1)]-u[ind1-(nx+1)]);
-      const double b_y_1 = 2.0*invdy*(u[ind1]-u[ind1-(nx+1)]);
-      const double c_y_1 = 2.0*invdy*(u[ind1+(nx+1)]-u[ind1]);
-      const double v_cell_y = 0.5*(v[ind0-1]+v[ind0]);
+      const double a_y_0 = 0.5*invdy*(u[(ii*(nx+1)+jj)]-u[(ii*(nx+1)+jj)-2*(nx+1)]);
+      const double b_y_0 = 2.0*invdy*(u[(ii*(nx+1)+jj)-(nx+1)]-u[(ii*(nx+1)+jj)-2*(nx+1)]);
+      const double c_y_0 = 2.0*invdy*(u[(ii*(nx+1)+jj)]-u[(ii*(nx+1)+jj)-(nx+1)]);
+      const double a_y_1 = 0.5*invdy*(u[(ii*(nx+1)+jj)+(nx+1)]-u[(ii*(nx+1)+jj)-(nx+1)]);
+      const double b_y_1 = 2.0*invdy*(u[(ii*(nx+1)+jj)]-u[(ii*(nx+1)+jj)-(nx+1)]);
+      const double c_y_1 = 2.0*invdy*(u[(ii*(nx+1)+jj)+(nx+1)]-u[(ii*(nx+1)+jj)]);
+      const double v_cell_y = 0.5*(v[(ii*nx+jj)-1]+v[(ii*nx+jj)]);
 
-      const double f_y = edgedx[jj]*0.5*(F_y[ind0] + F_y[ind0-1]);
+      const double f_y = edgedx[jj]*0.5*(F_y[(ii*nx+jj)] + F_y[(ii*nx+jj)-1]);
       const double u_corner_y = (v_cell_y > 0.0)
-        ? u[ind1-(nx+1)] + 0.5*minmod(minmod(a_y_0, b_y_0), c_y_0)*(celldy[ii-1] - v_cell_y*dt_h)
-        : u[ind1] - 0.5*minmod(minmod(a_y_1, b_y_1), c_y_1)*(celldy[ii] + v_cell_y*dt_h);
-      uF_y[ind1] = f_y*u_corner_y;
+        ? u[(ii*(nx+1)+jj)-(nx+1)] + 0.5*minmod(minmod(a_y_0, b_y_0), c_y_0)*(celldy[ii-1] - v_cell_y*dt_h)
+        : u[(ii*(nx+1)+jj)] - 0.5*minmod(minmod(a_y_1, b_y_1), c_y_1)*(celldy[ii] + v_cell_y*dt_h);
+      uF_y[(ii*(nx+1)+jj)] = f_y*u_corner_y;
     }
   }
 
@@ -628,20 +625,20 @@ void vx_momentum_flux(
 
       // Use MC limiter to get slope of velocity
       const double invdx = 1.0/edgedx[jj];
-      const double a_x_0 = 0.5*invdx*(v[ind0]-v[ind0-2]);
-      const double b_x_0 = 2.0*invdx*(v[ind0-1]-v[ind0-2]);
-      const double c_x_0 = 2.0*invdx*(v[ind0]-v[ind0-1]);
-      const double a_x_1 = 0.5*invdx*(v[ind0+1]-v[ind0-1]);
-      const double b_x_1 = 2.0*invdx*(v[ind0]-v[ind0-1]);
-      const double c_x_1 = 2.0*invdx*(v[ind0+1]-v[ind0]);
+      const double a_x_0 = 0.5*invdx*(v[(ii*nx+jj)]-v[(ii*nx+jj)-2]);
+      const double b_x_0 = 2.0*invdx*(v[(ii*nx+jj)-1]-v[(ii*nx+jj)-2]);
+      const double c_x_0 = 2.0*invdx*(v[(ii*nx+jj)]-v[(ii*nx+jj)-1]);
+      const double a_x_1 = 0.5*invdx*(v[(ii*nx+jj)+1]-v[(ii*nx+jj)-1]);
+      const double b_x_1 = 2.0*invdx*(v[(ii*nx+jj)]-v[(ii*nx+jj)-1]);
+      const double c_x_1 = 2.0*invdx*(v[(ii*nx+jj)+1]-v[(ii*nx+jj)]);
 
       // Calculate the interpolated densities
-      const double f_x = celldy[ii]*0.5*(F_x[ind1] + F_x[ind1-(nx+1)]);
-      const double u_cell_x = 0.5*(u[ind1]+u[ind1-(nx+1)]);
+      const double f_x = celldy[ii]*0.5*(F_x[(ii*(nx+1)+jj)] + F_x[(ii*(nx+1)+jj)-(nx+1)]);
+      const double u_cell_x = 0.5*(u[(ii*(nx+1)+jj)]+u[(ii*(nx+1)+jj)-(nx+1)]);
       const double v_cell_x_interp = (u_cell_x > 0.0)
-        ? v[ind0-1] + 0.5*minmod(minmod(a_x_0, b_x_0), c_x_0)*(celldx[jj-1] - u_cell_x*dt_h)
-        : v[ind0] - 0.5*minmod(minmod(a_x_1, b_x_1), c_x_1)*(celldx[jj] + u_cell_x*dt_h);
-      vF_x[ind1] = f_x*v_cell_x_interp;
+        ? v[(ii*nx+jj)-1] + 0.5*minmod(minmod(a_x_0, b_x_0), c_x_0)*(celldx[jj-1] - u_cell_x*dt_h)
+        : v[(ii*nx+jj)] - 0.5*minmod(minmod(a_x_1, b_x_1), c_x_1)*(celldx[jj] + u_cell_x*dt_h);
+      vF_x[(ii*(nx+1)+jj)] = f_x*v_cell_x_interp;
     }
   }
 
@@ -659,19 +656,19 @@ void vy_momentum_flux(
     for(int jj = PAD; jj < nx-PAD; ++jj) {
       // Use MC limiter to get slope of velocity
       const double invdy = 1.0/edgedy[ii];
-      const double a_y_0 = 0.5*invdy*(v[ind0+nx]-v[ind0-nx]);
-      const double b_y_0 = 2.0*invdy*(v[ind0]-v[ind0-nx]);
-      const double c_y_0 = 2.0*invdy*(v[ind0+nx]-v[ind0]);
-      const double a_y_1 = 0.5*invdy*(v[ind0+2*nx]-v[ind0]);
-      const double b_y_1 = 2.0*invdy*(v[ind0+nx]-v[ind0]);
-      const double c_y_1 = 2.0*invdy*(v[ind0+2*nx]-v[ind0+nx]);
+      const double a_y_0 = 0.5*invdy*(v[(ii*nx+jj)+nx]-v[(ii*nx+jj)-nx]);
+      const double b_y_0 = 2.0*invdy*(v[(ii*nx+jj)]-v[(ii*nx+jj)-nx]);
+      const double c_y_0 = 2.0*invdy*(v[(ii*nx+jj)+nx]-v[(ii*nx+jj)]);
+      const double a_y_1 = 0.5*invdy*(v[(ii*nx+jj)+2*nx]-v[(ii*nx+jj)]);
+      const double b_y_1 = 2.0*invdy*(v[(ii*nx+jj)+nx]-v[(ii*nx+jj)]);
+      const double c_y_1 = 2.0*invdy*(v[(ii*nx+jj)+2*nx]-v[(ii*nx+jj)+nx]);
 
-      const double f_y = celldx[jj]*0.5*(F_y[ind0] + F_y[ind0+nx]);
-      const double v_cell_y = 0.5*(v[ind0]+v[ind0+nx]);
+      const double f_y = celldx[jj]*0.5*(F_y[(ii*nx+jj)] + F_y[(ii*nx+jj)+nx]);
+      const double v_cell_y = 0.5*(v[(ii*nx+jj)]+v[(ii*nx+jj)+nx]);
       const double v_cell_y_interp = (v_cell_y > 0.0)
-        ? v[ind0] + 0.5*minmod(minmod(a_y_0, b_y_0), c_y_0)*(celldy[ii-1] - v_cell_y*dt_h)
-        : v[ind0+nx] - 0.5*minmod(minmod(a_y_1, b_y_1), c_y_1)*(celldy[ii] + v_cell_y*dt_h);
-      vF_y[ind0] = f_y*v_cell_y_interp;
+        ? v[(ii*nx+jj)] + 0.5*minmod(minmod(a_y_0, b_y_0), c_y_0)*(celldy[ii-1] - v_cell_y*dt_h)
+        : v[(ii*nx+jj)+nx] - 0.5*minmod(minmod(a_y_1, b_y_1), c_y_1)*(celldy[ii] + v_cell_y*dt_h);
+      vF_y[(ii*nx+jj)] = f_y*v_cell_y_interp;
     }
   }
 
@@ -686,8 +683,8 @@ void print_conservation(
 #pragma omp parallel for reduction(+:mass_tot, energy_tot)
   for(int ii = PAD; ii < ny-PAD; ++ii) {
     for(int jj = PAD; jj < nx-PAD; ++jj) {
-      mass_tot += rho[ind0];
-      energy_tot += rho[ind0]*e[ind0];
+      mass_tot += rho[(ii*nx+jj)];
+      energy_tot += rho[(ii*nx+jj)]*e[(ii*nx+jj)];
     }
   }
 
