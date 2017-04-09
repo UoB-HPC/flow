@@ -33,7 +33,7 @@ A number of other switches and options are provided:
 
 # Run
 
-Upon building, an binary file will be output with the extension of the value of KERNELS. e.g. `flow.omp3`. You can run the application with:
+Upon building, a binary file will be output with the extension of the value of KERNELS. e.g. `flow.omp3`. You can run the application with:
 
 ```
 ./flow.omp3 flow.params
