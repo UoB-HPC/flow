@@ -1,16 +1,18 @@
 # User defined parameters
-KERNELS          = omp3
-COMPILER         = INTEL
-MPI              = yes
-DECOMP					 = TILES
-MAC_RPATH				 = -Wl,-rpath,${COMPILER_ROOT}/lib 
-CFLAGS_INTEL     = -O3 -g -qopenmp -no-prec-div -std=gnu99 -DINTEL \
-									 $(MAC_RPATH) -Wall -qopt-report=5 #-xhost
-CFLAGS_INTEL_KNL = -O3 -g -qopenmp -no-prec-div -std=gnu99 -DINTEL \
-									 -xMIC-AVX512 -Wall -qopt-report=5
-CFLAGS_GCC       = -O3 -g -std=gnu99 -fopenmp -march=native -Wall #-std=gnu99
-CFLAGS_CRAY      = -lrt -hlist=a
-OPTIONS          = -DENABLE_PROFILING 
+KERNELS          	 = cuda
+COMPILER         	 = GCC
+MPI              	 = no
+DECOMP					 	 = TILES
+MAC_RPATH				 	 = -Wl,-rpath,${COMPILER_ROOT}/lib 
+CFLAGS_INTEL     	 = -O3 -g -qopenmp -no-prec-div -std=gnu99 -DINTEL \
+								 	   $(MAC_RPATH) -Wall -qopt-report=5 #-xhost
+CFLAGS_INTEL_KNL 	 = -O3 -g -qopenmp -no-prec-div -std=gnu99 -DINTEL \
+								 	   -xMIC-AVX512 -Wall -qopt-report=5
+CFLAGS_GCC       	 = -O3 -g -march=native -fopenmp -std=gnu99
+CFLAGS_CRAY      	 = -lrt -hlist=a
+CFLAGS_CLANG_OMP4  = -O3 -Wall -fopenmp-targets=nvptx64-nvidia-cuda \
+										 -fopenmp=libomp --cuda-path=/nfs/modules/cuda/8.0.44/
+OPTIONS          	 = -DENABLE_PROFILING 
 
 ifeq ($(MPI), yes)
   OPTIONS += -DMPI
@@ -27,13 +29,13 @@ OPTIONS += -DCOLS
 endif
 
 # Default compiler
-ARCH_COMPILER_CC   = mpicc
-ARCH_COMPILER_CPP  = mpic++
-ARCH_LINKER    		= $(ARCH_COMPILER_CC)
-ARCH_FLAGS     		= $(CFLAGS_$(COMPILER))
-ARCH_LDFLAGS   		= $(ARCH_FLAGS) -lm
-ARCH_BUILD_DIR 		= ../obj
-ARCH_DIR       		= ..
+ARCH_COMPILER_CC    = gcc
+ARCH_COMPILER_CPP   = g++
+ARCH_LINKER    			= $(ARCH_COMPILER_CC)
+ARCH_FLAGS     			= $(CFLAGS_$(COMPILER))
+ARCH_LDFLAGS   			= $(ARCH_FLAGS) -lm
+ARCH_BUILD_DIR 			= ../obj
+ARCH_DIR       			= ..
 
 ifeq ($(KERNELS), cuda)
 include Makefile.cuda
