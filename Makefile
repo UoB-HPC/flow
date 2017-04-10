@@ -1,7 +1,7 @@
 # User defined parameters
-KERNELS          	 = cuda
-COMPILER         	 = GCC
-MPI              	 = no
+KERNELS          	 = omp3
+COMPILER         	 = INTEL
+MPI              	 = yes
 DECOMP					 	 = TILES
 MAC_RPATH				 	 = -Wl,-rpath,${COMPILER_ROOT}/lib 
 CFLAGS_INTEL     	 = -O3 -g -qopenmp -no-prec-div -std=gnu99 -DINTEL \
@@ -29,8 +29,8 @@ OPTIONS += -DCOLS
 endif
 
 # Default compiler
-ARCH_COMPILER_CC    = gcc
-ARCH_COMPILER_CPP   = g++
+ARCH_COMPILER_CC    = mpicc
+ARCH_COMPILER_CPP   = mpic++
 ARCH_LINKER    			= $(ARCH_COMPILER_CC)
 ARCH_FLAGS     			= $(CFLAGS_$(COMPILER))
 ARCH_LDFLAGS   			= $(ARCH_FLAGS) -lm
