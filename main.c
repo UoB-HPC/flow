@@ -94,6 +94,13 @@ int main(int argc, char** argv)
         printf("reached end of simulation time\n");
       break;
     }
+
+    if(visit_dump) {
+      write_all_ranks_to_visit(
+          mesh.global_nx+2*PAD, mesh.global_ny+2*PAD, mesh.local_nx, mesh.local_ny, 
+          mesh.x_off, mesh.y_off, mesh.rank, mesh.nranks, mesh.neighbours, 
+          shared_data.rho, "density", tt, elapsed_sim_time);
+    }
   }
 
   barrier();

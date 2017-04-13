@@ -35,7 +35,7 @@ ARCH_COMPILER_CPP   = mpic++
 ARCH_LINKER    			= $(ARCH_COMPILER_CC)
 ARCH_FLAGS     			= $(CFLAGS_$(COMPILER))
 ARCH_LDFLAGS   			= $(ARCH_FLAGS) -lm
-ARCH_BUILD_DIR 			= ../obj
+ARCH_BUILD_DIR 			= ../obj/flow/
 ARCH_DIR       			= ..
 
 ifeq ($(KERNELS), cuda)
