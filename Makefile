@@ -10,7 +10,8 @@ CFLAGS_INTEL_KNL 	 = -O3 -g -qopenmp -no-prec-div -std=gnu99 -DINTEL \
 								 	   -xMIC-AVX512 -Wall -qopt-report=5
 CFLAGS_GCC       	 = -O3 -g -march=native -fopenmp -std=gnu99
 CFLAGS_CRAY      	 = -lrt -hlist=a
-CFLAGS_XL				   = -O3 -qsmp=omp
+CFLAGS_XL		 			 = -O3 -qsmp=omp 
+CFLAGS_XL_OMP4		 = -qsmp -qoffload
 CFLAGS_CLANG_OMP4  = -O3 -Wall -fopenmp-targets=nvptx64-nvidia-cuda \
 										 -fopenmp=libomp --cuda-path=/nfs/modules/cuda/8.0.44/
 OPTIONS          	 = -DENABLE_PROFILING 
