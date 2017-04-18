@@ -53,7 +53,7 @@ void equation_of_state(
 {
   START_PROFILING(&compute_profile);
 
-#pragma omp target teams distribute parallel for
+#pragma omp target teams distribute parallel for collapse(2) thread_limit(128) num_teams((int)ceil(nx*ny/128.0)) 
   for(int ii = 0; ii < ny; ++ii) {
     for(int jj = 0; jj < nx; ++jj) {
       // Only invoke simple GAMma law at the moment
@@ -74,7 +74,8 @@ void set_timestep(
 
   START_PROFILING(&compute_profile);
   // Check the minimum timestep from the sound speed in the nx and ny directions
-#pragma omp target teams distribute parallel for reduction(min: local_min_dt)
+#pragma omp target teams distribute parallel for thread_limit(128) num_teams((int)ceil(nx*ny/128.0)) collapse(2) \
+  map(tofrom: local_min_dt) reduction(min: local_min_dt)
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
       // Constrain based on the sound speed within the system
@@ -104,7 +105,7 @@ void pressure_acceleration(
 {
   START_PROFILING(&compute_profile);
 
-#pragma omp target teams distribute parallel for
+#pragma omp target teams distribute parallel for collapse(2) thread_limit(128) num_teams((int)ceil(nx*ny/128.0)) 
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
       // Update the momenta using the pressure gradients
@@ -140,7 +141,7 @@ void artificial_viscosity(
 
   // Calculate the artificial viscous stresses
   // PLPC Hydro Paper
-#pragma omp target teams distribute parallel for
+#pragma omp target teams distribute parallel for collapse(2) thread_limit(128) num_teams((int)ceil(nx*ny/128.0))
   for(int ii = PAD; ii < ny-PAD; ++ii) {
     for(int jj = PAD; jj < nx-PAD; ++jj) {
       const double u_i = min(0.0, u[(ii*(nx+1)+jj)+1] - u[(ii*(nx+1)+jj)]);
@@ -164,7 +165,7 @@ void artificial_viscosity(
   START_PROFILING(&compute_profile);
 
   // Update the momenta by the artificial viscous stresses
-#pragma omp target teams distribute parallel for
+#pragma omp target teams distribute parallel for collapse(2) thread_limit(128) num_teams((int)ceil(nx*ny/128.0))
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
       rho_u[(ii*(nx+1)+jj)] -= dt*(Qxx[(ii*nx+jj)] - Qxx[(ii*nx+jj)-1])/celldx[jj];
@@ -197,7 +198,7 @@ void shock_heating_and_work(
 {
   START_PROFILING(&compute_profile);
 
-#pragma omp target teams distribute parallel for
+#pragma omp target teams distribute parallel for collapse(2) thread_limit(128) num_teams((int)ceil(nx*ny/128.0)) 
   for(int ii = PAD; ii < ny-PAD; ++ii) {
     for(int jj = PAD; jj < nx-PAD; ++jj) {
       const double div_vel_x = (u[(ii*(nx+1)+jj)+1] - u[(ii*(nx+1)+jj)])/celldx[jj];
@@ -225,7 +226,7 @@ void advect_mass_and_energy(
     double* eF_x, double* eF_y, const double* u, const double* v, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
-#pragma omp target teams distribute parallel for
+#pragma omp target teams distribute parallel for thread_limit(128) num_teams((int)ceil(nx*ny/128.0)) 
   for(int ii = 0; ii < nx*ny; ++ii) {
     rho_old[ii] = rho[ii];
   }
@@ -254,7 +255,7 @@ void x_mass_and_energy_flux(
   // Compute the mass fluxes along the x edges
   // In the ghost cells flux is left as 0.0
   START_PROFILING(&compute_profile);
-#pragma omp target teams distribute parallel for
+#pragma omp target teams distribute parallel for collapse(2) thread_limit(128) num_teams((int)ceil(nx*ny/128.0)) 
   for(int ii = PAD; ii < ny-PAD; ++ii) {
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
 
@@ -303,7 +304,7 @@ void x_mass_and_energy_flux(
 
   // Calculate the new density values
   START_PROFILING(&compute_profile);
-#pragma omp target teams distribute parallel for
+#pragma omp target teams distribute parallel for collapse(2) thread_limit(128) num_teams((int)ceil(nx*ny/128.0)) 
   for(int ii = PAD; ii < ny-PAD; ++ii) {
     for(int jj = PAD; jj < nx-PAD; ++jj) {
       rho[(ii*nx+jj)] -= dt_h*
@@ -332,7 +333,7 @@ void y_mass_and_energy_flux(
   // Compute the mass flux along the y edges
   // In the ghost cells flux is left as 0.0
   START_PROFILING(&compute_profile);
-#pragma omp target teams distribute parallel for
+#pragma omp target teams distribute parallel for collapse(2) thread_limit(128) num_teams((int)ceil(nx*ny/128.0)) 
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
     for(int jj = PAD; jj < nx-PAD; ++jj) {
 
@@ -380,7 +381,7 @@ void y_mass_and_energy_flux(
 
   // Calculate the new density values
   START_PROFILING(&compute_profile);
-#pragma omp target teams distribute parallel for
+#pragma omp target teams distribute parallel for collapse(2) thread_limit(128) num_teams((int)ceil(nx*ny/128.0)) 
   for(int ii = PAD; ii < ny-PAD; ++ii) {
     for(int jj = PAD; jj < nx-PAD; ++jj) {
       rho[(ii*nx+jj)] -= dt_h*
@@ -412,7 +413,7 @@ void advect_momentum(
     ux_momentum_flux(
         nx, ny, mesh, dt_h, dt, u, v, uF_x, rho_u, rho, F_x, edgedx, edgedy, celldx, celldy);
 
-#pragma omp target teams distribute parallel for
+#pragma omp target teams distribute parallel for collapse(2) thread_limit(128) num_teams((int)ceil(nx*ny/128.0)) 
     for(int ii = PAD; ii < ny-PAD; ++ii) {
       for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
         rho_u[(ii*(nx+1)+jj)] -= dt_h*(uF_x[(ii*nx+jj)] - uF_x[(ii*nx+jj)-1])/(edgedx[jj]*celldy[ii]);
@@ -431,7 +432,7 @@ void advect_momentum(
         nx, ny, mesh, dt_h, dt, u, v, uF_y, rho_u, rho, F_y, edgedx, edgedy, celldx, celldy);
 
     // Calculate the axial momentum
-#pragma omp target teams distribute parallel for
+#pragma omp target teams distribute parallel for collapse(2) thread_limit(128) num_teams((int)ceil(nx*ny/128.0)) 
     for(int ii = PAD; ii < ny-PAD; ++ii) {
       for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
         rho_u[(ii*(nx+1)+jj)] -= dt_h*(uF_y[(ii*(nx+1)+jj)+(nx+1)] - uF_y[(ii*(nx+1)+jj)])/(celldx[jj]*edgedy[ii]);
@@ -441,7 +442,7 @@ void advect_momentum(
     vx_momentum_flux(
         nx, ny, mesh, dt_h, dt, u, v, vF_x, rho_v, rho, F_x, edgedx, edgedy, celldx, celldy);
 
-#pragma omp target teams distribute parallel for
+#pragma omp target teams distribute parallel for collapse(2) thread_limit(128) num_teams((int)ceil(nx*ny/128.0)) 
     for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
       for(int jj = PAD; jj < nx-PAD; ++jj) {
         rho_v[(ii*nx+jj)] -= dt_h*(vF_x[(ii*(nx+1)+jj)+1] - vF_x[(ii*(nx+1)+jj)])/(edgedx[jj]*celldy[ii]);
@@ -459,7 +460,7 @@ void advect_momentum(
     vy_momentum_flux(
         nx, ny, mesh, dt_h, dt, u, v, vF_y, rho_v, rho, F_y, edgedx, edgedy, celldx, celldy);
 
-#pragma omp target teams distribute parallel for
+#pragma omp target teams distribute parallel for collapse(2) thread_limit(128) num_teams((int)ceil(nx*ny/128.0)) 
     for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
       for(int jj = PAD; jj < nx-PAD; ++jj) {
         rho_v[(ii*nx+jj)] -= dt_h*(vF_y[(ii*nx+jj)] - vF_y[(ii*nx+jj)-nx])/(celldx[jj]*edgedy[ii]);
@@ -471,7 +472,7 @@ void advect_momentum(
         nx, ny, mesh, dt_h, dt, u, v, uF_y, rho_u, rho, F_y, edgedx, edgedy, celldx, celldy);
 
     // Calculate the axial momentum
-#pragma omp target teams distribute parallel for
+#pragma omp target teams distribute parallel for collapse(2) thread_limit(128) num_teams((int)ceil(nx*ny/128.0)) 
     for(int ii = PAD; ii < ny-PAD; ++ii) {
       for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
         rho_u[(ii*(nx+1)+jj)] -= dt_h*(uF_y[(ii*(nx+1)+jj)+(nx+1)] - uF_y[(ii*(nx+1)+jj)])/(celldx[jj]*edgedy[ii]);
@@ -489,7 +490,7 @@ void advect_momentum(
     ux_momentum_flux(
         nx, ny, mesh, dt_h, dt, u, v, uF_x, rho_u, rho, F_x, edgedx, edgedy, celldx, celldy);
 
-#pragma omp target teams distribute parallel for
+#pragma omp target teams distribute parallel for collapse(2) thread_limit(128) num_teams((int)ceil(nx*ny/128.0)) 
     for(int ii = PAD; ii < ny-PAD; ++ii) {
       for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
         rho_u[(ii*(nx+1)+jj)] -= dt_h*(uF_x[(ii*nx+jj)] - uF_x[(ii*nx+jj)-1])/(edgedx[jj]*celldy[ii]);
@@ -499,7 +500,7 @@ void advect_momentum(
     vy_momentum_flux(
         nx, ny, mesh, dt_h, dt, u, v, vF_y, rho_v, rho, F_y, edgedx, edgedy, celldx, celldy);
 
-#pragma omp target teams distribute parallel for
+#pragma omp target teams distribute parallel for collapse(2) thread_limit(128) num_teams((int)ceil(nx*ny/128.0)) 
     for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
       for(int jj = PAD; jj < nx-PAD; ++jj) {
         rho_v[(ii*nx+jj)] -= dt_h*(vF_y[(ii*nx+jj)] - vF_y[(ii*nx+jj)-nx])/(celldx[jj]*edgedy[ii]);
@@ -517,7 +518,7 @@ void advect_momentum(
     vx_momentum_flux(
         nx, ny, mesh, dt_h, dt, u, v, vF_x, rho_v, rho, F_x, edgedx, edgedy, celldx, celldy);
 
-#pragma omp target teams distribute parallel for
+#pragma omp target teams distribute parallel for collapse(2) thread_limit(128) num_teams((int)ceil(nx*ny/128.0)) 
     for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
       for(int jj = PAD; jj < nx-PAD; ++jj) {
         rho_v[(ii*nx+jj)] -= dt_h*(vF_x[(ii*(nx+1)+jj)+1] - vF_x[(ii*(nx+1)+jj)])/(edgedx[jj]*celldy[ii]);
@@ -533,7 +534,7 @@ void ux_momentum_flux(
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
   // Calculate the cell centered x momentum fluxes in the x direction
-#pragma omp target teams distribute parallel for
+#pragma omp target teams distribute parallel for collapse(2) thread_limit(128) num_teams((int)ceil(nx*ny/128.0)) 
   for(int ii = PAD; ii < ny-PAD; ++ii) {
     for(int jj = PAD; jj < nx-PAD; ++jj) {
       // Use MC limiter to get slope of velocity
@@ -564,7 +565,7 @@ void uy_momentum_flux(
     const double* F_y, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
-#pragma omp target teams distribute parallel for
+#pragma omp target teams distribute parallel for collapse(2) thread_limit(128) num_teams((int)ceil(nx*ny/128.0)) 
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
       // Use MC limiter to get slope of velocity
@@ -595,7 +596,7 @@ void vx_momentum_flux(
 {
   // Calculate the corner centered y momentum fluxes in the x direction
   // Calculate the cell centered y momentum fluxes in the y direction
-#pragma omp target teams distribute parallel for
+#pragma omp target teams distribute parallel for collapse(2) thread_limit(128) num_teams((int)ceil(nx*ny/128.0)) 
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
 
@@ -626,7 +627,7 @@ void vy_momentum_flux(
     double* u, double* v, double* vF_y, double* rho_v, const double* rho, const double* F_y, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
-#pragma omp target teams distribute parallel for
+#pragma omp target teams distribute parallel for collapse(2) thread_limit(128) num_teams((int)ceil(nx*ny/128.0)) 
   for(int ii = PAD; ii < ny-PAD; ++ii) {
     for(int jj = PAD; jj < nx-PAD; ++jj) {
       // Use MC limiter to get slope of velocity
@@ -655,7 +656,8 @@ void print_conservation(
     const int nx, const int ny, double* rho, double* e, double* reduce_array, Mesh* mesh) {
   double mass_tot = 0.0;
   double energy_tot = 0.0;
-#pragma omp target teams distribute parallel for reduction(+:mass_tot, energy_tot)
+#pragma omp target teams distribute parallel for collapse(2) thread_limit(128) num_teams((int)ceil(nx*ny/128.0)) \
+  map(tofrom: mass_tot, energy_tot) reduction(+:mass_tot, energy_tot)
   for(int ii = PAD; ii < ny-PAD; ++ii) {
     for(int jj = PAD; jj < nx-PAD; ++jj) {
       mass_tot += rho[(ii*nx+jj)];
