@@ -682,6 +682,7 @@ void print_conservation(
   double energy_tot = 0.0;
 #pragma omp parallel for reduction(+:mass_tot, energy_tot)
   for(int ii = PAD; ii < ny-PAD; ++ii) {
+#pragma omp simd
     for(int jj = PAD; jj < nx-PAD; ++jj) {
       mass_tot += rho[(ii*nx+jj)];
       energy_tot += rho[(ii*nx+jj)]*e[(ii*nx+jj)];
