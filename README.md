@@ -7,16 +7,16 @@ This application solves Eulers equations using an explicit Lagrangian-Eulerian m
 
 # Build
 
-Before building the dependent `wet` application, it is necessary to clone the application into the `arch` project. The instructions can be found on the `arch` project README.
+Before building the dependent `flow` application, it is necessary to clone the application into the `arch` project. The instructions can be found on the `arch` project README.
 
 ```
 git clone git@github.com:uob-hpc/arch
 cd arch
-git clone git@github.com:uob-hpc/wet
-cd wet
+git clone git@github.com:uob-hpc/flow
+cd flow
 ```
 
-The `wet` build process is intended to be simple, and has been tested on a number of platforms.
+The `flow` build process is intended to be simple, and has been tested on a number of platforms.
 
 ```
 make -j KERNELS=omp3 COMPILER=INTEL ARCH_COMPILER_CC=mpicc
