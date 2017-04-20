@@ -1,12 +1,13 @@
 NVCC					 = nvcc
 NVCC_FLAGS		 = -O3 -arch=sm_60 $(OPTIONS)
 
-CCBIN_XL		= xlc++
-CCBIN_GCC 	= g++
-CCBIN				= $(CCBIN_$(COMPILER))
+CCBIN_XL				= xlc++
+CCBIN_GCC 			= g++
+CCBIN_GCC_POWER = g++
+CCBIN						= $(CCBIN_$(COMPILER))
 
 ARCH_LINKER 	 = $(ARCH_COMPILER_CPP)
-ARCH_LDFLAGS   = -fopenmp -lcudart $(NVCC_FLAGS) -L$(CUDA_PATH)/lib64
+ARCH_LDFLAGS   = -fopenmp -lcudart -L$(CUDA_PATH)/lib64
 
 CUDA_SRC   			= $(wildcard $(KERNELS)/*.cu)
 CUDA_SRC  		 += $(wildcard $(ARCH_DIR)/$(KERNELS)/*.cu)
