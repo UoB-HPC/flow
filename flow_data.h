@@ -1,8 +1,11 @@
+#ifndef __FLOWHDR
+#define __FLOWHDR
+
 #pragma once
 
 #define C_T 0.3
 #define ARCH_ROOT_PARAMS "../arch.params"
-#define flow_PARAMS "flow.params"
+#define FLOW_PARAMS "flow.params"
 
 typedef struct {
   // Flow-specific state
@@ -69,4 +72,6 @@ allocate_data(&state->wF_z, (local_nx+1)*(local_ny+1)*(local_nz+1));
 allocate_data(&state->reduce_array, (local_nx+1)*(local_ny+1)*(local_nz+1));
 
 #endif // if 0
+
+#endif
 
