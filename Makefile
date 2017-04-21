@@ -18,10 +18,11 @@ CFLAGS_GCC_KNL   	 = -O3 -fopenmp -std=gnu99 \
 										 -mavx512f -mavx512cd -mavx512er -mavx512pf #-fopt-info-vec-all
 CFLAGS_GCC_POWER   = -O3 -mcpu=power8 -mtune=power8 -fopenmp -std=gnu99
 CFLAGS_CRAY      	 = -lrt -hlist=a
-CFLAGS_XL		 			 = -O3 -qsmp=omp 
+CFLAGS_XL		 			 = -O3 -qsmp=omp -qarch=pwr8 -qtune=pwr8 -qaltivec
 CFLAGS_XL_OMP4		 = -qsmp -qoffload
 CFLAGS_CLANG_OMP4  = -O3 -Wall -fopenmp-targets=nvptx64-nvidia-cuda \
 										 -fopenmp=libomp --cuda-path=/nfs/modules/cuda/8.0.44/
+CFLAGS_PGI				 = -O3 -fast -mp
 
 ifeq ($(DEBUG), yes)
   OPTIONS += -O0 -g -DDEBUG 
