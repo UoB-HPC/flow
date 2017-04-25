@@ -21,8 +21,21 @@ CFLAGS_CRAY      	 = -lrt -hlist=a
 CFLAGS_XL		 			 = -O3 -qsmp=omp -qarch=pwr8 -qtune=pwr8 -qaltivec
 CFLAGS_XL_OMP4		 = -O3 -qsmp -qoffload
 CFLAGS_CLANG_OMP4  = -O3 -Wall -fopenmp-targets=nvptx64-nvidia-cuda \
-										 -fopenmp=libomp --cuda-path=/nfs/modules/cuda/8.0.44/
+										 -fopenmp=libomp --cuda-path=$(CUDAROOT)
 CFLAGS_PGI				 = -O3 -fast -mp
+
+ifeq ($(KERNELS), cuda)
+  CHECK_CUDA_ROOT = yes
+endif
+ifeq ($(COMPILER), CLANG_OMP4)
+  CHECK_CUDA_ROOT = yes
+endif
+
+ifeq ($(CHECK_CUDA_ROOT), yes)
+ifeq ("${CUDAROOT}", "")
+$(error "$$CUDAROOT is not set, please set this to the root of your CUDA install.")
+endif
+endif
 
 ifeq ($(DEBUG), yes)
   OPTIONS += -O0 -g -DDEBUG 
