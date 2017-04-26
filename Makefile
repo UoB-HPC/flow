@@ -21,7 +21,7 @@ CFLAGS_CRAY      	 = -lrt -hlist=a
 CFLAGS_XL		 			 = -O3 -qsmp=omp -qarch=pwr8 -qtune=pwr8 -qaltivec
 CFLAGS_XL_OMP4		 = -O3 -qsmp -qoffload
 CFLAGS_CLANG_OMP4  = -O3 -Wall -fopenmp-targets=nvptx64-nvidia-cuda \
-										 -fopenmp=libomp --cuda-path=$(CUDAROOT)
+										 -fopenmp=libomp --cuda-path=$(CUDAROOT) -DCLANG
 CFLAGS_PGI				 = -O3 -fast -mp
 
 ifeq ($(KERNELS), cuda)
