@@ -59,7 +59,7 @@ void equation_of_state(
 #pragma omp target teams distribute parallel for \
   collapse(2) thread_limit(NTHREADS) num_teams(nteams) 
 #else
-#pragma omp target teams distribute parallel for collapse(2)
+#pragma omp target teams distribute parallel for
 #endif
   for(int ii = 0; ii < ny; ++ii) {
     for(int jj = 0; jj < nx; ++jj) {
@@ -87,8 +87,7 @@ void set_timestep(
   thread_limit(NTHREADS) num_teams(nteams) collapse(2) \
   map(tofrom: local_min_dt) reduction(min: local_min_dt)
 #else
-#pragma omp target teams distribute parallel for \
-  collapse(2) reduction(min: local_min_dt)
+#pragma omp target teams distribute parallel for reduction(min: local_min_dt)
 #endif
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
@@ -123,7 +122,7 @@ void pressure_acceleration(
   int nteams = (int)ceil((nx+1)*(ny+1)/(double)NTHREADS);
 #pragma omp target teams distribute parallel for collapse(2) thread_limit(NTHREADS) num_teams(nteams) 
 #else
-#pragma omp target teams distribute parallel for collapse(2) 
+#pragma omp target teams distribute parallel for
 #endif
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
@@ -165,7 +164,7 @@ void artificial_viscosity(
 #pragma omp target teams distribute parallel for collapse(2) \
   thread_limit(NTHREADS) num_teams(nteams)
 #else
-#pragma omp target teams distribute parallel for collapse(2) 
+#pragma omp target teams distribute parallel for
 #endif
   for(int ii = PAD; ii < ny-PAD; ++ii) {
     for(int jj = PAD; jj < nx-PAD; ++jj) {
@@ -195,7 +194,7 @@ void artificial_viscosity(
 #pragma omp target teams distribute parallel for collapse(2) \
   thread_limit(NTHREADS) num_teams(nteams)
 #else
-#pragma omp target teams distribute parallel for collapse(2) 
+#pragma omp target teams distribute parallel for
 #endif
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
@@ -234,7 +233,7 @@ void shock_heating_and_work(
 #pragma omp target teams distribute parallel for collapse(2) \
   thread_limit(NTHREADS) num_teams(nteams) 
 #else
-#pragma omp target teams distribute parallel for collapse(2) 
+#pragma omp target teams distribute parallel for
 #endif
   for(int ii = PAD; ii < ny-PAD; ++ii) {
     for(int jj = PAD; jj < nx-PAD; ++jj) {
@@ -303,7 +302,7 @@ void x_mass_and_energy_flux(
 #pragma omp target teams distribute parallel for collapse(2) \
   thread_limit(NTHREADS) num_teams(nteams) 
 #else
-#pragma omp target teams distribute parallel for collapse(2) 
+#pragma omp target teams distribute parallel for
 #endif
   for(int ii = PAD; ii < ny-PAD; ++ii) {
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
@@ -358,7 +357,7 @@ void x_mass_and_energy_flux(
 #pragma omp target teams distribute parallel for collapse(2) \
   thread_limit(NTHREADS) num_teams(nteams) 
 #else
-#pragma omp target teams distribute parallel for collapse(2) 
+#pragma omp target teams distribute parallel for
 #endif
   for(int ii = PAD; ii < ny-PAD; ++ii) {
     for(int jj = PAD; jj < nx-PAD; ++jj) {
@@ -393,7 +392,7 @@ void y_mass_and_energy_flux(
 #pragma omp target teams distribute parallel for collapse(2) \
   thread_limit(NTHREADS) num_teams(nteams) 
 #else
-#pragma omp target teams distribute parallel for collapse(2) 
+#pragma omp target teams distribute parallel for
 #endif
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
     for(int jj = PAD; jj < nx-PAD; ++jj) {
@@ -447,7 +446,7 @@ void y_mass_and_energy_flux(
 #pragma omp target teams distribute parallel for collapse(2) \
   thread_limit(NTHREADS) num_teams(nteams) 
 #else
-#pragma omp target teams distribute parallel for collapse(2) 
+#pragma omp target teams distribute parallel for
 #endif
   for(int ii = PAD; ii < ny-PAD; ++ii) {
     for(int jj = PAD; jj < nx-PAD; ++jj) {
@@ -485,7 +484,7 @@ void advect_momentum(
 #pragma omp target teams distribute parallel for collapse(2) \
     thread_limit(NTHREADS) num_teams(nteams) 
 #else
-#pragma omp target teams distribute parallel for collapse(2) 
+#pragma omp target teams distribute parallel for
 #endif
     for(int ii = PAD; ii < ny-PAD; ++ii) {
       for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
@@ -510,7 +509,7 @@ void advect_momentum(
 #pragma omp target teams distribute parallel for collapse(2) \
     thread_limit(NTHREADS) num_teams(nteams) 
 #else
-#pragma omp target teams distribute parallel for collapse(2)
+#pragma omp target teams distribute parallel for
 #endif
     for(int ii = PAD; ii < ny-PAD; ++ii) {
       for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
@@ -526,7 +525,7 @@ void advect_momentum(
 #pragma omp target teams distribute parallel for collapse(2) \
     thread_limit(NTHREADS) num_teams(nteams) 
 #else
-#pragma omp target teams distribute parallel for collapse(2)
+#pragma omp target teams distribute parallel for
 #endif
     for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
       for(int jj = PAD; jj < nx-PAD; ++jj) {
@@ -550,7 +549,7 @@ void advect_momentum(
 #pragma omp target teams distribute parallel for collapse(2) \
     thread_limit(NTHREADS) num_teams(nteams) 
 #else
-#pragma omp target teams distribute parallel for collapse(2)
+#pragma omp target teams distribute parallel for
 #endif
     for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
       for(int jj = PAD; jj < nx-PAD; ++jj) {
@@ -568,7 +567,7 @@ void advect_momentum(
 #pragma omp target teams distribute parallel for collapse(2) \
     thread_limit(NTHREADS) num_teams(nteams) 
 #else
-#pragma omp target teams distribute parallel for collapse(2)
+#pragma omp target teams distribute parallel for
 #endif
     for(int ii = PAD; ii < ny-PAD; ++ii) {
       for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
@@ -592,7 +591,7 @@ void advect_momentum(
 #pragma omp target teams distribute parallel for collapse(2) \
     thread_limit(NTHREADS) num_teams(nteams) 
 #else
-#pragma omp target teams distribute parallel for collapse(2) 
+#pragma omp target teams distribute parallel for
 #endif
     for(int ii = PAD; ii < ny-PAD; ++ii) {
       for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
@@ -608,7 +607,7 @@ void advect_momentum(
 #pragma omp target teams distribute parallel for collapse(2) \
     thread_limit(NTHREADS) num_teams(nteams) 
 #else
-#pragma omp target teams distribute parallel for collapse(2)
+#pragma omp target teams distribute parallel for
 #endif
     for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
       for(int jj = PAD; jj < nx-PAD; ++jj) {
@@ -632,7 +631,7 @@ void advect_momentum(
 #pragma omp target teams distribute parallel for collapse(2) \
     thread_limit(NTHREADS) num_teams(nteams) 
 #else
-#pragma omp target teams distribute parallel for collapse(2)
+#pragma omp target teams distribute parallel for
 #endif
     for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
       for(int jj = PAD; jj < nx-PAD; ++jj) {
@@ -654,7 +653,7 @@ void ux_momentum_flux(
 #pragma omp target teams distribute parallel for collapse(2) \
   thread_limit(NTHREADS) num_teams(nteams) 
 #else
-#pragma omp target teams distribute parallel for collapse(2)
+#pragma omp target teams distribute parallel for
 #endif
   for(int ii = PAD; ii < ny-PAD; ++ii) {
     for(int jj = PAD; jj < nx-PAD; ++jj) {
@@ -691,7 +690,7 @@ void uy_momentum_flux(
 #pragma omp target teams distribute parallel for collapse(2) \
   thread_limit(NTHREADS) num_teams(nteams) 
 #else
-#pragma omp target teams distribute parallel for collapse(2)
+#pragma omp target teams distribute parallel for
 #endif
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
@@ -728,7 +727,7 @@ void vx_momentum_flux(
 #pragma omp target teams distribute parallel for collapse(2) \
   thread_limit(NTHREADS) num_teams(nteams) 
 #else
-#pragma omp target teams distribute parallel for collapse(2)
+#pragma omp target teams distribute parallel for
 #endif
   for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
     for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
@@ -765,7 +764,7 @@ void vy_momentum_flux(
 #pragma omp target teams distribute parallel for collapse(2) \
   thread_limit(NTHREADS) num_teams(nteams) 
 #else
-#pragma omp target teams distribute parallel for collapse(2)
+#pragma omp target teams distribute parallel for
 #endif
   for(int ii = PAD; ii < ny-PAD; ++ii) {
     for(int jj = PAD; jj < nx-PAD; ++jj) {
@@ -801,7 +800,7 @@ void print_conservation(
   thread_limit(NTHREADS) num_teams(nteams) \
   map(tofrom: mass_tot, energy_tot) reduction(+:mass_tot, energy_tot)
 #else
-#pragma omp target teams distribute parallel for collapse(2) reduction(+:mass_tot, energy_tot)
+#pragma omp target teams distribute parallel for reduction(+:mass_tot, energy_tot)
 #endif
   for(int ii = PAD; ii < ny-PAD; ++ii) {
     for(int jj = PAD; jj < nx-PAD; ++jj) {

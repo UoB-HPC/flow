@@ -1,11 +1,11 @@
 # User defined parameters
-KERNELS          	 = omp3
-COMPILER         	 = GCC_KNL
-MPI              	 = yes
+KERNELS          	 = omp4
+COMPILER         	 = CRAY
+MPI              	 = no
 DECOMP					 	 = TILES
-OPTIONS          	 = #-DENABLE_PROFILING 
-ARCH_COMPILER_CC   = mpicc
-ARCH_COMPILER_CPP  = mpic++
+OPTIONS          	 = -DENABLE_PROFILING 
+ARCH_COMPILER_CC   = cc#/lus/scratch/p02185/apps/llvm/build/bin/clang-4.0
+ARCH_COMPILER_CPP  = CC#/lus/scratch/p02185/apps/llvm/build/bin/clang++
 
 # Compiler-specific flags
 MAC_RPATH				 	 = -Wl,-rpath,${COMPILER_ROOT}/lib 
