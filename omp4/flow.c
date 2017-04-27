@@ -89,8 +89,8 @@ void set_timestep(
 #else
 #pragma omp target teams distribute parallel for reduction(min: local_min_dt)
 #endif
-  for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
-    for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
+  for(int ii = PAD; ii < ny-PAD; ++ii) {
+    for(int jj = PAD; jj < nx-PAD; ++jj) {
       // Constrain based on the sound speed within the system
       const double c_s = sqrt(GAM*(GAM - 1.0)*e[(ii*nx+jj)]);
       const double thread_min_dt_x = celldx[jj]/sqrt(c_s*c_s + 2.0*Qxx[(ii*nx+jj)]/rho[(ii*nx+jj)]);
