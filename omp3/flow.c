@@ -52,7 +52,7 @@ void solve_hydro_2d(
 void equation_of_state(
     const int nx, const int ny, double* P, const double* rho, const double* e)
 {
-  //  START_PROFILING(&compute_profile);
+  START_PROFILING(&compute_profile);
 
 #pragma omp parallel for
   for(int ii = 0; ii < ny; ++ii) {
