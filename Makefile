@@ -18,11 +18,11 @@ CFLAGS_GCC_KNL   	 = -O3 -fopenmp -std=gnu99 \
 										 -mavx512f -mavx512cd -mavx512er -mavx512pf #-fopt-info-vec-all
 CFLAGS_GCC_POWER   = -O3 -mcpu=power8 -mtune=power8 -fopenmp -std=gnu99
 CFLAGS_CRAY      	 = -lrt -hlist=a
-CFLAGS_XL		 			 = -O3 -qsmp=omp -qarch=pwr8 -qtune=pwr8 -qaltivec
-CFLAGS_XL_OMP4		 = -O3 -qsmp -qoffload
+CFLAGS_XL		 			 = -O5 -qsmp=omp -qarch=pwr8 -qtune=pwr8 -qaltivec
+CFLAGS_XL_OMP4		 = -O5 -qsmp -qoffload
 CFLAGS_CLANG_OMP4  = -O3 -Wall -fopenmp-targets=nvptx64-nvidia-cuda \
 										 -fopenmp=libomp --cuda-path=$(CUDAROOT) -DCLANG
-CFLAGS_PGI				 = -O3 -fast -mp
+CFLAGS_PGI				 = -fast -mp
 
 ifeq ($(KERNELS), cuda)
   CHECK_CUDA_ROOT = yes
@@ -39,8 +39,6 @@ endif
 
 ifeq ($(DEBUG), yes)
   OPTIONS += -O0 -g -DDEBUG 
-else
-  OPTIONS += -O3
 endif
 
 ifeq ($(MPI), yes)
