@@ -4,6 +4,7 @@
 #include "flow.h"
 #include "../flow_interface.h"
 #include "../../comms.h"
+#include "../../params.h"
 
 // Solve a single timestep on the given mesh
 void solve_hydro_2d(

@@ -39,6 +39,17 @@ int main(int argc, char** argv)
   initialise_devices(mesh.rank);
   initialise_mesh_2d(&mesh);
 
+  int nthreads = 0;
+#pragma omp parallel 
+  {
+    nthreads = omp_get_num_threads();
+  }
+
+  if(mesh.rank == MASTER) {
+    printf("Number of ranks: %d\n", mesh.nranks);
+    printf("Number of threads: %d\n", nthreads);
+  }
+
   SharedData shared_data = {0};
   initialise_shared_data_2d(
       mesh.global_nx, mesh.global_ny, mesh.local_nx, mesh.local_ny, 
@@ -67,7 +78,7 @@ int main(int argc, char** argv)
   for(tt = 0; tt < mesh.niters; ++tt) {
 
     if(mesh.rank == MASTER) {
-      printf("Iteration %d\n", tt+1);
+      printf("\nIteration %d\n", tt+1);
     }
 
     double w0 = omp_get_wtime();
@@ -83,16 +94,18 @@ int main(int argc, char** argv)
         mesh.local_nx, mesh.local_ny, shared_data.rho, shared_data.e, 
         shared_data.reduce_array0, &mesh);
 
-    if(mesh.rank == MASTER) {
-      printf("simulation time: %.4lf(s)\n", elapsed_sim_time);
-    }
-
     wallclock += omp_get_wtime()-w0;
     elapsed_sim_time += mesh.dt;
     if(elapsed_sim_time >= mesh.sim_end) {
-      if(mesh.rank == MASTER)
+      if(mesh.rank == MASTER) {
         printf("reached end of simulation time\n");
+      }
       break;
+    }
+
+    if(mesh.rank == MASTER) {
+      printf("simulation time: %.4lfs\nwallclock: %.4lfs\n", 
+          elapsed_sim_time, wallclock);
     }
 
     if(visit_dump) {
@@ -104,6 +117,8 @@ int main(int argc, char** argv)
   }
 
   barrier();
+
+  validate(mesh.local_nx, mesh.local_ny, flow_params, mesh.rank, shared_data.rho, shared_data.e);
 
   if(mesh.rank == MASTER) {
     PRINT_PROFILING_RESULTS(&compute_profile);
@@ -123,5 +138,73 @@ int main(int argc, char** argv)
   finalise_mesh(&mesh);
 
   return 0;
+}
+
+// Validates the results of the simulation
+void validate(
+    const int nx, const int ny, const char* params_filename, 
+    const int rank, double* density, double* energy)
+{
+  double* h_energy;
+  double* h_density;
+  allocate_host_data(&h_energy, nx*ny);
+  allocate_host_data(&h_density, nx*ny);
+  copy_buffer(nx*ny, &energy, &h_energy, RECV);
+  copy_buffer(nx*ny, &density, &h_density, RECV);
+
+  double local_density_total = 0.0;
+  double local_energy_total = 0.0;
+
+#pragma omp parallel for reduction(+: local_density_total, local_energy_total)
+  for(int ii = 0; ii < nx*ny; ++ii) {
+    local_density_total += h_density[ii];
+    local_energy_total += h_energy[ii];
+  }
+
+  double global_density_total = reduce_all_sum(local_density_total);
+  double global_energy_total = reduce_all_sum(local_energy_total);
+
+  if(rank != MASTER) {
+    return;
+  }
+
+  int nresults = 0;
+  char* keys = (char*)malloc(sizeof(char)*MAX_KEYS*(MAX_STR_LEN+1));
+  double* values = (double*)malloc(sizeof(double)*MAX_KEYS);
+  if(!get_key_value_parameter(
+        params_filename, FLOW_TESTS, keys, values, &nresults)) {
+    printf("Warning. Test entry was not found, could NOT validate.\n");
+    return;
+  }
+
+  double expected_energy;
+  double expected_density;
+  if(strmatch(&(keys[0]), "energy")) {
+    expected_energy = values[0];
+    expected_density = values[1];
+  }
+  else {
+    expected_energy = values[1];
+    expected_density = values[0];
+  }
+
+  printf("\nExpected energy %.12e, result was %.12e.\n", expected_energy, global_energy_total);
+  printf("Expected density %.12e, result was %.12e.\n", expected_density, global_density_total);
+
+  const int pass = 
+    within_tolerance(expected_energy, global_energy_total, VALIDATE_TOLERANCE) &&
+    within_tolerance(expected_density, global_density_total, VALIDATE_TOLERANCE);
+
+  if(pass) {
+    printf("PASSED validation.\n");
+  }
+  else {
+    printf("FAILED validation.\n");
+  }
+
+  free(keys);
+  free(values);
+  deallocate_host_data(h_energy);
+  deallocate_host_data(h_density);
 }
 

@@ -4,8 +4,10 @@
 #pragma once
 
 #define C_T 0.3
+#define VALIDATE_TOLERANCE     1.0e-5
 #define ARCH_ROOT_PARAMS "../arch.params"
 #define FLOW_PARAMS "flow.params"
+#define FLOW_TESTS  "flow.tests"
 
 typedef struct {
   // Flow-specific state
@@ -30,6 +32,11 @@ void initialise_flow_data_2d(
     const int local_nx, const int local_ny, FlowData* flow_data);
 void deallocate_flow_data_2d(
     FlowData* flow_data);
+
+// Validates the results of the simulation
+void validate(
+    const int nx, const int ny, const char* params_filename, 
+    const int rank, double* density, double* energy);
 
 #if 0
 // TODO: Make Flow 3d

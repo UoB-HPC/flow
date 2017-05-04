@@ -1,11 +1,11 @@
 # User defined parameters
 KERNELS          	 = omp3
-COMPILER         	 = INTEL
+COMPILER         	 = GCC
 MPI              	 = no
 DECOMP					 	 = TILES
 OPTIONS          	 = #-DENABLE_PROFILING 
-ARCH_COMPILER_CC   = icc
-ARCH_COMPILER_CPP  = icpc
+ARCH_COMPILER_CC   = gcc
+ARCH_COMPILER_CPP  = g++
 
 # Compiler-specific flags
 MAC_RPATH				 	 = -Wl,-rpath,${COMPILER_ROOT}/lib 
@@ -21,8 +21,9 @@ CFLAGS_CRAY      	 = -lrt -hlist=a
 CFLAGS_XL		 			 = -O5 -qsmp=omp -qarch=pwr8 -qtune=pwr8 -qaltivec
 CFLAGS_XL_OMP4		 = -O5 -qsmp -qoffload
 CFLAGS_CLANG_OMP4  = -O3 -Wall -fopenmp-targets=nvptx64-nvidia-cuda \
-										 -fopenmp=libomp --cuda-path=$(CUDAROOT) -DCLANG
-CFLAGS_PGI				 = -fast -mp
+										 -fopenmp=libomp --cuda-path=$(CUDAROOT) \
+										 -Xclang -target-feature -Xclang +ptx42
+CFLAGS_PGI				 = -O3 -fast -mp
 
 ifeq ($(KERNELS), cuda)
   CHECK_CUDA_ROOT = yes
@@ -89,5 +90,5 @@ make_build_dir:
 	@mkdir -p $(ARCH_BUILD_DIR)/$(KERNELS)
 
 clean:
-	rm -rf $(ARCH_BUILD_DIR)/* flow.exe *.vtk *.bov *.dat *.optrpt *.cub *.ptx
+	rm -rf $(ARCH_BUILD_DIR)/* flow.exe *.vtk *.bov *.dat *.optrpt *.cub *.ptx *.i *.bc *.o *.s *.lk
 
