@@ -83,8 +83,7 @@ void set_timestep(
   // Check the minimum timestep from the sound speed in the nx and ny directions
 #ifdef CLANG
   int nteams = (int)ceil((nx+1)*(ny+1)/(double)NTHREADS);
-#pragma omp target teams distribute parallel for \
-  thread_limit(NTHREADS) num_teams(nteams) collapse(2) \
+#pragma omp target teams distribute parallel for collapse(2) \
   map(tofrom: local_min_dt) reduction(min: local_min_dt)
 #else
 #pragma omp target teams distribute parallel for reduction(min: local_min_dt)
@@ -797,8 +796,7 @@ void print_conservation(
 #ifdef CLANG
   int nteams = (int)ceil(nx*ny/(double)NTHREADS);
 #pragma omp target teams distribute parallel for collapse(2) \
-  thread_limit(NTHREADS) num_teams(nteams) \
-  map(tofrom: mass_tot, energy_tot) reduction(+:mass_tot, energy_tot)
+  map(tofrom: mass_tot, energy_tot) reduction(+: mass_tot, energy_tot)
 #else
 #pragma omp target teams distribute parallel for reduction(+:mass_tot, energy_tot)
 #endif
