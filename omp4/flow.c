@@ -55,9 +55,7 @@ void equation_of_state(
   START_PROFILING(&compute_profile);
 
 #ifdef CLANG
-  int nteams = (int)ceil(nx*ny/(double)NTHREADS);
-#pragma omp target teams distribute parallel for \
-  collapse(2) thread_limit(NTHREADS) num_teams(nteams) 
+#pragma omp target teams distribute parallel for collapse(2)
 #else
 #pragma omp target teams distribute parallel for
 #endif
@@ -82,11 +80,12 @@ void set_timestep(
   START_PROFILING(&compute_profile);
   // Check the minimum timestep from the sound speed in the nx and ny directions
 #ifdef CLANG
-  int nteams = (int)ceil((nx+1)*(ny+1)/(double)NTHREADS);
-#pragma omp target teams distribute parallel for collapse(2) \
+#pragma omp target teams distribute parallel for \
+  collapse(2) num_teams(14) num_threads(1024)\
   map(tofrom: local_min_dt) reduction(min: local_min_dt)
 #else
-#pragma omp target teams distribute parallel for reduction(min: local_min_dt)
+#pragma omp target teams distribute parallel for \
+  map(tofrom: local_min_dt) reduction(min: local_min_dt)
 #endif
   for(int ii = PAD; ii < ny-PAD; ++ii) {
     for(int jj = PAD; jj < nx-PAD; ++jj) {
@@ -118,8 +117,7 @@ void pressure_acceleration(
   START_PROFILING(&compute_profile);
 
 #ifdef CLANG
-  int nteams = (int)ceil((nx+1)*(ny+1)/(double)NTHREADS);
-#pragma omp target teams distribute parallel for collapse(2) thread_limit(NTHREADS) num_teams(nteams) 
+#pragma omp target teams distribute parallel for collapse(2)
 #else
 #pragma omp target teams distribute parallel for
 #endif
@@ -159,9 +157,7 @@ void artificial_viscosity(
   // Calculate the artificial viscous stresses
   // PLPC Hydro Paper
 #ifdef CLANG
-  int nteams = (int)ceil(nx*ny/(double)NTHREADS);
-#pragma omp target teams distribute parallel for collapse(2) \
-  thread_limit(NTHREADS) num_teams(nteams)
+#pragma omp target teams distribute parallel for collapse(2)
 #else
 #pragma omp target teams distribute parallel for
 #endif
@@ -189,9 +185,7 @@ void artificial_viscosity(
 
   // Update the momenta by the artificial viscous stresses
 #ifdef CLANG
-  nteams = (int)ceil((nx+1)*(ny+1)/(double)NTHREADS);
-#pragma omp target teams distribute parallel for collapse(2) \
-  thread_limit(NTHREADS) num_teams(nteams)
+#pragma omp target teams distribute parallel for collapse(2)
 #else
 #pragma omp target teams distribute parallel for
 #endif
@@ -228,9 +222,7 @@ void shock_heating_and_work(
   START_PROFILING(&compute_profile);
 
 #ifdef CLANG
-  int nteams = (int)ceil(nx*ny/(double)NTHREADS);
-#pragma omp target teams distribute parallel for collapse(2) \
-  thread_limit(NTHREADS) num_teams(nteams) 
+#pragma omp target teams distribute parallel for collapse(2)
 #else
 #pragma omp target teams distribute parallel for
 #endif
@@ -261,13 +253,7 @@ void advect_mass_and_energy(
     double* eF_x, double* eF_y, const double* u, const double* v, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
-#ifdef CLANG
-  int nteams = (int)ceil(nx*ny/(double)NTHREADS);
-#pragma omp target teams distribute parallel for \
-  thread_limit(NTHREADS) num_teams(nteams) 
-#else
-#pragma omp target teams distribute parallel for 
-#endif
+#pragma omp target teams distribute parallel for
   for(int ii = 0; ii < nx*ny; ++ii) {
     rho_old[ii] = rho[ii];
   }
@@ -297,9 +283,7 @@ void x_mass_and_energy_flux(
   // In the ghost cells flux is left as 0.0
   START_PROFILING(&compute_profile);
 #ifdef CLANG
-  int nteams = (int)ceil((nx+1)*ny/(double)NTHREADS);
-#pragma omp target teams distribute parallel for collapse(2) \
-  thread_limit(NTHREADS) num_teams(nteams) 
+#pragma omp target teams distribute parallel for collapse(2)
 #else
 #pragma omp target teams distribute parallel for
 #endif
@@ -352,9 +336,7 @@ void x_mass_and_energy_flux(
   // Calculate the new density values
   START_PROFILING(&compute_profile);
 #ifdef CLANG
-  nteams = (int)ceil(nx*ny/(double)NTHREADS);
-#pragma omp target teams distribute parallel for collapse(2) \
-  thread_limit(NTHREADS) num_teams(nteams) 
+#pragma omp target teams distribute parallel for collapse(2)
 #else
 #pragma omp target teams distribute parallel for
 #endif
@@ -387,9 +369,7 @@ void y_mass_and_energy_flux(
   // In the ghost cells flux is left as 0.0
   START_PROFILING(&compute_profile);
 #ifdef CLANG
-  int nteams = (int)ceil(nx*(ny+1)/(double)NTHREADS);
-#pragma omp target teams distribute parallel for collapse(2) \
-  thread_limit(NTHREADS) num_teams(nteams) 
+#pragma omp target teams distribute parallel for collapse(2)
 #else
 #pragma omp target teams distribute parallel for
 #endif
@@ -441,9 +421,7 @@ void y_mass_and_energy_flux(
   // Calculate the new density values
   START_PROFILING(&compute_profile);
 #ifdef CLANG
-  nteams = (int)ceil(nx*ny/(double)NTHREADS);
-#pragma omp target teams distribute parallel for collapse(2) \
-  thread_limit(NTHREADS) num_teams(nteams) 
+#pragma omp target teams distribute parallel for collapse(2)
 #else
 #pragma omp target teams distribute parallel for
 #endif
@@ -479,9 +457,7 @@ void advect_momentum(
         nx, ny, mesh, dt_h, dt, u, v, uF_x, rho_u, rho, F_x, edgedx, edgedy, celldx, celldy);
 
 #ifdef CLANG
-    int nteams = (int)ceil((nx+1)*ny/(double)NTHREADS);
-#pragma omp target teams distribute parallel for collapse(2) \
-    thread_limit(NTHREADS) num_teams(nteams) 
+#pragma omp target teams distribute parallel for collapse(2)
 #else
 #pragma omp target teams distribute parallel for
 #endif
@@ -504,9 +480,7 @@ void advect_momentum(
 
     // Calculate the axial momentum
 #ifdef CLANG
-    nteams = (int)ceil((nx+1)*ny/(double)NTHREADS);
-#pragma omp target teams distribute parallel for collapse(2) \
-    thread_limit(NTHREADS) num_teams(nteams) 
+#pragma omp target teams distribute parallel for collapse(2)
 #else
 #pragma omp target teams distribute parallel for
 #endif
@@ -520,9 +494,7 @@ void advect_momentum(
         nx, ny, mesh, dt_h, dt, u, v, vF_x, rho_v, rho, F_x, edgedx, edgedy, celldx, celldy);
 
 #ifdef CLANG
-    nteams = (int)ceil(nx*(ny+1)/(double)NTHREADS);
-#pragma omp target teams distribute parallel for collapse(2) \
-    thread_limit(NTHREADS) num_teams(nteams) 
+#pragma omp target teams distribute parallel for collapse(2)
 #else
 #pragma omp target teams distribute parallel for
 #endif
@@ -544,9 +516,7 @@ void advect_momentum(
         nx, ny, mesh, dt_h, dt, u, v, vF_y, rho_v, rho, F_y, edgedx, edgedy, celldx, celldy);
 
 #ifdef CLANG
-    nteams = (int)ceil(nx*(ny+1)/(double)NTHREADS);
-#pragma omp target teams distribute parallel for collapse(2) \
-    thread_limit(NTHREADS) num_teams(nteams) 
+#pragma omp target teams distribute parallel for collapse(2)
 #else
 #pragma omp target teams distribute parallel for
 #endif
@@ -562,9 +532,7 @@ void advect_momentum(
 
     // Calculate the axial momentum
 #ifdef CLANG
-    int nteams = (int)ceil((nx+1)*ny/(double)NTHREADS);
-#pragma omp target teams distribute parallel for collapse(2) \
-    thread_limit(NTHREADS) num_teams(nteams) 
+#pragma omp target teams distribute parallel for collapse(2)
 #else
 #pragma omp target teams distribute parallel for
 #endif
@@ -586,9 +554,7 @@ void advect_momentum(
         nx, ny, mesh, dt_h, dt, u, v, uF_x, rho_u, rho, F_x, edgedx, edgedy, celldx, celldy);
 
 #ifdef CLANG
-    nteams = (int)ceil((nx+1)*ny/(double)NTHREADS);
-#pragma omp target teams distribute parallel for collapse(2) \
-    thread_limit(NTHREADS) num_teams(nteams) 
+#pragma omp target teams distribute parallel for collapse(2)
 #else
 #pragma omp target teams distribute parallel for
 #endif
@@ -602,9 +568,7 @@ void advect_momentum(
         nx, ny, mesh, dt_h, dt, u, v, vF_y, rho_v, rho, F_y, edgedx, edgedy, celldx, celldy);
 
 #ifdef CLANG
-    nteams = (int)ceil(nx*ny/(double)NTHREADS);
-#pragma omp target teams distribute parallel for collapse(2) \
-    thread_limit(NTHREADS) num_teams(nteams) 
+#pragma omp target teams distribute parallel for collapse(2)
 #else
 #pragma omp target teams distribute parallel for
 #endif
@@ -626,9 +590,7 @@ void advect_momentum(
         nx, ny, mesh, dt_h, dt, u, v, vF_x, rho_v, rho, F_x, edgedx, edgedy, celldx, celldy);
 
 #ifdef CLANG
-    nteams = (int)ceil(nx*(ny+1)/(double)NTHREADS);
-#pragma omp target teams distribute parallel for collapse(2) \
-    thread_limit(NTHREADS) num_teams(nteams) 
+#pragma omp target teams distribute parallel for collapse(2)
 #else
 #pragma omp target teams distribute parallel for
 #endif
@@ -648,9 +610,7 @@ void ux_momentum_flux(
 {
   // Calculate the cell centered x momentum fluxes in the x direction
 #ifdef CLANG
-  int nteams = (int)ceil(nx*ny/(double)NTHREADS);
-#pragma omp target teams distribute parallel for collapse(2) \
-  thread_limit(NTHREADS) num_teams(nteams) 
+#pragma omp target teams distribute parallel for collapse(2)
 #else
 #pragma omp target teams distribute parallel for
 #endif
@@ -685,9 +645,7 @@ void uy_momentum_flux(
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
 #ifdef CLANG
-  int nteams = (int)ceil((nx+1)*(ny+1)/(double)NTHREADS);
-#pragma omp target teams distribute parallel for collapse(2) \
-  thread_limit(NTHREADS) num_teams(nteams) 
+#pragma omp target teams distribute parallel for collapse(2)
 #else
 #pragma omp target teams distribute parallel for
 #endif
@@ -722,9 +680,7 @@ void vx_momentum_flux(
   // Calculate the corner centered y momentum fluxes in the x direction
   // Calculate the cell centered y momentum fluxes in the y direction
 #ifdef CLANG
-  int nteams = (int)ceil((nx+1)*(ny+1)/(double)NTHREADS);
-#pragma omp target teams distribute parallel for collapse(2) \
-  thread_limit(NTHREADS) num_teams(nteams) 
+#pragma omp target teams distribute parallel for collapse(2)
 #else
 #pragma omp target teams distribute parallel for
 #endif
@@ -759,9 +715,7 @@ void vy_momentum_flux(
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
 #ifdef CLANG
-  int nteams = (int)ceil(nx*ny/(double)NTHREADS);
-#pragma omp target teams distribute parallel for collapse(2) \
-  thread_limit(NTHREADS) num_teams(nteams) 
+#pragma omp target teams distribute parallel for collapse(2)
 #else
 #pragma omp target teams distribute parallel for
 #endif
@@ -794,11 +748,12 @@ void print_conservation(
   double mass_tot = 0.0;
   double energy_tot = 0.0;
 #ifdef CLANG
-  int nteams = (int)ceil(nx*ny/(double)NTHREADS);
 #pragma omp target teams distribute parallel for collapse(2) \
-  map(tofrom: mass_tot, energy_tot) reduction(+: mass_tot, energy_tot)
+  num_teams(14) num_threads(1024) \
+  map(tofrom: mass_tot, energy_tot) reduction(+:mass_tot, energy_tot)
 #else
-#pragma omp target teams distribute parallel for reduction(+:mass_tot, energy_tot)
+#pragma omp target teams distribute parallel for \
+  map(tofrom: mass_tot, energy_tot) reduction(+:mass_tot, energy_tot)
 #endif
   for(int ii = PAD; ii < ny-PAD; ++ii) {
     for(int jj = PAD; jj < nx-PAD; ++jj) {
