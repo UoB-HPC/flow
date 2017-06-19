@@ -20,14 +20,13 @@ __global__ void equation_of_state(
 // Calculate change in momentum caused by pressure gradients, and then extract
 // the velocities using edge centered density approximations
 __global__ void pressure_acceleration(
-    const int nx, const int ny, Mesh* mesh, const double dt, double* rho_u, 
+    const int nx, const int ny, const int pad, const double dt, double* rho_u, 
     double* rho_v, double* u, double* v, const double* P, const double* rho,
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
   const int gid = threadIdx.x+blockIdx.x*blockDim.x;
   const int jj = (gid % (nx+1));
   const int ii = (gid / (nx+1));
-  const int pad = mesh->pad;
 
   if(ii < pad || jj < pad || jj >= (nx+1)-pad || ii >= (ny+1)-pad) 
     return;
@@ -50,14 +49,13 @@ __global__ void pressure_acceleration(
 }
 
 __global__ void calc_viscous_stresses(
-    const int nx, const int ny, Mesh* mesh, const double dt, double* Qxx, 
+    const int nx, const int ny, const int pad, const double dt, double* Qxx, 
     double* Qyy, double* u, double* v, double* rho_u, double* rho_v, const double* rho, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
   const int gid = threadIdx.x+blockIdx.x*blockDim.x;
   const int jj = (gid % (nx));
   const int ii = (gid / (nx));
-  const int pad = mesh->pad;
 
   if(ii < pad || jj < pad || jj >= nx-pad || ii >= ny-pad) 
     return;
@@ -75,14 +73,13 @@ __global__ void calc_viscous_stresses(
 }
 
 __global__ void viscous_acceleration(
-    const int nx, const int ny, Mesh* mesh, const double dt, double* Qxx, 
+    const int nx, const int ny, const int pad, const double dt, double* Qxx, 
     double* Qyy, double* u, double* v, double* rho_u, double* rho_v, const double* rho, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
   const int gid = threadIdx.x+blockIdx.x*blockDim.x;
   const int jj = (gid % (nx+1));
   const int ii = (gid / (nx+1));
-  const int pad = mesh->pad;
 
   if(ii < pad || jj < pad || jj >= (nx+1)-pad || ii >= (ny+1)-pad) 
     return;
@@ -105,14 +102,13 @@ __global__ void viscous_acceleration(
 
 // Calculates the work done due to forces within the element
 __global__ void shock_heating_and_work(
-    const int nx, const int ny, Mesh* mesh, const double dt_h, double* e, 
+    const int nx, const int ny, const int pad, const double dt_h, double* e, 
     const double* P, const double* u, const double* v, const double* rho, 
     const double* Qxx, const double* Qyy, const double* celldx, const double* celldy)
 {
   const int gid = threadIdx.x+blockIdx.x*blockDim.x;
   const int jj = (gid % (nx));
   const int ii = (gid / (nx));
-  const int pad = mesh->pad;
 
   if(ii < pad || jj < pad || jj >= nx-pad || ii >= ny-pad) 
     return;
@@ -130,7 +126,7 @@ __global__ void shock_heating_and_work(
 }
 
 __global__ void store_old_rho(
-    const int nx, const int ny, double* rho, double* rho_old)
+    const int nx, const int ny, const int pad, double* rho, double* rho_old)
 {
   const int gid = threadIdx.x+blockIdx.x*blockDim.x;
   const int jj = (gid % (nx));
@@ -144,7 +140,7 @@ __global__ void store_old_rho(
 
 // Calculate the flux in the x direction
 __global__ void calc_x_mass_and_energy_flux(
-    const int nx, const int ny, const int first, Mesh* mesh, const double dt, 
+    const int nx, const int ny, const int first, const int pad, const double dt, 
     const double dt_h, double* rho, double* rho_old, double* e, const double* u, 
     double* F_x, double* eF_x, const double* celldx, const double* edgedx, 
     const double* celldy, const double* edgedy)
@@ -152,7 +148,6 @@ __global__ void calc_x_mass_and_energy_flux(
   const int gid = threadIdx.x+blockIdx.x*blockDim.x;
   const int jj = (gid % (nx+1));
   const int ii = (gid / (nx+1));
-  const int pad = mesh->pad;
 
   if(ii < pad || jj < pad || jj >= (nx+1)-pad || ii >= ny-pad) 
     return;
@@ -198,7 +193,7 @@ __global__ void calc_x_mass_and_energy_flux(
 
 // Advect mass and energy in the x direction
 __global__ void advect_mass_and_energy_in_x(
-    const int nx, const int ny, const int first, Mesh* mesh, const double dt, 
+    const int nx, const int ny, const int first, const int pad, const double dt, 
     const double dt_h, double* rho, double* rho_old, double* e, const double* u, 
     double* F_x, double* eF_x, const double* celldx, const double* edgedx, 
     const double* celldy, const double* edgedy)
@@ -206,7 +201,6 @@ __global__ void advect_mass_and_energy_in_x(
   const int gid = threadIdx.x+blockIdx.x*blockDim.x;
   const int jj = (gid % (nx));
   const int ii = (gid / (nx));
-  const int pad = mesh->pad;
 
   if(ii < pad || jj < pad || jj >= nx-pad || ii >= ny-pad) 
     return;
@@ -222,7 +216,7 @@ __global__ void advect_mass_and_energy_in_x(
 }
 
 __global__ void calc_y_mass_and_energy_flux(
-    const int nx, const int ny, const int first, Mesh* mesh, const double dt,
+    const int nx, const int ny, const int first, const int pad, const double dt,
     const double dt_h, double* rho, double* rho_old, double* e, const double* v, 
     double* F_y, double* eF_y, const double* celldx, const double* edgedx, 
     const double* celldy, const double* edgedy)
@@ -230,7 +224,6 @@ __global__ void calc_y_mass_and_energy_flux(
   const int gid = threadIdx.x+blockIdx.x*blockDim.x;
   const int jj = (gid % (nx));
   const int ii = (gid / (nx));
-  const int pad = mesh->pad;
 
   if(ii < pad || jj < pad || jj >= nx-pad || ii >= (ny+1)-pad) 
     return;
@@ -276,7 +269,7 @@ __global__ void calc_y_mass_and_energy_flux(
 }
 
 __global__ void advect_mass_and_energy_in_y(
-    const int nx, const int ny, const int first, Mesh* mesh, const double dt,
+    const int nx, const int ny, const int first, const int pad, const double dt,
     const double dt_h, double* rho, double* rho_old, double* e, const double* v, 
     double* F_y, double* eF_y, const double* celldx, const double* edgedx, 
     const double* celldy, const double* edgedy)
@@ -284,7 +277,6 @@ __global__ void advect_mass_and_energy_in_y(
   const int gid = threadIdx.x+blockIdx.x*blockDim.x;
   const int jj = (gid % (nx));
   const int ii = (gid / (nx));
-  const int pad = mesh->pad;
 
   if(ii < pad || jj < pad || jj >= nx-pad || ii >= ny-pad) 
     return;
@@ -300,13 +292,14 @@ __global__ void advect_mass_and_energy_in_y(
 }
 
 __global__ void ux_momentum_flux(
-    const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
+    const int nx, const int ny, const int pad, const double dt_h, const double dt, 
     double* u, double* v, double* uF_x, double* rho_u, const double* rho, const double* F_x, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
   const int gid = threadIdx.x+blockIdx.x*blockDim.x;
   const int jj = (gid % (nx));
   const int ii = (gid / (nx));
+
 
   if(ii < pad || jj < pad || jj >= nx-pad || ii >= ny-pad) 
     return;
@@ -332,7 +325,7 @@ __global__ void ux_momentum_flux(
 
 
 __global__ void advect_rho_u_in_x(
-    const int nx, const int ny, const int tt, Mesh* mesh, const double dt_h, 
+    const int nx, const int ny, const int tt, const int pad, const double dt_h, 
     const double dt, double* u, double* v, double* uF_x, double* uF_y, 
     double* vF_x, double* vF_y, double* rho_u, double* rho_v, 
     const double* rho, const double* F_x, const double* F_y, 
@@ -341,7 +334,6 @@ __global__ void advect_rho_u_in_x(
   const int gid = threadIdx.x+blockIdx.x*blockDim.x;
   const int jj = (gid % (nx+1));
   const int ii = (gid / (nx+1));
-  const int pad = mesh->pad;
 
   if(ii < pad || jj < pad || jj >= (nx+1)-pad || ii >= ny-pad) 
     return;
@@ -350,7 +342,7 @@ __global__ void advect_rho_u_in_x(
 }
 
 __global__ void advect_rho_u_and_u_in_x(
-    const int nx, const int ny, const int tt, Mesh* mesh, const double dt_h, 
+    const int nx, const int ny, const int tt, const int pad, const double dt_h, 
     const double dt, double* u, double* v, double* uF_x, double* uF_y, 
     double* vF_x, double* vF_y, double* rho_u, double* rho_v, 
     const double* rho, const double* F_x, const double* F_y, 
@@ -359,7 +351,6 @@ __global__ void advect_rho_u_and_u_in_x(
   const int gid = threadIdx.x+blockIdx.x*blockDim.x;
   const int jj = (gid % (nx+1));
   const int ii = (gid / (nx+1));
-  const int pad = mesh->pad;
 
   if(ii < pad || jj < pad || jj >= (nx+1)-pad || ii >= ny-pad) 
     return;
@@ -372,7 +363,7 @@ __global__ void advect_rho_u_and_u_in_x(
 }
 
 __global__ void advect_rho_u_in_y(
-    const int nx, const int ny, const int tt, Mesh* mesh, const double dt_h, 
+    const int nx, const int ny, const int tt, const int pad, const double dt_h, 
     const double dt, double* u, double* v, double* uF_x, double* uF_y, 
     double* vF_x, double* vF_y, double* rho_u, double* rho_v, 
     const double* rho, const double* F_x, const double* F_y, 
@@ -381,7 +372,6 @@ __global__ void advect_rho_u_in_y(
   const int gid = threadIdx.x+blockIdx.x*blockDim.x;
   const int jj = (gid % (nx+1));
   const int ii = (gid / (nx+1));
-  const int pad = mesh->pad;
 
   if(ii < pad || jj < pad || jj >= (nx+1)-pad || ii >= ny-pad) 
     return;
@@ -390,7 +380,7 @@ __global__ void advect_rho_u_in_y(
 }
 
 __global__ void advect_rho_u_and_u_in_y(
-    const int nx, const int ny, const int tt, Mesh* mesh, const double dt_h, 
+    const int nx, const int ny, const int tt, const int pad, const double dt_h, 
     const double dt, double* u, double* v, double* uF_x, double* uF_y, 
     double* vF_x, double* vF_y, double* rho_u, double* rho_v, 
     const double* rho, const double* F_x, const double* F_y, 
@@ -399,7 +389,6 @@ __global__ void advect_rho_u_and_u_in_y(
   const int gid = threadIdx.x+blockIdx.x*blockDim.x;
   const int jj = (gid % (nx+1));
   const int ii = (gid / (nx+1));
-  const int pad = mesh->pad;
 
   if(ii < pad || jj < pad || jj >= (nx+1)-pad || ii >= ny-pad) 
     return;
@@ -412,7 +401,7 @@ __global__ void advect_rho_u_and_u_in_y(
 }
 
 __global__ void uy_momentum_flux(
-    const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
+    const int nx, const int ny, const int pad, const double dt_h, const double dt, 
     double* u, double* v, double* uF_y, double* rho_u, const double* rho, 
     const double* F_y, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
@@ -420,7 +409,6 @@ __global__ void uy_momentum_flux(
   const int gid = threadIdx.x+blockIdx.x*blockDim.x;
   const int jj = (gid % (nx+1));
   const int ii = (gid / (nx+1));
-  const int pad = mesh->pad;
 
   if(ii < pad || jj < pad || jj >= (nx+1)-pad || ii >= (ny+1)-pad) 
     return;
@@ -443,7 +431,7 @@ __global__ void uy_momentum_flux(
 }
 
 __global__ void vx_momentum_flux(
-    const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
+    const int nx, const int ny, const int pad, const double dt_h, const double dt, 
     const double* u, double* v, double* vF_x, double* rho_v, const double* rho, 
     const double* F_x, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
@@ -451,7 +439,6 @@ __global__ void vx_momentum_flux(
   const int gid = threadIdx.x+blockIdx.x*blockDim.x;
   const int jj = (gid % (nx+1));
   const int ii = (gid / (nx+1));
-  const int pad = mesh->pad;
 
   if(ii < pad || jj < pad || jj >= (nx+1)-pad || ii >= (ny+1)-pad) {
     return;
@@ -476,14 +463,13 @@ __global__ void vx_momentum_flux(
 }
 
 __global__ void advect_rho_v_and_v_in_y(
-    const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
+    const int nx, const int ny, const int pad, const double dt_h, const double dt, 
     double* u, double* v, double* vF_y, double* rho_v, const double* rho, const double* F_y, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
   const int gid = threadIdx.x+blockIdx.x*blockDim.x;
   const int jj = (gid % (nx));
   const int ii = (gid / (nx));
-  const int pad = mesh->pad;
 
   if(ii < pad || jj < pad || jj >= nx-pad || ii >= (ny+1)-pad) 
     return;
@@ -496,7 +482,7 @@ __global__ void advect_rho_v_and_v_in_y(
 }
 
 __global__ void advect_rho_v_and_v_in_x(
-    const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
+    const int nx, const int ny, const int pad, const double dt_h, const double dt, 
     const double* u, double* v, double* vF_x, double* rho_v, const double* rho, 
     const double* F_x, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
@@ -504,7 +490,6 @@ __global__ void advect_rho_v_and_v_in_x(
   const int gid = threadIdx.x+blockIdx.x*blockDim.x;
   const int jj = (gid % (nx));
   const int ii = (gid / (nx));
-  const int pad = mesh->pad;
 
   if(ii < pad || jj < pad || jj >= nx-pad || ii >= (ny+1)-pad) 
     return;
@@ -517,14 +502,13 @@ __global__ void advect_rho_v_and_v_in_x(
 }
 
 __global__ void advect_rho_v_in_x(
-    const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
+    const int nx, const int ny, const int pad, const double dt_h, const double dt, 
     const double* u, double* v, double* vF_x, double* rho_v, const double* rho, 
     const double* F_x, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
   const int gid = threadIdx.x+blockIdx.x*blockDim.x;
   const int jj = (gid % (nx));
-  const int pad = mesh->pad;
   const int ii = (gid / (nx));
 
   if(ii < pad || jj < pad || jj >= nx-pad || ii >= (ny+1)-pad) 
@@ -534,14 +518,13 @@ __global__ void advect_rho_v_in_x(
 }
 
 __global__ void vy_momentum_flux(
-    const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
+    const int nx, const int ny, const int pad, const double dt_h, const double dt, 
     double* u, double* v, double* vF_y, double* rho_v, const double* rho, const double* F_y, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
   const int gid = threadIdx.x+blockIdx.x*blockDim.x;
   const int jj = (gid % (nx));
   const int ii = (gid / (nx));
-  const int pad = mesh->pad;
 
   if(ii < pad || jj < pad || jj >= nx-pad || ii >= ny-pad) 
     return;
@@ -564,14 +547,13 @@ __global__ void vy_momentum_flux(
 }
 
 __global__ void advect_rho_v_in_y(
-    const int nx, const int ny, Mesh* mesh, const double dt_h, const double dt, 
+    const int nx, const int ny, const int pad, const double dt_h, const double dt, 
     double* u, double* v, double* vF_y, double* rho_v, const double* rho, const double* F_y, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
   const int gid = threadIdx.x+blockIdx.x*blockDim.x;
   const int jj = (gid % (nx));
   const int ii = (gid / (nx));
-  const int pad = mesh->pad;
 
   if(ii < pad || jj < pad || jj >= nx-pad || ii >= (ny+1)-pad) 
     return;
@@ -580,14 +562,13 @@ __global__ void advect_rho_v_in_y(
 }
 
 __global__ void calc_min_timestep(
-    const int nx, const int ny, const double max_dt, double* Qxx, double* Qyy, 
-    const double* rho, const double* e, Mesh* mesh, double* reduce_array, 
+    const int nx, const int ny, const int pad, const double max_dt, double* Qxx, 
+    double* Qyy, const double* rho, const double* e, double* reduce_array, 
     const int first_step, const double* celldx, const double* celldy)
 {
   const int gid = threadIdx.x+blockIdx.x*blockDim.x;
   const int jj = (gid % (nx));
   const int ii = (gid / (nx));
-  const int pad = mesh->pad;
 
   const int tid = threadIdx.x;
 
@@ -609,13 +590,12 @@ __global__ void calc_min_timestep(
 }
 
 __global__ void calc_mass_sum(
-    const int nx, const int ny, const double* rho, double* reduce_array)
+    const int nx, const int ny, const int pad, const double* rho, double* reduce_array)
 {
   const int gid = threadIdx.x+blockIdx.x*blockDim.x;
   const int jj = (gid % (nx));
   const int ii = (gid / (nx));
   const int tid = threadIdx.x;
-  const int pad = mesh->pad;
 
   __shared__ double sdata[NTHREADS];
   sdata[tid] = 0.0;
