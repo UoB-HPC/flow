@@ -27,8 +27,9 @@ __global__ void pressure_acceleration(
   const int gid = threadIdx.x+blockIdx.x*blockDim.x;
   const int jj = (gid % (nx+1));
   const int ii = (gid / (nx+1));
+  const int pad = mesh->pad;
 
-  if(ii < PAD || jj < PAD || jj >= (nx+1)-PAD || ii >= (ny+1)-PAD) 
+  if(ii < pad || jj < pad || jj >= (nx+1)-pad || ii >= (ny+1)-pad) 
     return;
 
   // Update the momenta using the pressure gradients
@@ -56,8 +57,9 @@ __global__ void calc_viscous_stresses(
   const int gid = threadIdx.x+blockIdx.x*blockDim.x;
   const int jj = (gid % (nx));
   const int ii = (gid / (nx));
+  const int pad = mesh->pad;
 
-  if(ii < PAD || jj < PAD || jj >= nx-PAD || ii >= ny-PAD) 
+  if(ii < pad || jj < pad || jj >= nx-pad || ii >= ny-pad) 
     return;
 
   const double u_i = min(0.0, u[(ii*(nx+1)+jj)+1] - u[(ii*(nx+1)+jj)]);
@@ -80,8 +82,9 @@ __global__ void viscous_acceleration(
   const int gid = threadIdx.x+blockIdx.x*blockDim.x;
   const int jj = (gid % (nx+1));
   const int ii = (gid / (nx+1));
+  const int pad = mesh->pad;
 
-  if(ii < PAD || jj < PAD || jj >= (nx+1)-PAD || ii >= (ny+1)-PAD) 
+  if(ii < pad || jj < pad || jj >= (nx+1)-pad || ii >= (ny+1)-pad) 
     return;
 
   rho_u[(ii*(nx+1)+jj)] -= dt*(Qxx[(ii*nx+jj)] - Qxx[(ii*nx+jj)-1])/celldx[jj];
@@ -109,8 +112,9 @@ __global__ void shock_heating_and_work(
   const int gid = threadIdx.x+blockIdx.x*blockDim.x;
   const int jj = (gid % (nx));
   const int ii = (gid / (nx));
+  const int pad = mesh->pad;
 
-  if(ii < PAD || jj < PAD || jj >= nx-PAD || ii >= ny-PAD) 
+  if(ii < pad || jj < pad || jj >= nx-pad || ii >= ny-pad) 
     return;
 
   const double div_vel_x = (u[(ii*(nx+1)+jj)+1] - u[(ii*(nx+1)+jj)])/celldx[jj];
@@ -132,7 +136,7 @@ __global__ void store_old_rho(
   const int jj = (gid % (nx));
   const int ii = (gid / (nx));
 
-  if(ii < PAD || jj < PAD || jj >= nx-PAD || ii >= ny-PAD) 
+  if(ii < pad || jj < pad || jj >= nx-pad || ii >= ny-pad) 
     return;
 
   rho_old[(ii*nx+jj)] = rho[(ii*nx+jj)];
@@ -148,8 +152,9 @@ __global__ void calc_x_mass_and_energy_flux(
   const int gid = threadIdx.x+blockIdx.x*blockDim.x;
   const int jj = (gid % (nx+1));
   const int ii = (gid / (nx+1));
+  const int pad = mesh->pad;
 
-  if(ii < PAD || jj < PAD || jj >= (nx+1)-PAD || ii >= ny-PAD) 
+  if(ii < pad || jj < pad || jj >= (nx+1)-pad || ii >= ny-pad) 
     return;
 
   // Interpolate to make second order in time
@@ -201,8 +206,9 @@ __global__ void advect_mass_and_energy_in_x(
   const int gid = threadIdx.x+blockIdx.x*blockDim.x;
   const int jj = (gid % (nx));
   const int ii = (gid / (nx));
+  const int pad = mesh->pad;
 
-  if(ii < PAD || jj < PAD || jj >= nx-PAD || ii >= ny-PAD) 
+  if(ii < pad || jj < pad || jj >= nx-pad || ii >= ny-pad) 
     return;
 
   rho[(ii*nx+jj)] -= dt_h*
@@ -224,8 +230,9 @@ __global__ void calc_y_mass_and_energy_flux(
   const int gid = threadIdx.x+blockIdx.x*blockDim.x;
   const int jj = (gid % (nx));
   const int ii = (gid / (nx));
+  const int pad = mesh->pad;
 
-  if(ii < PAD || jj < PAD || jj >= nx-PAD || ii >= (ny+1)-PAD) 
+  if(ii < pad || jj < pad || jj >= nx-pad || ii >= (ny+1)-pad) 
     return;
 
   // Compute the mass flux along the y edges
@@ -277,8 +284,9 @@ __global__ void advect_mass_and_energy_in_y(
   const int gid = threadIdx.x+blockIdx.x*blockDim.x;
   const int jj = (gid % (nx));
   const int ii = (gid / (nx));
+  const int pad = mesh->pad;
 
-  if(ii < PAD || jj < PAD || jj >= nx-PAD || ii >= ny-PAD) 
+  if(ii < pad || jj < pad || jj >= nx-pad || ii >= ny-pad) 
     return;
 
   rho[(ii*nx+jj)] -= dt_h*
@@ -300,7 +308,7 @@ __global__ void ux_momentum_flux(
   const int jj = (gid % (nx));
   const int ii = (gid / (nx));
 
-  if(ii < PAD || jj < PAD || jj >= nx-PAD || ii >= ny-PAD) 
+  if(ii < pad || jj < pad || jj >= nx-pad || ii >= ny-pad) 
     return;
 
   // Calculate the cell centered x momentum fluxes in the x direction
@@ -333,8 +341,9 @@ __global__ void advect_rho_u_in_x(
   const int gid = threadIdx.x+blockIdx.x*blockDim.x;
   const int jj = (gid % (nx+1));
   const int ii = (gid / (nx+1));
+  const int pad = mesh->pad;
 
-  if(ii < PAD || jj < PAD || jj >= (nx+1)-PAD || ii >= ny-PAD) 
+  if(ii < pad || jj < pad || jj >= (nx+1)-pad || ii >= ny-pad) 
     return;
 
   rho_u[(ii*(nx+1)+jj)] -= dt_h*(uF_x[(ii*nx+jj)] - uF_x[(ii*nx+jj)-1])/(edgedx[jj]*celldy[ii]);
@@ -350,8 +359,9 @@ __global__ void advect_rho_u_and_u_in_x(
   const int gid = threadIdx.x+blockIdx.x*blockDim.x;
   const int jj = (gid % (nx+1));
   const int ii = (gid / (nx+1));
+  const int pad = mesh->pad;
 
-  if(ii < PAD || jj < PAD || jj >= (nx+1)-PAD || ii >= ny-PAD) 
+  if(ii < pad || jj < pad || jj >= (nx+1)-pad || ii >= ny-pad) 
     return;
 
   rho_u[(ii*(nx+1)+jj)] -= dt_h*(uF_x[(ii*nx+jj)] - uF_x[(ii*nx+jj)-1])/(edgedx[jj]*celldy[ii]);
@@ -371,7 +381,9 @@ __global__ void advect_rho_u_in_y(
   const int gid = threadIdx.x+blockIdx.x*blockDim.x;
   const int jj = (gid % (nx+1));
   const int ii = (gid / (nx+1));
-  if(ii < PAD || jj < PAD || jj >= (nx+1)-PAD || ii >= ny-PAD) 
+  const int pad = mesh->pad;
+
+  if(ii < pad || jj < pad || jj >= (nx+1)-pad || ii >= ny-pad) 
     return;
 
   rho_u[(ii*(nx+1)+jj)] -= dt_h*(uF_y[(ii*(nx+1)+jj)+(nx+1)] - uF_y[(ii*(nx+1)+jj)])/(celldx[jj]*edgedy[ii]);
@@ -387,8 +399,9 @@ __global__ void advect_rho_u_and_u_in_y(
   const int gid = threadIdx.x+blockIdx.x*blockDim.x;
   const int jj = (gid % (nx+1));
   const int ii = (gid / (nx+1));
+  const int pad = mesh->pad;
 
-  if(ii < PAD || jj < PAD || jj >= (nx+1)-PAD || ii >= ny-PAD) 
+  if(ii < pad || jj < pad || jj >= (nx+1)-pad || ii >= ny-pad) 
     return;
 
   rho_u[(ii*(nx+1)+jj)] -= dt_h*(uF_y[(ii*(nx+1)+jj)+(nx+1)] - uF_y[(ii*(nx+1)+jj)])/(celldx[jj]*edgedy[ii]);
@@ -407,8 +420,9 @@ __global__ void uy_momentum_flux(
   const int gid = threadIdx.x+blockIdx.x*blockDim.x;
   const int jj = (gid % (nx+1));
   const int ii = (gid / (nx+1));
+  const int pad = mesh->pad;
 
-  if(ii < PAD || jj < PAD || jj >= (nx+1)-PAD || ii >= (ny+1)-PAD) 
+  if(ii < pad || jj < pad || jj >= (nx+1)-pad || ii >= (ny+1)-pad) 
     return;
 
   // Use MC limiter to get slope of velocity
@@ -437,8 +451,9 @@ __global__ void vx_momentum_flux(
   const int gid = threadIdx.x+blockIdx.x*blockDim.x;
   const int jj = (gid % (nx+1));
   const int ii = (gid / (nx+1));
+  const int pad = mesh->pad;
 
-  if(ii < PAD || jj < PAD || jj >= (nx+1)-PAD || ii >= (ny+1)-PAD) {
+  if(ii < pad || jj < pad || jj >= (nx+1)-pad || ii >= (ny+1)-pad) {
     return;
   }
 
@@ -468,8 +483,9 @@ __global__ void advect_rho_v_and_v_in_y(
   const int gid = threadIdx.x+blockIdx.x*blockDim.x;
   const int jj = (gid % (nx));
   const int ii = (gid / (nx));
+  const int pad = mesh->pad;
 
-  if(ii < PAD || jj < PAD || jj >= nx-PAD || ii >= (ny+1)-PAD) 
+  if(ii < pad || jj < pad || jj >= nx-pad || ii >= (ny+1)-pad) 
     return;
 
   rho_v[(ii*nx+jj)] -= dt_h*(vF_y[(ii*nx+jj)] - vF_y[(ii*nx+jj)-nx])/(celldx[jj]*edgedy[ii]);
@@ -488,8 +504,9 @@ __global__ void advect_rho_v_and_v_in_x(
   const int gid = threadIdx.x+blockIdx.x*blockDim.x;
   const int jj = (gid % (nx));
   const int ii = (gid / (nx));
+  const int pad = mesh->pad;
 
-  if(ii < PAD || jj < PAD || jj >= nx-PAD || ii >= (ny+1)-PAD) 
+  if(ii < pad || jj < pad || jj >= nx-pad || ii >= (ny+1)-pad) 
     return;
 
   rho_v[(ii*nx+jj)] -= dt_h*(vF_x[(ii*(nx+1)+jj)+1] - vF_x[(ii*(nx+1)+jj)])/(edgedx[jj]*celldy[ii]);
@@ -507,9 +524,10 @@ __global__ void advect_rho_v_in_x(
 {
   const int gid = threadIdx.x+blockIdx.x*blockDim.x;
   const int jj = (gid % (nx));
+  const int pad = mesh->pad;
   const int ii = (gid / (nx));
 
-  if(ii < PAD || jj < PAD || jj >= nx-PAD || ii >= (ny+1)-PAD) 
+  if(ii < pad || jj < pad || jj >= nx-pad || ii >= (ny+1)-pad) 
     return;
 
   rho_v[(ii*nx+jj)] -= dt_h*(vF_x[(ii*(nx+1)+jj)+1] - vF_x[(ii*(nx+1)+jj)])/(edgedx[jj]*celldy[ii]);
@@ -523,8 +541,9 @@ __global__ void vy_momentum_flux(
   const int gid = threadIdx.x+blockIdx.x*blockDim.x;
   const int jj = (gid % (nx));
   const int ii = (gid / (nx));
+  const int pad = mesh->pad;
 
-  if(ii < PAD || jj < PAD || jj >= nx-PAD || ii >= ny-PAD) 
+  if(ii < pad || jj < pad || jj >= nx-pad || ii >= ny-pad) 
     return;
 
   // Use MC limiter to get slope of velocity
@@ -552,8 +571,9 @@ __global__ void advect_rho_v_in_y(
   const int gid = threadIdx.x+blockIdx.x*blockDim.x;
   const int jj = (gid % (nx));
   const int ii = (gid / (nx));
+  const int pad = mesh->pad;
 
-  if(ii < PAD || jj < PAD || jj >= nx-PAD || ii >= (ny+1)-PAD) 
+  if(ii < pad || jj < pad || jj >= nx-pad || ii >= (ny+1)-pad) 
     return;
 
   rho_v[(ii*nx+jj)] -= dt_h*(vF_y[(ii*nx+jj)] - vF_y[(ii*nx+jj)-nx])/(celldx[jj]*edgedy[ii]);
@@ -567,13 +587,14 @@ __global__ void calc_min_timestep(
   const int gid = threadIdx.x+blockIdx.x*blockDim.x;
   const int jj = (gid % (nx));
   const int ii = (gid / (nx));
+  const int pad = mesh->pad;
 
   const int tid = threadIdx.x;
 
   __shared__ double sdata[NTHREADS];
   sdata[tid] = max_dt;
 
-  if(ii >= PAD && ii < ny-PAD && jj >= PAD && jj < nx-PAD) {
+  if(ii >= pad && ii < ny-pad && jj >= pad && jj < nx-pad) {
     // Constrain based on the sound speed within the system
     const double c_s = sqrt(GAM*(GAM - 1.0)*e[(ii*nx+jj)]);
     const double thread_min_dt_x = celldx[jj]/sqrt(c_s*c_s + 2.0*Qxx[(ii*nx+jj)]/rho[(ii*nx+jj)]);
@@ -594,11 +615,12 @@ __global__ void calc_mass_sum(
   const int jj = (gid % (nx));
   const int ii = (gid / (nx));
   const int tid = threadIdx.x;
+  const int pad = mesh->pad;
 
   __shared__ double sdata[NTHREADS];
   sdata[tid] = 0.0;
 
-  if(ii >= PAD && ii < ny-PAD && jj >= PAD && jj < nx-PAD) {
+  if(ii >= pad && ii < ny-pad && jj >= pad && jj < nx-pad) {
     sdata[tid] = rho[(ii*nx+jj)];
   }
 

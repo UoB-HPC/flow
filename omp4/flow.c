@@ -75,6 +75,7 @@ void set_timestep(
     const double* e, Mesh* mesh, double* reduce_array, const int first_step,
     const double* celldx, const double* celldy)
 {
+  const int pad = mesh->pad;
   double local_min_dt = mesh->max_dt;
 
   START_PROFILING(&compute_profile);
@@ -87,8 +88,8 @@ void set_timestep(
 #pragma omp target teams distribute parallel for \
   map(tofrom: local_min_dt) reduction(min: local_min_dt)
 #endif
-  for(int ii = PAD; ii < ny-PAD; ++ii) {
-    for(int jj = PAD; jj < nx-PAD; ++jj) {
+  for(int ii = pad; ii < ny-pad; ++ii) {
+    for(int jj = pad; jj < nx-pad; ++jj) {
       // Constrain based on the sound speed within the system
       const double c_s = sqrt(GAM*(GAM - 1.0)*e[(ii*nx+jj)]);
       const double thread_min_dt_x = celldx[jj]/sqrt(c_s*c_s + 2.0*Qxx[(ii*nx+jj)]/rho[(ii*nx+jj)]);
@@ -116,13 +117,15 @@ void pressure_acceleration(
 {
   START_PROFILING(&compute_profile);
 
+  const int pad = mesh->pad;
+
 #ifdef CLANG
 #pragma omp target teams distribute parallel for collapse(2)
 #else
 #pragma omp target teams distribute parallel for
 #endif
-  for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
-    for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
+  for(int ii = pad; ii < (ny+1)-pad; ++ii) {
+    for(int jj = pad; jj < (nx+1)-pad; ++jj) {
       // Update the momenta using the pressure gradients
       rho_u[(ii*(nx+1)+jj)] -= dt*(P[(ii*nx+jj)] - P[(ii*nx+jj)-1])/edgedx[jj];
       rho_v[(ii*nx+jj)] -= dt*(P[(ii*nx+jj)] - P[(ii*nx+jj)-nx])/edgedy[ii];
@@ -154,6 +157,8 @@ void artificial_viscosity(
 {
   START_PROFILING(&compute_profile);
 
+  const int pad = mesh->pad;
+
   // Calculate the artificial viscous stresses
   // PLPC Hydro Paper
 #ifdef CLANG
@@ -161,8 +166,8 @@ void artificial_viscosity(
 #else
 #pragma omp target teams distribute parallel for
 #endif
-  for(int ii = PAD; ii < ny-PAD; ++ii) {
-    for(int jj = PAD; jj < nx-PAD; ++jj) {
+  for(int ii = pad; ii < ny-pad; ++ii) {
+    for(int jj = pad; jj < nx-pad; ++jj) {
       const double u_i = min(0.0, u[(ii*(nx+1)+jj)+1] - u[(ii*(nx+1)+jj)]);
       const double u_ii = 0.5*(
           fabs(min(0.0, (u[(ii*(nx+1)+jj)+2]-u[(ii*(nx+1)+jj)+1])) - min(0.0, (u[(ii*(nx+1)+jj)+1]-u[(ii*(nx+1)+jj)]))) + 
@@ -189,8 +194,8 @@ void artificial_viscosity(
 #else
 #pragma omp target teams distribute parallel for
 #endif
-  for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
-    for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
+  for(int ii = pad; ii < (ny+1)-pad; ++ii) {
+    for(int jj = pad; jj < (nx+1)-pad; ++jj) {
       rho_u[(ii*(nx+1)+jj)] -= dt*(Qxx[(ii*nx+jj)] - Qxx[(ii*nx+jj)-1])/celldx[jj];
       rho_v[(ii*nx+jj)] -= dt*(Qyy[(ii*nx+jj)] - Qyy[(ii*nx+jj)-nx])/celldy[ii];
 
@@ -221,13 +226,15 @@ void shock_heating_and_work(
 {
   START_PROFILING(&compute_profile);
 
+  const int pad = mesh->pad;
+
 #ifdef CLANG
 #pragma omp target teams distribute parallel for collapse(2)
 #else
 #pragma omp target teams distribute parallel for
 #endif
-  for(int ii = PAD; ii < ny-PAD; ++ii) {
-    for(int jj = PAD; jj < nx-PAD; ++jj) {
+  for(int ii = pad; ii < ny-pad; ++ii) {
+    for(int jj = pad; jj < nx-pad; ++jj) {
       const double div_vel_x = (u[(ii*(nx+1)+jj)+1] - u[(ii*(nx+1)+jj)])/celldx[jj];
       const double div_vel_y = (v[(ii*nx+jj)+nx] - v[(ii*nx+jj)])/celldy[ii];
       const double div_vel_dt = (div_vel_x + div_vel_y)*dt_h;
@@ -279,6 +286,8 @@ void x_mass_and_energy_flux(
     double* F_x, double* eF_x, const double* celldx, const double* edgedx, 
     const double* celldy, const double* edgedy)
 {
+  const int pad = mesh->pad;
+
   // Compute the mass fluxes along the x edges
   // In the ghost cells flux is left as 0.0
   START_PROFILING(&compute_profile);
@@ -287,8 +296,8 @@ void x_mass_and_energy_flux(
 #else
 #pragma omp target teams distribute parallel for
 #endif
-  for(int ii = PAD; ii < ny-PAD; ++ii) {
-    for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
+  for(int ii = pad; ii < ny-pad; ++ii) {
+    for(int jj = pad; jj < (nx+1)-pad; ++jj) {
 
       // Interpolate to make second order in time
       const double invdx = 1.0/edgedx[jj];
@@ -340,8 +349,8 @@ void x_mass_and_energy_flux(
 #else
 #pragma omp target teams distribute parallel for
 #endif
-  for(int ii = PAD; ii < ny-PAD; ++ii) {
-    for(int jj = PAD; jj < nx-PAD; ++jj) {
+  for(int ii = pad; ii < ny-pad; ++ii) {
+    for(int jj = pad; jj < nx-pad; ++jj) {
       rho[(ii*nx+jj)] -= dt_h*
         (edgedy[ii+1]*F_x[(ii*(nx+1)+jj)+1] - edgedy[ii]*F_x[(ii*(nx+1)+jj)])/ 
         (celldx[jj]*celldy[ii]);
@@ -365,6 +374,8 @@ void y_mass_and_energy_flux(
     double* F_y, double* eF_y, const double* celldx, const double* edgedx, 
     const double* celldy, const double* edgedy)
 {
+  const int pad = mesh->pad;
+
   // Compute the mass flux along the y edges
   // In the ghost cells flux is left as 0.0
   START_PROFILING(&compute_profile);
@@ -373,8 +384,8 @@ void y_mass_and_energy_flux(
 #else
 #pragma omp target teams distribute parallel for
 #endif
-  for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
-    for(int jj = PAD; jj < nx-PAD; ++jj) {
+  for(int ii = pad; ii < (ny+1)-pad; ++ii) {
+    for(int jj = pad; jj < nx-pad; ++jj) {
 
       // Interpolate the velocity to make second order in time
       const double invdy = 1.0/edgedy[ii];
@@ -425,8 +436,8 @@ void y_mass_and_energy_flux(
 #else
 #pragma omp target teams distribute parallel for
 #endif
-  for(int ii = PAD; ii < ny-PAD; ++ii) {
-    for(int jj = PAD; jj < nx-PAD; ++jj) {
+  for(int ii = pad; ii < ny-pad; ++ii) {
+    for(int jj = pad; jj < nx-pad; ++jj) {
       rho[(ii*nx+jj)] -= dt_h*
         (edgedx[jj+1]*F_y[(ii*nx+jj)+nx] - edgedx[jj]*F_y[(ii*nx+jj)])/
         (celldx[jj]*celldy[ii]);
@@ -451,6 +462,8 @@ void advect_momentum(
     const double* rho, const double* F_x, const double* F_y, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
+  const int pad = mesh->pad;
+
   if(tt % 2) {
     START_PROFILING(&compute_profile);
     ux_momentum_flux(
@@ -461,8 +474,8 @@ void advect_momentum(
 #else
 #pragma omp target teams distribute parallel for
 #endif
-    for(int ii = PAD; ii < ny-PAD; ++ii) {
-      for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
+    for(int ii = pad; ii < ny-pad; ++ii) {
+      for(int jj = pad; jj < (nx+1)-pad; ++jj) {
         rho_u[(ii*(nx+1)+jj)] -= dt_h*(uF_x[(ii*nx+jj)] - uF_x[(ii*nx+jj)-1])/(edgedx[jj]*celldy[ii]);
         const double rho_edge_x = 
           (rho[(ii*nx+jj)]*celldx[jj]*celldy[ii] + rho[(ii*nx+jj)-1]*celldx[jj - 1]*celldy[ii])/ 
@@ -484,8 +497,8 @@ void advect_momentum(
 #else
 #pragma omp target teams distribute parallel for
 #endif
-    for(int ii = PAD; ii < ny-PAD; ++ii) {
-      for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
+    for(int ii = pad; ii < ny-pad; ++ii) {
+      for(int jj = pad; jj < (nx+1)-pad; ++jj) {
         rho_u[(ii*(nx+1)+jj)] -= dt_h*(uF_y[(ii*(nx+1)+jj)+(nx+1)] - uF_y[(ii*(nx+1)+jj)])/(celldx[jj]*edgedy[ii]);
       }
     }
@@ -498,8 +511,8 @@ void advect_momentum(
 #else
 #pragma omp target teams distribute parallel for
 #endif
-    for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
-      for(int jj = PAD; jj < nx-PAD; ++jj) {
+    for(int ii = pad; ii < (ny+1)-pad; ++ii) {
+      for(int jj = pad; jj < nx-pad; ++jj) {
         rho_v[(ii*nx+jj)] -= dt_h*(vF_x[(ii*(nx+1)+jj)+1] - vF_x[(ii*(nx+1)+jj)])/(edgedx[jj]*celldy[ii]);
         const double rho_edge_y = 
           (rho[(ii*nx+jj)]*celldx[jj]*celldy[ii] + rho[(ii*nx+jj)-nx]*celldx[jj]*celldy[ii - 1])/ 
@@ -520,8 +533,8 @@ void advect_momentum(
 #else
 #pragma omp target teams distribute parallel for
 #endif
-    for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
-      for(int jj = PAD; jj < nx-PAD; ++jj) {
+    for(int ii = pad; ii < (ny+1)-pad; ++ii) {
+      for(int jj = pad; jj < nx-pad; ++jj) {
         rho_v[(ii*nx+jj)] -= dt_h*(vF_y[(ii*nx+jj)] - vF_y[(ii*nx+jj)-nx])/(celldx[jj]*edgedy[ii]);
       }
     }
@@ -536,8 +549,8 @@ void advect_momentum(
 #else
 #pragma omp target teams distribute parallel for
 #endif
-    for(int ii = PAD; ii < ny-PAD; ++ii) {
-      for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
+    for(int ii = pad; ii < ny-pad; ++ii) {
+      for(int jj = pad; jj < (nx+1)-pad; ++jj) {
         rho_u[(ii*(nx+1)+jj)] -= dt_h*(uF_y[(ii*(nx+1)+jj)+(nx+1)] - uF_y[(ii*(nx+1)+jj)])/(celldx[jj]*edgedy[ii]);
         const double rho_edge_x = 
           (rho[(ii*nx+jj)]*celldx[jj]*celldy[ii] + rho[(ii*nx+jj)-1]*celldx[jj - 1]*celldy[ii])/ 
@@ -558,8 +571,8 @@ void advect_momentum(
 #else
 #pragma omp target teams distribute parallel for
 #endif
-    for(int ii = PAD; ii < ny-PAD; ++ii) {
-      for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
+    for(int ii = pad; ii < ny-pad; ++ii) {
+      for(int jj = pad; jj < (nx+1)-pad; ++jj) {
         rho_u[(ii*(nx+1)+jj)] -= dt_h*(uF_x[(ii*nx+jj)] - uF_x[(ii*nx+jj)-1])/(edgedx[jj]*celldy[ii]);
       }
     }
@@ -572,8 +585,8 @@ void advect_momentum(
 #else
 #pragma omp target teams distribute parallel for
 #endif
-    for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
-      for(int jj = PAD; jj < nx-PAD; ++jj) {
+    for(int ii = pad; ii < (ny+1)-pad; ++ii) {
+      for(int jj = pad; jj < nx-pad; ++jj) {
         rho_v[(ii*nx+jj)] -= dt_h*(vF_y[(ii*nx+jj)] - vF_y[(ii*nx+jj)-nx])/(celldx[jj]*edgedy[ii]);
         const double rho_edge_y = 
           (rho[(ii*nx+jj)]*celldx[jj]*celldy[ii] + rho[(ii*nx+jj)-nx]*celldx[jj]*celldy[ii - 1])/ 
@@ -594,8 +607,8 @@ void advect_momentum(
 #else
 #pragma omp target teams distribute parallel for
 #endif
-    for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
-      for(int jj = PAD; jj < nx-PAD; ++jj) {
+    for(int ii = pad; ii < (ny+1)-pad; ++ii) {
+      for(int jj = pad; jj < nx-pad; ++jj) {
         rho_v[(ii*nx+jj)] -= dt_h*(vF_x[(ii*(nx+1)+jj)+1] - vF_x[(ii*(nx+1)+jj)])/(edgedx[jj]*celldy[ii]);
       }
     }
@@ -608,14 +621,16 @@ void ux_momentum_flux(
     double* u, double* v, double* uF_x, double* rho_u, const double* rho, const double* F_x, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
+  const int pad = mesh->pad;
+
   // Calculate the cell centered x momentum fluxes in the x direction
 #ifdef CLANG
 #pragma omp target teams distribute parallel for collapse(2)
 #else
 #pragma omp target teams distribute parallel for
 #endif
-  for(int ii = PAD; ii < ny-PAD; ++ii) {
-    for(int jj = PAD; jj < nx-PAD; ++jj) {
+  for(int ii = pad; ii < ny-pad; ++ii) {
+    for(int jj = pad; jj < nx-pad; ++jj) {
       // Use MC limiter to get slope of velocity
       const double invdx = 1.0/edgedx[jj];
       const double a_x_0 = 0.5*invdx*(u[(ii*(nx+1)+jj)+1]-u[(ii*(nx+1)+jj)-1]);
@@ -644,13 +659,15 @@ void uy_momentum_flux(
     const double* F_y, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
+  const int pad = mesh->pad;
+
 #ifdef CLANG
 #pragma omp target teams distribute parallel for collapse(2)
 #else
 #pragma omp target teams distribute parallel for
 #endif
-  for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
-    for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
+  for(int ii = pad; ii < (ny+1)-pad; ++ii) {
+    for(int jj = pad; jj < (nx+1)-pad; ++jj) {
       // Use MC limiter to get slope of velocity
       const double invdy = 1.0/edgedy[ii];
       const double a_y_0 = 0.5*invdy*(u[(ii*(nx+1)+jj)]-u[(ii*(nx+1)+jj)-2*(nx+1)]);
@@ -677,6 +694,8 @@ void vx_momentum_flux(
     const double* u, double* v, double* vF_x, double* rho_v, const double* rho, const double* F_x, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
+  const int pad = mesh->pad;
+
   // Calculate the corner centered y momentum fluxes in the x direction
   // Calculate the cell centered y momentum fluxes in the y direction
 #ifdef CLANG
@@ -684,8 +703,8 @@ void vx_momentum_flux(
 #else
 #pragma omp target teams distribute parallel for
 #endif
-  for(int ii = PAD; ii < (ny+1)-PAD; ++ii) {
-    for(int jj = PAD; jj < (nx+1)-PAD; ++jj) {
+  for(int ii = pad; ii < (ny+1)-pad; ++ii) {
+    for(int jj = pad; jj < (nx+1)-pad; ++jj) {
 
       // Use MC limiter to get slope of velocity
       const double invdx = 1.0/edgedx[jj];
@@ -714,13 +733,15 @@ void vy_momentum_flux(
     double* u, double* v, double* vF_y, double* rho_v, const double* rho, const double* F_y, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
+  const int pad = mesh->pad;
+
 #ifdef CLANG
 #pragma omp target teams distribute parallel for collapse(2)
 #else
 #pragma omp target teams distribute parallel for
 #endif
-  for(int ii = PAD; ii < ny-PAD; ++ii) {
-    for(int jj = PAD; jj < nx-PAD; ++jj) {
+  for(int ii = pad; ii < ny-pad; ++ii) {
+    for(int jj = pad; jj < nx-pad; ++jj) {
       // Use MC limiter to get slope of velocity
       const double invdy = 1.0/edgedy[ii];
       const double a_y_0 = 0.5*invdy*(v[(ii*nx+jj)+nx]-v[(ii*nx+jj)-nx]);
@@ -755,8 +776,8 @@ void print_conservation(
 #pragma omp target teams distribute parallel for \
   map(tofrom: mass_tot, energy_tot) reduction(+:mass_tot, energy_tot)
 #endif
-  for(int ii = PAD; ii < ny-PAD; ++ii) {
-    for(int jj = PAD; jj < nx-PAD; ++jj) {
+  for(int ii = pad; ii < ny-pad; ++ii) {
+    for(int jj = pad; jj < nx-pad; ++jj) {
       mass_tot += rho[(ii*nx+jj)];
       energy_tot += rho[(ii*nx+jj)]*e[(ii*nx+jj)];
     }
