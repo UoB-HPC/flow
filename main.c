@@ -21,9 +21,9 @@ int main(int argc, char** argv)
   mesh.global_nx = get_int_parameter("nx", flow_params);
   mesh.global_ny = get_int_parameter("ny", flow_params);
   mesh.niters = get_int_parameter("iterations", flow_params);
+  mesh.pad = PAD;
   mesh.local_nx = mesh.global_nx+2*mesh.pad;
   mesh.local_ny = mesh.global_ny+2*mesh.pad;
-  mesh.pad = 2;
   mesh.width = get_double_parameter("width", ARCH_ROOT_PARAMS);
   mesh.height = get_double_parameter("height", ARCH_ROOT_PARAMS);
   mesh.max_dt = get_double_parameter("max_dt", ARCH_ROOT_PARAMS);
