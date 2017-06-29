@@ -768,6 +768,8 @@ void print_conservation(
     const int nx, const int ny, double* rho, double* e, double* reduce_array, Mesh* mesh) {
   double mass_tot = 0.0;
   double energy_tot = 0.0;
+  const int pad = mesh->pad;
+
 #ifdef CLANG
 #pragma omp target teams distribute parallel for collapse(2) \
   num_teams(14) num_threads(1024) \
