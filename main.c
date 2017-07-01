@@ -96,6 +96,7 @@ int main(int argc, char** argv)
         shared_data.reduce_array0, &mesh);
 
     wallclock += omp_get_wtime()-w0;
+
     elapsed_sim_time += mesh.dt;
     if(elapsed_sim_time >= mesh.sim_end) {
       if(mesh.rank == MASTER) {

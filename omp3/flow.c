@@ -40,8 +40,8 @@ void solve_hydro_2d(
 
   // Perform advection
   advect_mass_and_energy(
-      mesh->local_nx, mesh->local_ny, mesh, tt, mesh->dt, mesh->dt_h, rho, e, rho_old, F_x, F_y, 
-      uF_x, uF_y, u, v, mesh->edgedx, mesh->edgedy, mesh->celldx, mesh->celldy);
+      mesh->local_nx, mesh->local_ny, mesh, tt, mesh->dt, mesh->dt_h, rho, e, rho_old, 
+      F_x, F_y, uF_x, uF_y, u, v, mesh->edgedx, mesh->edgedy, mesh->celldx, mesh->celldy);
 
   advect_momentum(
       mesh->local_nx, mesh->local_ny, tt, mesh, mesh->dt_h, mesh->dt, u, v, 
@@ -242,10 +242,12 @@ void advect_mass_and_energy(
     double* eF_x, double* eF_y, const double* u, const double* v, 
     const double* edgedx, const double* edgedy, const double* celldx, const double* celldy)
 {
+  START_PROFILING(&compute_profile);
 #pragma omp parallel for
   for(int ii = 0; ii < nx*ny; ++ii) {
     rho_old[ii] = rho[ii];
   }
+  STOP_PROFILING(&compute_profile, "storing_old_rho");
 
   if(tt % 2 == 0) {
     x_mass_and_energy_flux(
@@ -438,7 +440,11 @@ void advect_momentum(
     START_PROFILING(&compute_profile);
     ux_momentum_flux(
         nx, ny, mesh, dt_h, dt, u, v, uF_x, rho_u, rho, F_x, edgedx, edgedy, celldx, celldy);
+    STOP_PROFILING(&compute_profile, __func__);
 
+    handle_boundary_2d(nx, ny, mesh, uF_x, NO_INVERT, PACK);
+
+    START_PROFILING(&compute_profile);
 #pragma omp parallel for
     for(int ii = pad; ii < ny-pad; ++ii) {
 #pragma omp simd
@@ -457,7 +463,11 @@ void advect_momentum(
     START_PROFILING(&compute_profile);
     uy_momentum_flux(
         nx, ny, mesh, dt_h, dt, u, v, uF_y, rho_u, rho, F_y, edgedx, edgedy, celldx, celldy);
+    STOP_PROFILING(&compute_profile, __func__);
 
+    handle_boundary_2d(nx+1, ny+1, mesh, uF_y, NO_INVERT, PACK);
+
+    START_PROFILING(&compute_profile);
     // Calculate the axial momentum
 #pragma omp parallel for
     for(int ii = pad; ii < ny-pad; ++ii) {
@@ -469,7 +479,11 @@ void advect_momentum(
 
     vx_momentum_flux(
         nx, ny, mesh, dt_h, dt, u, v, vF_x, rho_v, rho, F_x, edgedx, edgedy, celldx, celldy);
+    STOP_PROFILING(&compute_profile, __func__);
 
+    handle_boundary_2d(nx+1, ny+1, mesh, vF_x, NO_INVERT, PACK);
+
+    START_PROFILING(&compute_profile);
 #pragma omp parallel for
     for(int ii = pad; ii < (ny+1)-pad; ++ii) {
 #pragma omp simd
@@ -488,7 +502,11 @@ void advect_momentum(
     START_PROFILING(&compute_profile);
     vy_momentum_flux(
         nx, ny, mesh, dt_h, dt, u, v, vF_y, rho_v, rho, F_y, edgedx, edgedy, celldx, celldy);
+    STOP_PROFILING(&compute_profile, __func__);
 
+    handle_boundary_2d(nx, ny, mesh, vF_y, NO_INVERT, PACK);
+
+    START_PROFILING(&compute_profile);
 #pragma omp parallel for
     for(int ii = pad; ii < (ny+1)-pad; ++ii) {
 #pragma omp simd
@@ -496,11 +514,17 @@ void advect_momentum(
         rho_v[(ii*nx+jj)] -= dt_h*(vF_y[(ii*nx+jj)] - vF_y[(ii*nx+jj)-nx])/(celldx[jj]*edgedy[ii]);
       }
     }
+    STOP_PROFILING(&compute_profile, __func__);
   }
   else {
+    START_PROFILING(&compute_profile);
     uy_momentum_flux(
         nx, ny, mesh, dt_h, dt, u, v, uF_y, rho_u, rho, F_y, edgedx, edgedy, celldx, celldy);
+    STOP_PROFILING(&compute_profile, __func__);
 
+    handle_boundary_2d(nx+1, ny+1, mesh, uF_y, NO_INVERT, PACK);
+
+    START_PROFILING(&compute_profile);
     // Calculate the axial momentum
 #pragma omp parallel for
     for(int ii = pad; ii < ny-pad; ++ii) {
@@ -520,7 +544,11 @@ void advect_momentum(
     START_PROFILING(&compute_profile);
     ux_momentum_flux(
         nx, ny, mesh, dt_h, dt, u, v, uF_x, rho_u, rho, F_x, edgedx, edgedy, celldx, celldy);
+    STOP_PROFILING(&compute_profile, __func__);
 
+    handle_boundary_2d(nx, ny, mesh, uF_x, NO_INVERT, PACK);
+
+    START_PROFILING(&compute_profile);
 #pragma omp parallel for
     for(int ii = pad; ii < ny-pad; ++ii) {
 #pragma omp simd
@@ -531,7 +559,11 @@ void advect_momentum(
 
     vy_momentum_flux(
         nx, ny, mesh, dt_h, dt, u, v, vF_y, rho_v, rho, F_y, edgedx, edgedy, celldx, celldy);
+    STOP_PROFILING(&compute_profile, __func__);
 
+    handle_boundary_2d(nx, ny, mesh, vF_y, NO_INVERT, PACK);
+
+    START_PROFILING(&compute_profile);
 #pragma omp parallel for
     for(int ii = pad; ii < (ny+1)-pad; ++ii) {
 #pragma omp simd
@@ -550,7 +582,11 @@ void advect_momentum(
     START_PROFILING(&compute_profile);
     vx_momentum_flux(
         nx, ny, mesh, dt_h, dt, u, v, vF_x, rho_v, rho, F_x, edgedx, edgedy, celldx, celldy);
+    STOP_PROFILING(&compute_profile, __func__);
 
+    handle_boundary_2d(nx+1, ny+1, mesh, vF_x, NO_INVERT, PACK);
+
+    START_PROFILING(&compute_profile);
 #pragma omp parallel for
     for(int ii = pad; ii < (ny+1)-pad; ++ii) {
 #pragma omp simd
@@ -592,8 +628,6 @@ void ux_momentum_flux(
       uF_x[(ii*nx+jj)] = f_x*u_cell_x_interp;
     }
   }
-
-  handle_boundary_2d(nx, ny, mesh, uF_x, NO_INVERT, PACK);
 }
 
 void uy_momentum_flux(
@@ -625,8 +659,6 @@ void uy_momentum_flux(
       uF_y[(ii*(nx+1)+jj)] = f_y*u_corner_y;
     }
   }
-
-  handle_boundary_2d(nx+1, ny+1, mesh, uF_y, NO_INVERT, PACK);
 }
 
 void vx_momentum_flux(
@@ -661,8 +693,6 @@ void vx_momentum_flux(
       vF_x[(ii*(nx+1)+jj)] = f_x*v_cell_x_interp;
     }
   }
-
-  handle_boundary_2d(nx+1, ny+1, mesh, vF_x, NO_INVERT, PACK);
 }
 
 void vy_momentum_flux(
@@ -693,8 +723,6 @@ void vy_momentum_flux(
       vF_y[(ii*nx+jj)] = f_y*v_cell_y_interp;
     }
   }
-
-  handle_boundary_2d(nx, ny, mesh, vF_y, NO_INVERT, PACK);
 }
 
 // Prints some conservation values
