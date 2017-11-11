@@ -13,8 +13,9 @@ void solve_hydro_2d(
     double* Qxx, double* Qyy, double* F_x, double* F_y, double* uF_x, 
     double* uF_y, double* vF_x, double* vF_y, double* reduce_array)
 {
-  if(mesh->rank == MASTER)
-    printf("dt %.12e dt_h %.12e\n", mesh->dt, mesh->dt_h);
+  if(mesh->rank == MASTER) {
+    printf("Timestep:        %.12e\n", mesh->dt, mesh->dt_h);
+  }
 
   equation_of_state(
       mesh->local_nx, mesh->local_ny, P, rho, e);
@@ -789,8 +790,8 @@ void print_conservation(
   double global_energy_tot = reduce_to_master(energy_tot);
 
   if(mesh->rank == MASTER) {
-    printf("total mass: %.12e\n", global_mass_tot);
-    printf("total energy: %.12e\n", global_energy_tot);
+    printf("Total mass:      %.12e\n", global_mass_tot);
+    printf("Total energy:    %.12e\n", global_energy_tot);
   }
 }
 

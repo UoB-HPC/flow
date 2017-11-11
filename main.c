@@ -101,7 +101,7 @@ int main(int argc, char **argv) {
     }
 
     if (mesh.rank == MASTER) {
-      printf("simulation time: %.4lfs\nwallclock: %.4lfs\n", elapsed_sim_time,
+      printf("Simulation time: %.4lfs\nWallclock:       %.4lfs\n", elapsed_sim_time,
              wallclock);
     }
 
@@ -189,7 +189,7 @@ void validate(const int nx, const int ny, const int pad,
     expected_density = values[0];
   }
 
-  printf("\nExpected energy %.12e, result was %.12e.\n", expected_energy,
+  printf("\nExpected energy  %.12e, result was %.12e.\n", expected_energy,
          global_energy_total);
   printf("Expected density %.12e, result was %.12e.\n", expected_density,
          global_density_total);

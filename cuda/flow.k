@@ -5,6 +5,7 @@
 #include "../../cuda/shared.h"
 #include "../../cuda/reduction.k"
 
+// Calculates the ideal gas equation of state
 __global__ void equation_of_state(
     const int nx, const int ny, double* P, const double* rho, const double* e)
 {
@@ -48,6 +49,7 @@ __global__ void pressure_acceleration(
   v[(ii*nx+jj)] = (rho_edge_y == 0.0) ? 0.0 : rho_v[(ii*nx+jj)] / rho_edge_y;
 }
 
+// Calculate the stresses due to artificial viscosity
 __global__ void calc_viscous_stresses(
     const int nx, const int ny, const int pad, const double dt, double* Qxx, 
     double* Qyy, double* u, double* v, double* rho_u, double* rho_v, const double* rho, 
@@ -72,6 +74,7 @@ __global__ void calc_viscous_stresses(
   Qyy[(ii*nx+jj)] = -C_Q*rho[(ii*nx+jj)]*v_i*v_ii;
 }
 
+// Calculate the acceleration due to artificial viscosity terms
 __global__ void viscous_acceleration(
     const int nx, const int ny, const int pad, const double dt, double* Qxx, 
     double* Qyy, double* u, double* v, double* rho_u, double* rho_v, const double* rho, 
@@ -125,6 +128,7 @@ __global__ void shock_heating_and_work(
   e[(ii*nx+jj)] = (rho[(ii*nx+jj)] == 0.0) ? 0.0 : e_q-work;
 }
 
+// Store the old density value
 __global__ void store_old_rho(
     const int nx, const int ny, const int pad, double* rho, double* rho_old)
 {

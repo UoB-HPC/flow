@@ -13,7 +13,7 @@ void solve_hydro_2d(
     double* uF_y, double* vF_x, double* vF_y, double* reduce_array)
 {
   if(mesh->rank == MASTER) {
-    printf("dt %.12e dt_h %.12e\n", mesh->dt, mesh->dt_h);
+    printf("Timestep:        %.12e\n", mesh->dt, mesh->dt_h);
   }
 
   int nblocks = ceil(mesh->local_nx*mesh->local_ny/(double)NTHREADS);
@@ -389,7 +389,7 @@ void print_conservation(
   double global_mass_tot = reduce_to_master(local_mass_tot);
 
   if(mesh->rank == MASTER) {
-    printf("total mass: %.12e\n", global_mass_tot);
+    printf("Total mass:    %.12e\n", global_mass_tot);
   }
   STOP_PROFILING(&comms_profile, "finish_sum_reduce");
 }
