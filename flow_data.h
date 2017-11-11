@@ -36,3 +36,5 @@ void deallocate_flow_data_2d(FlowData* flow_data);
 void validate(const int nx, const int ny, const int pad,
               const char* params_filename, const int rank, double* density,
               double* energy);
+
+#endif
