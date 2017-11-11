@@ -83,8 +83,9 @@ int main(int argc, char** argv) {
                    shared_data.density_old, shared_data.energy, shared_data.u,
                    shared_data.v, flow_data.momentum_x, flow_data.momentum_y,
                    shared_data.Qxx, shared_data.Qyy, flow_data.mass_flux_x,
-                   flow_data.mass_flux_y, flow_data.uF_x, flow_data.uF_y,
-                   flow_data.vF_x, flow_data.vF_y, shared_data.reduce_array0);
+                   flow_data.mass_flux_y, flow_data.momentum_x_flux_x,
+                   flow_data.momentum_x_flux_y, flow_data.momentum_y_flux_x,
+                   flow_data.momentum_y_flux_y, shared_data.reduce_array0);
 
     print_conservation(mesh.local_nx, mesh.local_ny, shared_data.density,
                        shared_data.energy, shared_data.reduce_array0, &mesh);

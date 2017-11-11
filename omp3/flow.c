@@ -7,49 +7,53 @@
 #include <stdlib.h>
 
 // Solve a single timestep on the given mesh
-void solve_hydro_2d(Mesh* mesh, int tt, double* pressure, double* density0,
+void solve_hydro_2d(Mesh* mesh, int tt, double* pressure, double* density,
                     double* density_old, double* energy, double* velocity_x,
                     double* velocity_y, double* momentum_x, double* momentum_y,
                     double* Qxx, double* Qyy, double* mass_flux_x,
-                    double* mass_flux_y, double* uF_x, double* uF_y,
-                    double* vF_x, double* vF_y, double* reduce_array) {
+                    double* mass_flux_y, double* momentum_x_flux_x,
+                    double* momentum_x_flux_y, double* momentum_y_flux_x,
+                    double* momentum_y_flux_y, double* reduce_array) {
+
   if (mesh->rank == MASTER) {
     printf("Timestep:        %.12e\n", mesh->dt);
   }
 
-  equation_of_state(mesh->local_nx, mesh->local_ny, pressure, density0, energy);
+  equation_of_state(mesh->local_nx, mesh->local_ny, pressure, density, energy);
 
   pressure_acceleration(mesh->local_nx, mesh->local_ny, mesh, mesh->dt,
                         momentum_x, momentum_y, velocity_x, velocity_y,
-                        pressure, density0, mesh->edgedx, mesh->edgedy,
+                        pressure, density, mesh->edgedx, mesh->edgedy,
                         mesh->celldx, mesh->celldy);
 
   artificial_viscosity(mesh->local_nx, mesh->local_ny, mesh, mesh->dt, Qxx, Qyy,
-                       velocity_x, velocity_y, momentum_x, momentum_y, density0,
+                       velocity_x, velocity_y, momentum_x, momentum_y, density,
                        mesh->edgedx, mesh->edgedy, mesh->celldx, mesh->celldy);
 
   shock_heating_and_work(mesh->local_nx, mesh->local_ny, mesh, mesh->dt_h,
-                         energy, pressure, velocity_x, velocity_y, density0,
-                         Qxx, Qyy, mesh->celldx, mesh->celldy);
+                         energy, pressure, velocity_x, velocity_y, density, Qxx,
+                         Qyy, mesh->celldx, mesh->celldy);
 
-  set_timestep(mesh->local_nx, mesh->local_ny, Qxx, Qyy, density0, energy, mesh,
+  set_timestep(mesh->local_nx, mesh->local_ny, Qxx, Qyy, density, energy, mesh,
                reduce_array, tt == 0, mesh->celldx, mesh->celldy);
 
   // Perform advection
-  advect_mass_and_energy(
-      mesh->local_nx, mesh->local_ny, mesh, tt, mesh->dt, mesh->dt_h, density0,
-      energy, density_old, mass_flux_x, mass_flux_y, uF_x, uF_y, velocity_x,
-      velocity_y, mesh->edgedx, mesh->edgedy, mesh->celldx, mesh->celldy);
+  advect_mass_and_energy(mesh->local_nx, mesh->local_ny, mesh, tt, mesh->dt,
+                         mesh->dt_h, density, energy, density_old, mass_flux_x,
+                         mass_flux_y, momentum_x_flux_x, momentum_x_flux_y,
+                         velocity_x, velocity_y, mesh->edgedx, mesh->edgedy,
+                         mesh->celldx, mesh->celldy);
 
   advect_momentum(mesh->local_nx, mesh->local_ny, tt, mesh, mesh->dt_h,
-                  mesh->dt, velocity_x, velocity_y, uF_x, uF_y, vF_x, vF_y,
-                  momentum_x, momentum_y, density0, mass_flux_x, mass_flux_y,
+                  mesh->dt, velocity_x, velocity_y, momentum_x_flux_x,
+                  momentum_x_flux_y, momentum_y_flux_x, momentum_y_flux_y,
+                  momentum_x, momentum_y, density, mass_flux_x, mass_flux_y,
                   mesh->edgedx, mesh->edgedy, mesh->celldx, mesh->celldy);
 }
 
 // Calculate the pressure from GAMma law equation of state
 void equation_of_state(const int nx, const int ny, double* pressure,
-                       const double* density0, const double* energy) {
+                       const double* density, const double* energy) {
   START_PROFILING(&compute_profile);
 
 #pragma omp parallel for
@@ -58,7 +62,7 @@ void equation_of_state(const int nx, const int ny, double* pressure,
     for (int jj = 0; jj < nx; ++jj) {
       // Only invoke simple GAMma law at the moment
       pressure[(ii * nx + jj)] =
-          (GAM - 1.0) * density0[(ii * nx + jj)] * energy[(ii * nx + jj)];
+          (GAM - 1.0) * density[(ii * nx + jj)] * energy[(ii * nx + jj)];
     }
   }
 
@@ -67,7 +71,7 @@ void equation_of_state(const int nx, const int ny, double* pressure,
 
 // Calculates the timestep from the current state
 void set_timestep(const int nx, const int ny, double* Qxx, double* Qyy,
-                  const double* density0, const double* energy, Mesh* mesh,
+                  const double* density, const double* energy, Mesh* mesh,
                   double* reduce_array, const int first_step,
                   const double* celldx, const double* celldy) {
   const int pad = mesh->pad;
@@ -83,12 +87,10 @@ void set_timestep(const int nx, const int ny, double* Qxx, double* Qyy,
       const double c_s = sqrt(GAM * (GAM - 1.0) * energy[(ii * nx + jj)]);
       const double thread_min_dt_x =
           celldx[jj] /
-          sqrt(c_s * c_s +
-               2.0 * Qxx[(ii * nx + jj)] / density0[(ii * nx + jj)]);
+          sqrt(c_s * c_s + 2.0 * Qxx[(ii * nx + jj)] / density[(ii * nx + jj)]);
       const double thread_min_dt_y =
           celldy[ii] /
-          sqrt(c_s * c_s +
-               2.0 * Qyy[(ii * nx + jj)] / density0[(ii * nx + jj)]);
+          sqrt(c_s * c_s + 2.0 * Qyy[(ii * nx + jj)] / density[(ii * nx + jj)]);
       const double thread_min_dt = min(thread_min_dt_x, thread_min_dt_y);
       local_min_dt = min(local_min_dt, thread_min_dt);
     }
@@ -109,7 +111,7 @@ void pressure_acceleration(const int nx, const int ny, Mesh* mesh,
                            const double dt, double* momentum_x,
                            double* momentum_y, double* velocity_x,
                            double* velocity_y, const double* pressure,
-                           const double* density0, const double* edgedx,
+                           const double* density, const double* edgedx,
                            const double* edgedy, const double* celldx,
                            const double* celldy) {
   START_PROFILING(&compute_profile);
@@ -130,12 +132,12 @@ void pressure_acceleration(const int nx, const int ny, Mesh* mesh,
 
       // Calculate the zone edge centered density
       const double density_edge_x =
-          (density0[(ii * nx + jj)] * celldx[jj] * celldy[ii] +
-           density0[(ii * nx + jj) - 1] * celldx[jj - 1] * celldy[ii]) /
+          (density[(ii * nx + jj)] * celldx[jj] * celldy[ii] +
+           density[(ii * nx + jj) - 1] * celldx[jj - 1] * celldy[ii]) /
           (2.0 * edgedx[jj] * celldy[ii]);
       const double density_edge_y =
-          (density0[(ii * nx + jj)] * celldx[jj] * celldy[ii] +
-           density0[(ii * nx + jj) - nx] * celldx[jj] * celldy[ii - 1]) /
+          (density[(ii * nx + jj)] * celldx[jj] * celldy[ii] +
+           density[(ii * nx + jj) - nx] * celldx[jj] * celldy[ii - 1]) /
           (2.0 * celldx[jj] * edgedy[ii]);
 
       // Find the velocities from the momenta and edge centered mass densities
@@ -159,7 +161,7 @@ void artificial_viscosity(const int nx, const int ny, Mesh* mesh,
                           const double dt, double* Qxx, double* Qyy,
                           double* velocity_x, double* velocity_y,
                           double* momentum_x, double* momentum_y,
-                          const double* density0, const double* edgedx,
+                          const double* density, const double* edgedx,
                           const double* edgedy, const double* celldx,
                           const double* celldy) {
   START_PROFILING(&compute_profile);
@@ -194,8 +196,8 @@ void artificial_viscosity(const int nx, const int ny, Mesh* mesh,
                                 velocity_y[(ii * nx + jj)])) -
                       min(0.0, (velocity_y[(ii * nx + jj)] -
                                 velocity_y[(ii * nx + jj) - nx]))));
-      Qxx[(ii * nx + jj)] = -C_Q * density0[(ii * nx + jj)] * u_i * u_ii;
-      Qyy[(ii * nx + jj)] = -C_Q * density0[(ii * nx + jj)] * v_i * v_ii;
+      Qxx[(ii * nx + jj)] = -C_Q * density[(ii * nx + jj)] * u_i * u_ii;
+      Qyy[(ii * nx + jj)] = -C_Q * density[(ii * nx + jj)] * v_i * v_ii;
     }
   }
 
@@ -218,12 +220,12 @@ void artificial_viscosity(const int nx, const int ny, Mesh* mesh,
 
       // Calculate the zone edge centered density
       const double density_edge_x =
-          (density0[(ii * nx + jj)] * celldx[jj] * celldy[ii] +
-           density0[(ii * nx + jj) - 1] * celldx[jj - 1] * celldy[ii]) /
+          (density[(ii * nx + jj)] * celldx[jj] * celldy[ii] +
+           density[(ii * nx + jj) - 1] * celldx[jj - 1] * celldy[ii]) /
           (2.0 * edgedx[jj] * celldy[ii]);
       const double density_edge_y =
-          (density0[(ii * nx + jj)] * celldx[jj] * celldy[ii] +
-           density0[(ii * nx + jj) - nx] * celldx[jj] * celldy[ii - 1]) /
+          (density[(ii * nx + jj)] * celldx[jj] * celldy[ii] +
+           density[(ii * nx + jj) - nx] * celldx[jj] * celldy[ii - 1]) /
           (2.0 * celldx[jj] * edgedy[ii]);
 
       // Find the velocities from the momenta and edge centered mass densities
@@ -246,7 +248,7 @@ void artificial_viscosity(const int nx, const int ny, Mesh* mesh,
 void shock_heating_and_work(const int nx, const int ny, Mesh* mesh,
                             const double dt_h, double* energy,
                             const double* pressure, const double* velocity_x,
-                            const double* velocity_y, const double* density0,
+                            const double* velocity_y, const double* density,
                             const double* Qxx, const double* Qyy,
                             const double* celldx, const double* celldy) {
   START_PROFILING(&compute_profile);
@@ -267,18 +269,18 @@ void shock_heating_and_work(const int nx, const int ny, Mesh* mesh,
       const double e_q = energy[(ii * nx + jj)] -
                          dt_h * (Qxx[(ii * nx + jj)] * div_vel_x +
                                  Qyy[(ii * nx + jj)] * div_vel_y) /
-                             density0[(ii * nx + jj)];
+                             density[(ii * nx + jj)];
 
       /// A working formulation that is second order in time for Pressure!?
-      const double density_c = density0[(ii * nx + jj)] / (1.0 + div_vel_dt);
+      const double density_c = density[(ii * nx + jj)] / (1.0 + div_vel_dt);
       const double e_c =
           e_q -
-          (pressure[(ii * nx + jj)] * div_vel_dt) / density0[(ii * nx + jj)];
+          (pressure[(ii * nx + jj)] * div_vel_dt) / density[(ii * nx + jj)];
       const double work = 0.5 * div_vel_dt * (pressure[(ii * nx + jj)] +
                                               (GAM - 1.0) * e_c * density_c) /
-                          density0[(ii * nx + jj)];
+                          density[(ii * nx + jj)];
       energy[(ii * nx + jj)] =
-          (density0[(ii * nx + jj)] == 0.0) ? 0.0 : e_q - work;
+          (density[(ii * nx + jj)] == 0.0) ? 0.0 : e_q - work;
     }
   }
 
@@ -290,7 +292,7 @@ void shock_heating_and_work(const int nx, const int ny, Mesh* mesh,
 // Perform advection with monotonicity improvement
 void advect_mass_and_energy(const int nx, const int ny, Mesh* mesh,
                             const int tt, const double dt, const double dt_h,
-                            double* density0, double* energy,
+                            double* density, double* energy,
                             double* density_old, double* mass_flux_x,
                             double* mass_flux_y, double* eF_x, double* eF_y,
                             const double* velocity_x, const double* velocity_y,
@@ -299,22 +301,22 @@ void advect_mass_and_energy(const int nx, const int ny, Mesh* mesh,
   START_PROFILING(&compute_profile);
 #pragma omp parallel for
   for (int ii = 0; ii < nx * ny; ++ii) {
-    density_old[ii] = density0[ii];
+    density_old[ii] = density[ii];
   }
   STOP_PROFILING(&compute_profile, "storing_old_density");
 
   if (tt % 2 == 0) {
-    x_mass_and_energy_flux(nx, ny, 1, mesh, dt, dt_h, density0, density_old,
+    x_mass_and_energy_flux(nx, ny, 1, mesh, dt, dt_h, density, density_old,
                            energy, velocity_x, mass_flux_x, eF_x, celldx,
                            edgedx, celldy, edgedy);
-    y_mass_and_energy_flux(nx, ny, 0, mesh, dt, dt_h, density0, density_old,
+    y_mass_and_energy_flux(nx, ny, 0, mesh, dt, dt_h, density, density_old,
                            energy, velocity_y, mass_flux_y, eF_y, celldx,
                            edgedx, celldy, edgedy);
   } else {
-    y_mass_and_energy_flux(nx, ny, 1, mesh, dt, dt_h, density0, density_old,
+    y_mass_and_energy_flux(nx, ny, 1, mesh, dt, dt_h, density, density_old,
                            energy, velocity_y, mass_flux_y, eF_y, celldx,
                            edgedx, celldy, edgedy);
-    x_mass_and_energy_flux(nx, ny, 0, mesh, dt, dt_h, density0, density_old,
+    x_mass_and_energy_flux(nx, ny, 0, mesh, dt, dt_h, density, density_old,
                            energy, velocity_x, mass_flux_x, eF_x, celldx,
                            edgedx, celldy, edgedy);
   }
@@ -323,7 +325,7 @@ void advect_mass_and_energy(const int nx, const int ny, Mesh* mesh,
 // Calculate the flux in the x direction
 void x_mass_and_energy_flux(const int nx, const int ny, const int first,
                             Mesh* mesh, const double dt, const double dt_h,
-                            double* density0, double* density_old,
+                            double* density, double* density_old,
                             double* energy, const double* velocity_x,
                             double* mass_flux_x, double* eF_x,
                             const double* celldx, const double* edgedx,
@@ -353,21 +355,20 @@ void x_mass_and_energy_flux(const int nx, const int ny, const int first,
       // Van leer limiter
       double limiter = 0.0;
       const double density_diff =
-          (density0[(ii * nx + jj)] - density0[(ii * nx + jj) - 1]);
+          (density[(ii * nx + jj)] - density[(ii * nx + jj) - 1]);
       if (density_diff) {
         const double smoothness =
             (u_tc >= 0.0)
-                ? (density0[(ii * nx + jj) - 1] -
-                   density0[(ii * nx + jj) - 2]) /
+                ? (density[(ii * nx + jj) - 1] - density[(ii * nx + jj) - 2]) /
                       density_diff
-                : (density0[(ii * nx + jj) + 1] - density0[(ii * nx + jj)]) /
+                : (density[(ii * nx + jj) + 1] - density[(ii * nx + jj)]) /
                       density_diff;
         limiter = (smoothness + fabs(smoothness)) / (1.0 + fabs(smoothness));
       }
 
       // Calculate the flux
-      const double density_upwind = (u_tc >= 0.0) ? density0[(ii * nx + jj) - 1]
-                                                  : density0[(ii * nx + jj)];
+      const double density_upwind =
+          (u_tc >= 0.0) ? density[(ii * nx + jj) - 1] : density[(ii * nx + jj)];
       mass_flux_x[(ii * (nx + 1) + jj)] =
           (u_tc * density_upwind +
            0.5 * fabs(u_tc) * (1.0 - fabs((u_tc * dt_h) / celldx[jj])) *
@@ -412,7 +413,7 @@ void x_mass_and_energy_flux(const int nx, const int ny, const int first,
   for (int ii = pad; ii < ny - pad; ++ii) {
 #pragma omp simd
     for (int jj = pad; jj < nx - pad; ++jj) {
-      density0[(ii * nx + jj)] -=
+      density[(ii * nx + jj)] -=
           dt_h * (edgedy[ii + 1] * mass_flux_x[(ii * (nx + 1) + jj) + 1] -
                   edgedy[ii] * mass_flux_x[(ii * (nx + 1) + jj)]) /
           (celldx[jj] * celldy[ii]);
@@ -426,21 +427,21 @@ void x_mass_and_energy_flux(const int nx, const int ny, const int first,
               ? (density_old[(ii * nx + jj)] == 0.0)
                     ? 0.0
                     : density_e / density_old[(ii * nx + jj)]
-              : (density0[(ii * nx + jj)] == 0.0)
+              : (density[(ii * nx + jj)] == 0.0)
                     ? 0.0
-                    : density_e / density0[(ii * nx + jj)];
+                    : density_e / density[(ii * nx + jj)];
     }
   }
   STOP_PROFILING(&compute_profile, "advect_mass_and_energy");
 
-  handle_boundary_2d(nx, ny, mesh, density0, NO_INVERT, PACK);
+  handle_boundary_2d(nx, ny, mesh, density, NO_INVERT, PACK);
   handle_boundary_2d(nx, ny, mesh, energy, NO_INVERT, PACK);
 }
 
 // Calculate the flux in the y direction
 void y_mass_and_energy_flux(const int nx, const int ny, const int first,
                             Mesh* mesh, const double dt, const double dt_h,
-                            double* density0, double* density_old,
+                            double* density, double* density_old,
                             double* energy, const double* velocity_y,
                             double* mass_flux_y, double* eF_y,
                             const double* celldx, const double* edgedx,
@@ -469,23 +470,22 @@ void y_mass_and_energy_flux(const int nx, const int ny, const int first,
 
       // Van leer limiter
       const double density_diff =
-          (density0[(ii * nx + jj)] - density0[(ii * nx + jj) - nx]);
+          (density[(ii * nx + jj)] - density[(ii * nx + jj) - nx]);
       double limiter = 0.0;
       if (density_diff) {
         const double smoothness =
             (velocity_y[(ii * nx + jj)] >= 0.0)
-                ? (density0[(ii * nx + jj) - nx] -
-                   density0[(ii * nx + jj) - 2 * nx]) /
+                ? (density[(ii * nx + jj) - nx] -
+                   density[(ii * nx + jj) - 2 * nx]) /
                       density_diff
-                : (density0[(ii * nx + jj) + nx] - density0[(ii * nx + jj)]) /
+                : (density[(ii * nx + jj) + nx] - density[(ii * nx + jj)]) /
                       density_diff;
         limiter = (smoothness + fabs(smoothness)) / (1.0 + fabs(smoothness));
       }
 
       // Calculate the flux
-      const double density_upwind = (v_tc >= 0.0)
-                                        ? density0[(ii * nx + jj) - nx]
-                                        : density0[(ii * nx + jj)];
+      const double density_upwind = (v_tc >= 0.0) ? density[(ii * nx + jj) - nx]
+                                                  : density[(ii * nx + jj)];
       mass_flux_y[(ii * nx + jj)] =
           (v_tc * density_upwind +
            0.5 * fabs(v_tc) * (1.0 - fabs((v_tc * dt_h) / celldy[ii])) *
@@ -529,7 +529,7 @@ void y_mass_and_energy_flux(const int nx, const int ny, const int first,
   for (int ii = pad; ii < ny - pad; ++ii) {
 #pragma omp simd
     for (int jj = pad; jj < nx - pad; ++jj) {
-      density0[(ii * nx + jj)] -=
+      density[(ii * nx + jj)] -=
           dt_h * (edgedx[jj + 1] * mass_flux_y[(ii * nx + jj) + nx] -
                   edgedx[jj] * mass_flux_y[(ii * nx + jj)]) /
           (celldx[jj] * celldy[ii]);
@@ -542,23 +542,24 @@ void y_mass_and_energy_flux(const int nx, const int ny, const int first,
               ? (density_old[(ii * nx + jj)] == 0.0)
                     ? 0.0
                     : density_e / density_old[(ii * nx + jj)]
-              : (density0[(ii * nx + jj)] == 0.0)
+              : (density[(ii * nx + jj)] == 0.0)
                     ? 0.0
-                    : density_e / density0[(ii * nx + jj)];
+                    : density_e / density[(ii * nx + jj)];
     }
   }
   STOP_PROFILING(&compute_profile, "advect_mass_and_energy");
 
-  handle_boundary_2d(nx, ny, mesh, density0, NO_INVERT, PACK);
+  handle_boundary_2d(nx, ny, mesh, density, NO_INVERT, PACK);
   handle_boundary_2d(nx, ny, mesh, energy, NO_INVERT, PACK);
 }
 
 // Advect momentum according to the velocity
 void advect_momentum(const int nx, const int ny, const int tt, Mesh* mesh,
                      const double dt_h, const double dt, double* velocity_x,
-                     double* velocity_y, double* uF_x, double* uF_y,
-                     double* vF_x, double* vF_y, double* momentum_x,
-                     double* momentum_y, const double* density0,
+                     double* velocity_y, double* momentum_x_flux_x,
+                     double* momentum_x_flux_y, double* momentum_y_flux_x,
+                     double* momentum_y_flux_y, double* momentum_x,
+                     double* momentum_y, const double* density,
                      const double* mass_flux_x, const double* mass_flux_y,
                      const double* edgedx, const double* edgedy,
                      const double* celldx, const double* celldy) {
@@ -566,11 +567,11 @@ void advect_momentum(const int nx, const int ny, const int tt, Mesh* mesh,
 
   if (tt % 2) {
     START_PROFILING(&compute_profile);
-    momentum_x_flux_in_x(nx, ny, mesh, dt_h, velocity_x, uF_x, mass_flux_x,
-                         edgedx, edgedy, celldx);
+    momentum_x_flux_in_x(nx, ny, mesh, dt_h, velocity_x, momentum_x_flux_x,
+                         mass_flux_x, edgedx, edgedy, celldx);
     STOP_PROFILING(&compute_profile, __func__);
 
-    handle_boundary_2d(nx, ny, mesh, uF_x, NO_INVERT, PACK);
+    handle_boundary_2d(nx, ny, mesh, momentum_x_flux_x, NO_INVERT, PACK);
 
     START_PROFILING(&compute_profile);
 #pragma omp parallel for
@@ -578,11 +579,12 @@ void advect_momentum(const int nx, const int ny, const int tt, Mesh* mesh,
 #pragma omp simd
       for (int jj = pad; jj < (nx + 1) - pad; ++jj) {
         momentum_x[(ii * (nx + 1) + jj)] -=
-            dt_h * (uF_x[(ii * nx + jj)] - uF_x[(ii * nx + jj) - 1]) /
+            dt_h * (momentum_x_flux_x[(ii * nx + jj)] -
+                    momentum_x_flux_x[(ii * nx + jj) - 1]) /
             (edgedx[jj] * celldy[ii]);
         const double density_edge_x =
-            (density0[(ii * nx + jj)] * celldx[jj] * celldy[ii] +
-             density0[(ii * nx + jj) - 1] * celldx[jj - 1] * celldy[ii]) /
+            (density[(ii * nx + jj)] * celldx[jj] * celldy[ii] +
+             density[(ii * nx + jj) - 1] * celldx[jj - 1] * celldy[ii]) /
             (2.0 * edgedx[jj] * celldy[ii]);
         velocity_x[(ii * (nx + 1) + jj)] =
             (density_edge_x == 0.0)
@@ -595,11 +597,13 @@ void advect_momentum(const int nx, const int ny, const int tt, Mesh* mesh,
     handle_boundary_2d(nx + 1, ny, mesh, velocity_x, INVERT_X, PACK);
 
     START_PROFILING(&compute_profile);
-    momentum_x_flux_in_y(nx, ny, mesh, dt_h, velocity_x, velocity_y, uF_y,
-                         mass_flux_y, edgedx, edgedy, celldy);
+    momentum_x_flux_in_y(nx, ny, mesh, dt_h, velocity_x, velocity_y,
+                         momentum_x_flux_y, mass_flux_y, edgedx, edgedy,
+                         celldy);
     STOP_PROFILING(&compute_profile, __func__);
 
-    handle_boundary_2d(nx + 1, ny + 1, mesh, uF_y, NO_INVERT, PACK);
+    handle_boundary_2d(nx + 1, ny + 1, mesh, momentum_x_flux_y, NO_INVERT,
+                       PACK);
 
     START_PROFILING(&compute_profile);
 // Calculate the axial momentum
@@ -608,29 +612,32 @@ void advect_momentum(const int nx, const int ny, const int tt, Mesh* mesh,
 #pragma omp simd
       for (int jj = pad; jj < (nx + 1) - pad; ++jj) {
         momentum_x[(ii * (nx + 1) + jj)] -=
-            dt_h * (uF_y[(ii * (nx + 1) + jj) + (nx + 1)] -
-                    uF_y[(ii * (nx + 1) + jj)]) /
+            dt_h * (momentum_x_flux_y[(ii * (nx + 1) + jj) + (nx + 1)] -
+                    momentum_x_flux_y[(ii * (nx + 1) + jj)]) /
             (celldx[jj] * edgedy[ii]);
       }
     }
 
-    momentum_y_flux_in_x(nx, ny, mesh, dt_h, velocity_x, velocity_y, vF_x,
-                         mass_flux_x, edgedx, celldy, celldx);
+    momentum_y_flux_in_x(nx, ny, mesh, dt_h, velocity_x, velocity_y,
+                         momentum_y_flux_x, mass_flux_x, edgedx, celldy,
+                         celldx);
     STOP_PROFILING(&compute_profile, __func__);
 
-    handle_boundary_2d(nx + 1, ny + 1, mesh, vF_x, NO_INVERT, PACK);
+    handle_boundary_2d(nx + 1, ny + 1, mesh, momentum_y_flux_x, NO_INVERT,
+                       PACK);
 
     START_PROFILING(&compute_profile);
 #pragma omp parallel for
     for (int ii = pad; ii < (ny + 1) - pad; ++ii) {
 #pragma omp simd
       for (int jj = pad; jj < nx - pad; ++jj) {
-        momentum_y[(ii * nx + jj)] -= dt_h * (vF_x[(ii * (nx + 1) + jj) + 1] -
-                                              vF_x[(ii * (nx + 1) + jj)]) /
-                                      (edgedx[jj] * celldy[ii]);
+        momentum_y[(ii * nx + jj)] -=
+            dt_h * (momentum_y_flux_x[(ii * (nx + 1) + jj) + 1] -
+                    momentum_y_flux_x[(ii * (nx + 1) + jj)]) /
+            (edgedx[jj] * celldy[ii]);
         const double density_edge_y =
-            (density0[(ii * nx + jj)] * celldx[jj] * celldy[ii] +
-             density0[(ii * nx + jj) - nx] * celldx[jj] * celldy[ii - 1]) /
+            (density[(ii * nx + jj)] * celldx[jj] * celldy[ii] +
+             density[(ii * nx + jj) - nx] * celldx[jj] * celldy[ii - 1]) /
             (2.0 * celldx[jj] * edgedy[ii]);
         velocity_y[(ii * nx + jj)] =
             (density_edge_y == 0.0)
@@ -643,30 +650,33 @@ void advect_momentum(const int nx, const int ny, const int tt, Mesh* mesh,
     handle_boundary_2d(nx, ny + 1, mesh, velocity_y, INVERT_Y, PACK);
 
     START_PROFILING(&compute_profile);
-    momentum_y_flux_in_y(nx, ny, mesh, dt_h, velocity_y, vF_y, mass_flux_y,
-                         edgedy, celldx, celldy);
+    momentum_y_flux_in_y(nx, ny, mesh, dt_h, velocity_y, momentum_y_flux_y,
+                         mass_flux_y, edgedy, celldx, celldy);
     STOP_PROFILING(&compute_profile, __func__);
 
-    handle_boundary_2d(nx, ny, mesh, vF_y, NO_INVERT, PACK);
+    handle_boundary_2d(nx, ny, mesh, momentum_y_flux_y, NO_INVERT, PACK);
 
     START_PROFILING(&compute_profile);
 #pragma omp parallel for
     for (int ii = pad; ii < (ny + 1) - pad; ++ii) {
 #pragma omp simd
       for (int jj = pad; jj < nx - pad; ++jj) {
-        momentum_y[(ii * nx + jj)] -=
-            dt_h * (vF_y[(ii * nx + jj)] - vF_y[(ii * nx + jj) - nx]) /
-            (celldx[jj] * edgedy[ii]);
+        momentum_y[(ii * nx + jj)] -= dt_h *
+                                      (momentum_y_flux_y[(ii * nx + jj)] -
+                                       momentum_y_flux_y[(ii * nx + jj) - nx]) /
+                                      (celldx[jj] * edgedy[ii]);
       }
     }
     STOP_PROFILING(&compute_profile, __func__);
   } else {
     START_PROFILING(&compute_profile);
-    momentum_x_flux_in_y(nx, ny, mesh, dt_h, velocity_x, velocity_y, uF_y,
-                         mass_flux_y, edgedx, edgedy, celldy);
+    momentum_x_flux_in_y(nx, ny, mesh, dt_h, velocity_x, velocity_y,
+                         momentum_x_flux_y, mass_flux_y, edgedx, edgedy,
+                         celldy);
     STOP_PROFILING(&compute_profile, __func__);
 
-    handle_boundary_2d(nx + 1, ny + 1, mesh, uF_y, NO_INVERT, PACK);
+    handle_boundary_2d(nx + 1, ny + 1, mesh, momentum_x_flux_y, NO_INVERT,
+                       PACK);
 
     START_PROFILING(&compute_profile);
 // Calculate the axial momentum
@@ -675,12 +685,12 @@ void advect_momentum(const int nx, const int ny, const int tt, Mesh* mesh,
 #pragma omp simd
       for (int jj = pad; jj < (nx + 1) - pad; ++jj) {
         momentum_x[(ii * (nx + 1) + jj)] -=
-            dt_h * (uF_y[(ii * (nx + 1) + jj) + (nx + 1)] -
-                    uF_y[(ii * (nx + 1) + jj)]) /
+            dt_h * (momentum_x_flux_y[(ii * (nx + 1) + jj) + (nx + 1)] -
+                    momentum_x_flux_y[(ii * (nx + 1) + jj)]) /
             (celldx[jj] * edgedy[ii]);
         const double density_edge_x =
-            (density0[(ii * nx + jj)] * celldx[jj] * celldy[ii] +
-             density0[(ii * nx + jj) - 1] * celldx[jj - 1] * celldy[ii]) /
+            (density[(ii * nx + jj)] * celldx[jj] * celldy[ii] +
+             density[(ii * nx + jj) - 1] * celldx[jj - 1] * celldy[ii]) /
             (2.0 * edgedx[jj] * celldy[ii]);
         velocity_x[(ii * (nx + 1) + jj)] =
             (density_edge_x == 0.0)
@@ -693,11 +703,11 @@ void advect_momentum(const int nx, const int ny, const int tt, Mesh* mesh,
     handle_boundary_2d(nx + 1, ny, mesh, velocity_x, INVERT_X, PACK);
 
     START_PROFILING(&compute_profile);
-    momentum_x_flux_in_x(nx, ny, mesh, dt_h, velocity_x, uF_x, mass_flux_x,
-                         edgedx, edgedy, celldx);
+    momentum_x_flux_in_x(nx, ny, mesh, dt_h, velocity_x, momentum_x_flux_x,
+                         mass_flux_x, edgedx, edgedy, celldx);
     STOP_PROFILING(&compute_profile, __func__);
 
-    handle_boundary_2d(nx, ny, mesh, uF_x, NO_INVERT, PACK);
+    handle_boundary_2d(nx, ny, mesh, momentum_x_flux_x, NO_INVERT, PACK);
 
     START_PROFILING(&compute_profile);
 #pragma omp parallel for
@@ -705,28 +715,30 @@ void advect_momentum(const int nx, const int ny, const int tt, Mesh* mesh,
 #pragma omp simd
       for (int jj = pad; jj < (nx + 1) - pad; ++jj) {
         momentum_x[(ii * (nx + 1) + jj)] -=
-            dt_h * (uF_x[(ii * nx + jj)] - uF_x[(ii * nx + jj) - 1]) /
+            dt_h * (momentum_x_flux_x[(ii * nx + jj)] -
+                    momentum_x_flux_x[(ii * nx + jj) - 1]) /
             (edgedx[jj] * celldy[ii]);
       }
     }
 
-    momentum_y_flux_in_y(nx, ny, mesh, dt_h, velocity_y, vF_y, mass_flux_y,
-                         edgedy, celldx, celldy);
+    momentum_y_flux_in_y(nx, ny, mesh, dt_h, velocity_y, momentum_y_flux_y,
+                         mass_flux_y, edgedy, celldx, celldy);
     STOP_PROFILING(&compute_profile, __func__);
 
-    handle_boundary_2d(nx, ny, mesh, vF_y, NO_INVERT, PACK);
+    handle_boundary_2d(nx, ny, mesh, momentum_y_flux_y, NO_INVERT, PACK);
 
     START_PROFILING(&compute_profile);
 #pragma omp parallel for
     for (int ii = pad; ii < (ny + 1) - pad; ++ii) {
 #pragma omp simd
       for (int jj = pad; jj < nx - pad; ++jj) {
-        momentum_y[(ii * nx + jj)] -=
-            dt_h * (vF_y[(ii * nx + jj)] - vF_y[(ii * nx + jj) - nx]) /
-            (celldx[jj] * edgedy[ii]);
+        momentum_y[(ii * nx + jj)] -= dt_h *
+                                      (momentum_y_flux_y[(ii * nx + jj)] -
+                                       momentum_y_flux_y[(ii * nx + jj) - nx]) /
+                                      (celldx[jj] * edgedy[ii]);
         const double density_edge_y =
-            (density0[(ii * nx + jj)] * celldx[jj] * celldy[ii] +
-             density0[(ii * nx + jj) - nx] * celldx[jj] * celldy[ii - 1]) /
+            (density[(ii * nx + jj)] * celldx[jj] * celldy[ii] +
+             density[(ii * nx + jj) - nx] * celldx[jj] * celldy[ii - 1]) /
             (2.0 * celldx[jj] * edgedy[ii]);
         velocity_y[(ii * nx + jj)] =
             (density_edge_y == 0.0)
@@ -739,20 +751,23 @@ void advect_momentum(const int nx, const int ny, const int tt, Mesh* mesh,
     handle_boundary_2d(nx, ny + 1, mesh, velocity_y, INVERT_Y, PACK);
 
     START_PROFILING(&compute_profile);
-    momentum_y_flux_in_x(nx, ny, mesh, dt_h, velocity_x, velocity_y, vF_x,
-                         mass_flux_x, edgedx, celldy, celldx);
+    momentum_y_flux_in_x(nx, ny, mesh, dt_h, velocity_x, velocity_y,
+                         momentum_y_flux_x, mass_flux_x, edgedx, celldy,
+                         celldx);
     STOP_PROFILING(&compute_profile, __func__);
 
-    handle_boundary_2d(nx + 1, ny + 1, mesh, vF_x, NO_INVERT, PACK);
+    handle_boundary_2d(nx + 1, ny + 1, mesh, momentum_y_flux_x, NO_INVERT,
+                       PACK);
 
     START_PROFILING(&compute_profile);
 #pragma omp parallel for
     for (int ii = pad; ii < (ny + 1) - pad; ++ii) {
 #pragma omp simd
       for (int jj = pad; jj < nx - pad; ++jj) {
-        momentum_y[(ii * nx + jj)] -= dt_h * (vF_x[(ii * (nx + 1) + jj) + 1] -
-                                              vF_x[(ii * (nx + 1) + jj)]) /
-                                      (edgedx[jj] * celldy[ii]);
+        momentum_y[(ii * nx + jj)] -=
+            dt_h * (momentum_y_flux_x[(ii * (nx + 1) + jj) + 1] -
+                    momentum_y_flux_x[(ii * (nx + 1) + jj)]) /
+            (edgedx[jj] * celldy[ii]);
       }
     }
     STOP_PROFILING(&compute_profile, __func__);
@@ -761,9 +776,10 @@ void advect_momentum(const int nx, const int ny, const int tt, Mesh* mesh,
 
 // Calculates the x momentum flux along the x dimension
 void momentum_x_flux_in_x(const int nx, const int ny, Mesh* mesh,
-                          const double dt_h, double* velocity_x, double* uF_x,
-                          const double* mass_flux_x, const double* edgedx,
-                          const double* edgedy, const double* celldx) {
+                          const double dt_h, double* velocity_x,
+                          double* momentum_x_flux_x, const double* mass_flux_x,
+                          const double* edgedx, const double* edgedy,
+                          const double* celldx) {
 
   const int pad = mesh->pad;
 
@@ -801,7 +817,7 @@ void momentum_x_flux_in_x(const int nx, const int ny, Mesh* mesh,
               : velocity_x[(ii * (nx + 1) + jj) + 1] -
                     0.5 * minmod(minmod(a_x_1, b_x_1), c_x_1) *
                         (celldx[jj] + u_cell_x * dt_h);
-      uF_x[(ii * nx + jj)] = F_x * u_cell_x_interp;
+      momentum_x_flux_x[(ii * nx + jj)] = F_x * u_cell_x_interp;
     }
   }
 }
@@ -809,7 +825,7 @@ void momentum_x_flux_in_x(const int nx, const int ny, Mesh* mesh,
 // Calculates the x momentum flux in the y dimension
 void momentum_x_flux_in_y(const int nx, const int ny, Mesh* mesh,
                           const double dt_h, double* velocity_x,
-                          double* velocity_y, double* uF_y,
+                          double* velocity_y, double* momentum_x_flux_y,
                           const double* mass_flux_y, const double* edgedx,
                           const double* edgedy, const double* celldy) {
 
@@ -852,7 +868,7 @@ void momentum_x_flux_in_y(const int nx, const int ny, Mesh* mesh,
               : velocity_x[(ii * (nx + 1) + jj)] -
                     0.5 * minmod(minmod(a_y_1, b_y_1), c_y_1) *
                         (celldy[ii] + v_cell_y * dt_h);
-      uF_y[(ii * (nx + 1) + jj)] = F_y * u_corner_y;
+      momentum_x_flux_y[(ii * (nx + 1) + jj)] = F_y * u_corner_y;
     }
   }
 }
@@ -860,7 +876,7 @@ void momentum_x_flux_in_y(const int nx, const int ny, Mesh* mesh,
 // Calculates the y momentum flux in the x dimension
 void momentum_y_flux_in_x(const int nx, const int ny, Mesh* mesh,
                           const double dt_h, const double* velocity_x,
-                          double* velocity_y, double* vF_x,
+                          double* velocity_y, double* momentum_y_flux_x,
                           const double* mass_flux_x, const double* edgedx,
                           const double* celldy, const double* celldx) {
 
@@ -903,16 +919,17 @@ void momentum_y_flux_in_x(const int nx, const int ny, Mesh* mesh,
               : velocity_y[(ii * nx + jj)] -
                     0.5 * minmod(minmod(a_x_1, b_x_1), c_x_1) *
                         (celldx[jj] + u_cell_x * dt_h);
-      vF_x[(ii * (nx + 1) + jj)] = F_x * v_cell_x_interp;
+      momentum_y_flux_x[(ii * (nx + 1) + jj)] = F_x * v_cell_x_interp;
     }
   }
 }
 
 // Calculates the y momentum flux in the y dimension
 void momentum_y_flux_in_y(const int nx, const int ny, Mesh* mesh,
-                          const double dt_h, double* velocity_y, double* vF_y,
-                          const double* mass_flux_y, const double* edgedy,
-                          const double* celldx, const double* celldy) {
+                          const double dt_h, double* velocity_y,
+                          double* momentum_y_flux_y, const double* mass_flux_y,
+                          const double* edgedy, const double* celldx,
+                          const double* celldy) {
 
   const int pad = mesh->pad;
 
@@ -947,13 +964,13 @@ void momentum_y_flux_in_y(const int nx, const int ny, Mesh* mesh,
               : velocity_y[(ii * nx + jj) + nx] -
                     0.5 * minmod(minmod(a_y_1, b_y_1), c_y_1) *
                         (celldy[ii] + v_cell_y * dt_h);
-      vF_y[(ii * nx + jj)] = F_y * v_cell_y_interp;
+      momentum_y_flux_y[(ii * nx + jj)] = F_y * v_cell_y_interp;
     }
   }
 }
 
 // Prints some conservation values
-void print_conservation(const int nx, const int ny, double* density0,
+void print_conservation(const int nx, const int ny, double* density,
                         double* energy, double* reduce_array, Mesh* mesh) {
   double mass_tot = 0.0;
   double energy_tot = 0.0;
@@ -963,8 +980,8 @@ void print_conservation(const int nx, const int ny, double* density0,
   for (int ii = pad; ii < ny - pad; ++ii) {
 #pragma omp simd
     for (int jj = pad; jj < nx - pad; ++jj) {
-      mass_tot += density0[(ii * nx + jj)];
-      energy_tot += density0[(ii * nx + jj)] * energy[(ii * nx + jj)];
+      mass_tot += density[(ii * nx + jj)];
+      energy_tot += density[(ii * nx + jj)] * energy[(ii * nx + jj)];
     }
   }
 

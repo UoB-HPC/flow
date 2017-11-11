@@ -10,21 +10,16 @@
 #define FLOW_TESTS "flow.tests"
 
 typedef struct {
+
   // Flow-specific state
-  double* momentum_x; // Momentum in the x direction
-  double* momentum_y; // Momentum in the y direction
-
-  double* mass_flux_x; // Mass flux in the x direction
-  double* mass_flux_y; // Mass flux in the y direction
-
-  double* uF_x; // Momentum in the x direction flux in the x direction
-  double* uF_y; // Momentum in the x direction flux in the y direction
-
-  double* vF_x; // Momentum in the y direction flux in the x direction
-  double* vF_y; // Momentum in the y direction flux in the y direction
-
-  double* wF_x; // Momentum in the z direction flux in the x direction
-  double* wF_y; // Momentum in the z direction flux in the y direction
+  double* momentum_x;        // Momentum in the x dimension
+  double* momentum_y;        // Momentum in the y dimension
+  double* mass_flux_x;       // Mass flux in the x dimension
+  double* mass_flux_y;       // Mass flux in the y dimension
+  double* momentum_x_flux_x; // x momentum flux in the x dimension
+  double* momentum_x_flux_y; // x momentum flux in the y dimension
+  double* momentum_y_flux_x; // y momentum flux in the x dimension
+  double* momentum_y_flux_y; // y momentum flux in the y dimension
 } FlowData;
 
 // Initialises the state variables for two dimensional applications
