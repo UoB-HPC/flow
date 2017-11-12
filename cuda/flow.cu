@@ -119,13 +119,13 @@ void set_timestep(const int nx, const int ny, double* Qxx, double* Qyy,
   START_PROFILING(&comms_profile);
   double local_min_dt;
   finish_min_reduce(nblocks, reduce_array, &local_min_dt);
+  gpu_check(cudaDeviceSynchronize());
 
   // Ensure that the timestep does not jump too far from one step to the next
   double global_min_dt = reduce_all_min(local_min_dt);
   const double final_min_dt = min(global_min_dt, C_M * mesh->dt_h);
   mesh->dt = 0.5 * (C_T * final_min_dt + mesh->dt_h);
   mesh->dt_h = (first_step) ? mesh->dt : C_T * final_min_dt;
-  gpu_check(cudaDeviceSynchronize());
   STOP_PROFILING(&comms_profile, "finish_min_reduce");
 }
 
