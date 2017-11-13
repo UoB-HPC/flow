@@ -416,7 +416,7 @@ __global__ void advect_mass_and_energy_in_y(
                                      : density_e / density[(ii * nx + jj)];
 }
 
-__global__ void ux_momentum_flux(const int nx, const int ny, const int pad,
+__global__ void momentum_x_flux_in_x(const int nx, const int ny, const int pad,
                                  const double dt_h, const double dt,
                                  double* velocity_x, double* velocity_y,
                                  double* momentum_x_flux_x, double* momentum_x,
@@ -567,7 +567,7 @@ __global__ void advect_momentum_x_and_u_in_y(
           : momentum_x[(ii * (nx + 1) + jj)] / density_edge_x;
 }
 
-__global__ void uy_momentum_flux(const int nx, const int ny, const int pad,
+__global__ void momentum_x_flux_in_y(const int nx, const int ny, const int pad,
                                  const double dt_h, const double dt,
                                  double* velocity_x, double* velocity_y,
                                  double* momentum_x_flux_y, double* momentum_x,
@@ -619,7 +619,7 @@ __global__ void uy_momentum_flux(const int nx, const int ny, const int pad,
   momentum_x_flux_y[(ii * (nx + 1) + jj)] = f_y * u_corner_y;
 }
 
-__global__ void vx_momentum_flux(const int nx, const int ny, const int pad,
+__global__ void momentum_y_flux_in_x(const int nx, const int ny, const int pad,
                                  const double dt_h, const double dt,
                                  const double* velocity_x, double* velocity_y,
                                  double* momentum_y_flux_x, double* momentum_y,
@@ -741,7 +741,7 @@ __global__ void advect_momentum_y_in_x(
                                 (edgedx[jj] * celldy[ii]);
 }
 
-__global__ void vy_momentum_flux(const int nx, const int ny, const int pad,
+__global__ void momentum_y_flux_in_y(const int nx, const int ny, const int pad,
                                  const double dt_h, const double dt,
                                  double* velocity_x, double* velocity_y,
                                  double* momentum_y_flux_y, double* momentum_y,

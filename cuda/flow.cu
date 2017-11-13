@@ -140,9 +140,9 @@ void advect_mass_and_energy(const int nx, const int ny, Mesh* mesh,
                             const double* celldx, const double* celldy) {
   int nblocks = ceil(nx * ny / (double)NTHREADS);
   START_PROFILING(&compute_profile);
-  store_old_rho<<<nblocks, NTHREADS>>>(nx, ny, mesh->pad, density, density_old);
+  store_old_density<<<nblocks, NTHREADS>>>(nx, ny, mesh->pad, density, density_old);
   gpu_check(cudaDeviceSynchronize());
-  STOP_PROFILING(&compute_profile, "store_old_rho");
+  STOP_PROFILING(&compute_profile, "store_old_density");
 
   if (tt % 2 == 0) {
     mass_and_energy_x_advection(nx, ny, 1, mesh, dt, dt_h, density, density_old,
@@ -407,7 +407,7 @@ void print_conservation(const int nx, const int ny, double* density,
   double global_mass_tot = reduce_to_master(local_mass_tot);
 
   if (mesh->rank == MASTER) {
-    printf("Total mass:    %.12e\n", global_mass_tot);
+    printf("Total mass:      %.12e\n", global_mass_tot);
   }
   STOP_PROFILING(&comms_profile, "finish_sum_reduce");
 }
