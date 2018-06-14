@@ -23,7 +23,8 @@ CFLAGS_XL_OMP4		 = -O5 -qsmp -qoffload
 CFLAGS_CLANG_OMP4  = -O3 -Wall -fopenmp-targets=nvptx64-nvidia-cuda -fopenmp-nonaliased-maps \
 										 -fopenmp=libomp --cuda-path=$(CUDA_PATH) -DCLANG
 CFLAGS_CLANG			 = -std=gnu99 -fopenmp=libiomp5 -march=native -Wall
-CFLAGS_PGI				 = -O3 -fast -mp
+CFLAGS_PGI_NV			 = -fast -acc -ta=tesla:cc60 -Minfo=acc
+CFLAGS_PGI_MC			 = -ta=multicore -fast 
 
 ifeq ($(KERNELS), cuda)
   CHECK_CUDA_ROOT = yes
