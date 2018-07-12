@@ -33,6 +33,13 @@ ifeq ($(COMPILER), CLANG_OMP4)
   CHECK_CUDA_ROOT = yes
 endif
 
+ifeq ($(KERNELS), raja)
+ifeq ("${RAJA_PATH}", "")
+$(error "$$RAJA_PATH is not set, please set this to the root of your RAJA install.")
+endif
+  OPTIONS += -I$(RAJA_PATH)/include/
+endif
+
 ifeq ($(CHECK_CUDA_ROOT), yes)
 ifeq ("${CUDA_PATH}", "")
 $(error "$$CUDA_PATH is not set, please set this to the root of your CUDA install.")
