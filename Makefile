@@ -1,11 +1,10 @@
 # User defined parameters
 KERNELS          	 = omp3
-COMPILER         	 = GCC
+COMPILER         	 = INTEL
 MPI              	 = no
 DECOMP					 	 = TILES
 OPTIONS          	 = #-DENABLE_PROFILING 
-ARCH_COMPILER_CC   = gcc
-ARCH_COMPILER_CPP  = g++
+ARCH_COMPILER_CC   = icc
 
 # Compiler-specific flags
 MAC_RPATH				 	 = -Wl,-rpath,${COMPILER_ROOT}/lib 
