@@ -25,6 +25,7 @@ CFLAGS_CLANG_OMP4  = -O3 -Wall -fopenmp-targets=nvptx64-nvidia-cuda -fopenmp-non
 CFLAGS_CLANG			 = -std=gnu99 -fopenmp=libiomp5 -march=native -Wall
 CFLAGS_PGI_NV			 = -fast -acc -ta=tesla:cc60 -Minfo=acc
 CFLAGS_PGI_MC			 = -ta=multicore -fast 
+CFLAGS_INTEL_RAJA  = -O3 -qopenmp -std=c++11 -DINTEL -Wall
 
 ifeq ($(KERNELS), cuda)
   CHECK_CUDA_ROOT = yes

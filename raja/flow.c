@@ -959,7 +959,6 @@ void print_conservation(const int nx, const int ny, double* density,
   RAJA::ReduceSum<reduce_policy, double> mass_tot(0.0);
   RAJA::ReduceSum<reduce_policy, double> energy_tot(0.0);
   RAJA::forall<exec_policy>(RAJA::RangeSegment(pad, ny-pad), [=] RAJA_DEVICE (int ii) {
-#pragma omp simd
     for (int jj = pad; jj < nx - pad; ++jj) {
       mass_tot += density[(ii * nx + jj)];
       energy_tot += density[(ii * nx + jj)] * energy[(ii * nx + jj)];
