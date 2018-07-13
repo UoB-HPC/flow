@@ -59,13 +59,9 @@ void equation_of_state(const int nx, const int ny, double* pressure,
                        const double* density, const double* energy) {
   START_PROFILING(&compute_profile);
 
-  RAJA::forall<exec_policy>(RAJA::RangeSegment(0, ny), [=] RAJA_DEVICE (int ii) {
-#pragma omp simd
-    for (int jj = 0; jj < nx; ++jj) {
-      // Only invoke simple GAMma law at the moment
-      pressure[(ii * nx + jj)] =
-          (GAM - 1.0) * density[(ii * nx + jj)] * energy[(ii * nx + jj)];
-    }
+  RAJA::forall<exec_policy>(RAJA::RangeSegment(0, nx*ny), [=] RAJA_DEVICE (int ii) {
+     // Only invoke simple GAMma law at the moment
+     pressure[ii] = (GAM - 1.0) * density[ii] * energy[ii];
   });
 
   STOP_PROFILING(&compute_profile, __func__);
@@ -82,20 +78,21 @@ void set_timestep(const int nx, const int ny, double* Qxx, double* Qyy,
   START_PROFILING(&compute_profile);
   // Check the minimum timestep from the sound speed in the nx and ny directions
   RAJA::ReduceMin<reduce_policy, double> local_min_dt(mesh->max_dt);
-  RAJA::forall<exec_policy>(RAJA::RangeSegment(pad, ny-pad), [=] RAJA_DEVICE (int ii) {
-#pragma omp simd
-    for (int jj = pad; jj < nx - pad; ++jj) {
-      // Constrain based on the sound speed within the system
-      const double c_s = sqrt(GAM * (GAM - 1.0) * energy[(ii * nx + jj)]);
-      const double thread_min_dt_x =
-          celldx[jj] /
-          sqrt(c_s * c_s + 2.0 * Qxx[(ii * nx + jj)] / density[(ii * nx + jj)]);
-      const double thread_min_dt_y =
-          celldy[ii] /
-          sqrt(c_s * c_s + 2.0 * Qyy[(ii * nx + jj)] / density[(ii * nx + jj)]);
-      const double thread_min_dt = min_l(thread_min_dt_x, thread_min_dt_y);
-      local_min_dt.min(thread_min_dt);
-    }
+  RAJA::forall<exec_policy>(RAJA::RangeSegment(0, nx*ny), [=] RAJA_DEVICE (int i) {
+      const int ii = i / nx; 
+      const int jj = i % nx;
+      if(ii >= pad && ii < ny-pad && jj >= pad && jj < nx-pad) {
+        // Constrain based on the sound speed within the system
+        const double c_s = sqrt(GAM * (GAM - 1.0) * energy[(ii * nx + jj)]);
+        const double thread_min_dt_x =
+            celldx[jj] /
+            sqrt(c_s * c_s + 2.0 * Qxx[(ii * nx + jj)] / density[(ii * nx + jj)]);
+        const double thread_min_dt_y =
+            celldy[ii] /
+            sqrt(c_s * c_s + 2.0 * Qyy[(ii * nx + jj)] / density[(ii * nx + jj)]);
+        const double thread_min_dt = min_l(thread_min_dt_x, thread_min_dt_y);
+        local_min_dt.min(thread_min_dt);
+      }
   });
   STOP_PROFILING(&compute_profile, __func__);
 
@@ -120,15 +117,16 @@ void pressure_acceleration(const int nx, const int ny, Mesh* mesh,
 
   const int pad = mesh->pad;
 
-  RAJA::forall<exec_policy>(RAJA::RangeSegment(pad, (ny+1) - pad), [=] RAJA_DEVICE (int ii) {
-#pragma omp simd
-    for (int jj = pad; jj < (nx + 1) - pad; ++jj) {
+  RAJA::forall<exec_policy>(RAJA::RangeSegment(0, (nx+1)*(ny+1)), [=] RAJA_DEVICE (int i) {
+      const int ii = i / (nx+1); 
+      const int jj = i % (nx+1);
+      if(ii >= pad && ii < (ny+1)-pad && jj >= pad && jj < (nx+1)-pad) {
       // Update the momenta using the pressure gradients
       momentum_x[(ii * (nx + 1) + jj)] -=
-          dt * (pressure[(ii * nx + jj)] - pressure[(ii * nx + jj) - 1]) /
+          dt * (pressure[(ii * nx + jj)] - pressure[ii*nx + (jj - 1)]) /
           edgedx[jj];
       momentum_y[(ii * nx + jj)] -=
-          dt * (pressure[(ii * nx + jj)] - pressure[(ii * nx + jj) - nx]) /
+          dt * (pressure[(ii * nx + jj)] - pressure[(ii-1)*nx + jj]) /
           edgedy[ii];
 
       // Calculate the zone edge centered density
@@ -171,9 +169,10 @@ void artificial_viscosity(const int nx, const int ny, Mesh* mesh,
 
   // Calculate the artificial viscous stresses
   // PLPC Hydro Paper
-  RAJA::forall<exec_policy>(RAJA::RangeSegment(pad, ny-pad), [=] RAJA_DEVICE (int ii) {
-#pragma omp simd
-    for (int jj = pad; jj < nx - pad; ++jj) {
+  RAJA::forall<exec_policy>(RAJA::RangeSegment(0, nx*ny), [=] RAJA_DEVICE (int i) {
+      const int ii = i / nx; 
+      const int jj = i % nx;
+      if(ii >= pad && ii < ny-pad && jj >= pad && jj < nx-pad) {
       const double u_i = min_l(0.0, velocity_x[(ii * (nx + 1) + jj) + 1] -
                                       velocity_x[(ii * (nx + 1) + jj)]);
       const double u_ii =
@@ -209,9 +208,10 @@ void artificial_viscosity(const int nx, const int ny, Mesh* mesh,
   START_PROFILING(&compute_profile);
 
   // Update the momenta by the artificial viscous stresses
-  RAJA::forall<exec_policy>(RAJA::RangeSegment(pad, (ny+1)-pad), [=] RAJA_DEVICE (int ii) {
-#pragma omp simd
-    for (int jj = pad; jj < (nx + 1) - pad; ++jj) {
+  RAJA::forall<exec_policy>(RAJA::RangeSegment(0, (nx+1)*(ny+1)), [=] RAJA_DEVICE (int i) {
+      const int ii = i / (nx+1); 
+      const int jj = i % (nx+1);
+      if(ii >= pad && ii < (ny+1)-pad && jj >= pad && jj < (nx+1)-pad) {
       momentum_x[(ii * (nx + 1) + jj)] -=
           dt * (Qxx[(ii * nx + jj)] - Qxx[(ii * nx + jj) - 1]) / celldx[jj];
       momentum_y[(ii * nx + jj)] -=
@@ -254,9 +254,10 @@ void shock_heating_and_work(const int nx, const int ny, Mesh* mesh,
 
   const int pad = mesh->pad;
 
-  RAJA::forall<exec_policy>(RAJA::RangeSegment(pad, ny-pad), [=] RAJA_DEVICE (int ii) {
-#pragma omp simd
-    for (int jj = pad; jj < nx - pad; ++jj) {
+  RAJA::forall<exec_policy>(RAJA::RangeSegment(0, nx*ny), [=] RAJA_DEVICE (int i) {
+      const int ii = i / nx; 
+      const int jj = i % nx;
+      if(ii >= pad && ii < ny-pad && jj >= pad && jj < nx-pad) {
       const double div_vel_x = (velocity_x[(ii * (nx + 1) + jj) + 1] -
                                 velocity_x[(ii * (nx + 1) + jj)]) /
                                celldx[jj];
@@ -332,10 +333,10 @@ void x_mass_and_energy_flux(const int nx, const int ny, const int first,
   // Compute the mass fluxes along the x edges
   // In the ghost cells flux is left as 0.0
   START_PROFILING(&compute_profile);
-  RAJA::forall<exec_policy>(RAJA::RangeSegment(pad, ny-pad), [=] RAJA_DEVICE (int ii) {
-#pragma omp simd
-    for (int jj = pad; jj < (nx + 1) - pad; ++jj) {
-
+  RAJA::forall<exec_policy>(RAJA::RangeSegment(0, (nx+1)*ny), [=] RAJA_DEVICE (int i) {
+      const int ii = i / (nx+1); 
+      const int jj = i % (nx+1);
+      if(ii >= pad && ii < ny-pad && jj >= pad && jj < (nx+1)-pad) {
       // Interpolate to make second order in time
       const double invdx = 1.0 / edgedx[jj];
       const double suc0 = 0.5 * invdx * (velocity_x[(ii * (nx + 1) + jj) + 1] -
@@ -405,9 +406,10 @@ void x_mass_and_energy_flux(const int nx, const int ny, const int first,
 
   // Calculate the new density values
   START_PROFILING(&compute_profile);
-  RAJA::forall<exec_policy>(RAJA::RangeSegment(pad, ny-pad), [=] RAJA_DEVICE (int ii) {
-#pragma omp simd
-    for (int jj = pad; jj < nx - pad; ++jj) {
+  RAJA::forall<exec_policy>(RAJA::RangeSegment(pad, nx*ny), [=] RAJA_DEVICE (int i) {
+      const int ii = i / nx; 
+      const int jj = i % nx;
+      if(ii >= pad && ii < ny-pad && jj >= pad && jj < nx-pad) {
       density[(ii * nx + jj)] -=
           dt_h * (edgedy[ii + 1] * mass_flux_x[(ii * (nx + 1) + jj) + 1] -
                   edgedy[ii] * mass_flux_x[(ii * (nx + 1) + jj)]) /
@@ -446,9 +448,10 @@ void y_mass_and_energy_flux(const int nx, const int ny, const int first,
   // Compute the mass flux along the y edges
   // In the ghost cells flux is left as 0.0
   START_PROFILING(&compute_profile);
-  RAJA::forall<exec_policy>(RAJA::RangeSegment(pad, (ny+1)-pad), [=] RAJA_DEVICE (int ii) {
-#pragma omp simd
-    for (int jj = pad; jj < nx - pad; ++jj) {
+  RAJA::forall<exec_policy>(RAJA::RangeSegment(0, nx*(ny+1)), [=] RAJA_DEVICE (int i) {
+      const int ii = i / nx; 
+      const int jj = i % nx;
+      if(ii >= pad && ii < (ny+1)-pad && jj >= pad && jj < nx-pad) {
 
       // Interpolate the velocity to make second order in time
       const double invdy = 1.0 / edgedy[ii];
@@ -519,9 +522,10 @@ void y_mass_and_energy_flux(const int nx, const int ny, const int first,
 
   // Calculate the new density values
   START_PROFILING(&compute_profile);
-  RAJA::forall<exec_policy>(RAJA::RangeSegment(pad, ny-pad), [=] RAJA_DEVICE (int ii) {
-#pragma omp simd
-    for (int jj = pad; jj < nx - pad; ++jj) {
+  RAJA::forall<exec_policy>(RAJA::RangeSegment(0, nx*ny), [=] RAJA_DEVICE (int i) {
+      const int ii = i / nx; 
+      const int jj = i % nx;
+      if(ii >= pad && ii < ny-pad && jj >= pad && jj < nx-pad) {
       density[(ii * nx + jj)] -=
           dt_h * (edgedx[jj + 1] * mass_flux_y[(ii * nx + jj) + nx] -
                   edgedx[jj] * mass_flux_y[(ii * nx + jj)]) /
@@ -567,9 +571,10 @@ void advect_momentum(const int nx, const int ny, const int tt, Mesh* mesh,
     handle_boundary_2d(nx, ny, mesh, momentum_x_flux_x, NO_INVERT, PACK);
 
     START_PROFILING(&compute_profile);
-  RAJA::forall<exec_policy>(RAJA::RangeSegment(pad, ny-pad), [=] RAJA_DEVICE (int ii) {
-#pragma omp simd
-      for (int jj = pad; jj < (nx + 1) - pad; ++jj) {
+    RAJA::forall<exec_policy>(RAJA::RangeSegment(0, (nx+1)*ny), [=] RAJA_DEVICE (int i) {
+      const int ii = i / (nx+1); 
+      const int jj = i % (nx+1);
+      if(ii >= pad && ii < ny-pad && jj >= pad && jj < (nx+1)-pad) {
         momentum_x[(ii * (nx + 1) + jj)] -=
             dt_h * (momentum_x_flux_x[(ii * nx + jj)] -
                     momentum_x_flux_x[(ii * nx + jj) - 1]) /
@@ -599,9 +604,10 @@ void advect_momentum(const int nx, const int ny, const int tt, Mesh* mesh,
 
     START_PROFILING(&compute_profile);
     // Calculate the axial momentum
-    RAJA::forall<exec_policy>(RAJA::RangeSegment(pad, ny-pad), [=] RAJA_DEVICE (int ii) {
-#pragma omp simd
-      for (int jj = pad; jj < (nx + 1) - pad; ++jj) {
+    RAJA::forall<exec_policy>(RAJA::RangeSegment(0, (nx+1)*ny), [=] RAJA_DEVICE (int i) {
+      const int ii = i / (nx+1); 
+      const int jj = i % (nx+1);
+      if(ii >= pad && ii < ny-pad && jj >= pad && jj < (nx+1)-pad) {
         momentum_x[(ii * (nx + 1) + jj)] -=
             dt_h * (momentum_x_flux_y[(ii * (nx + 1) + jj) + (nx + 1)] -
                     momentum_x_flux_y[(ii * (nx + 1) + jj)]) /
@@ -618,9 +624,10 @@ void advect_momentum(const int nx, const int ny, const int tt, Mesh* mesh,
                        PACK);
 
     START_PROFILING(&compute_profile);
-    RAJA::forall<exec_policy>(RAJA::RangeSegment(pad, (ny+1)-pad), [=] RAJA_DEVICE (int ii) {
-#pragma omp simd
-      for (int jj = pad; jj < nx - pad; ++jj) {
+    RAJA::forall<exec_policy>(RAJA::RangeSegment(0, nx*(ny+1)), [=] RAJA_DEVICE (int i) {
+      const int ii = i / nx; 
+      const int jj = i % nx;
+      if(ii >= pad && ii < (ny+1)-pad && jj >= pad && jj < nx-pad) {
         momentum_y[(ii * nx + jj)] -=
             dt_h * (momentum_y_flux_x[(ii * (nx + 1) + jj) + 1] -
                     momentum_y_flux_x[(ii * (nx + 1) + jj)]) /
@@ -647,9 +654,10 @@ void advect_momentum(const int nx, const int ny, const int tt, Mesh* mesh,
     handle_boundary_2d(nx, ny, mesh, momentum_y_flux_y, NO_INVERT, PACK);
 
     START_PROFILING(&compute_profile);
-    RAJA::forall<exec_policy>(RAJA::RangeSegment(pad, (ny+1)-pad), [=] RAJA_DEVICE (int ii) {
-#pragma omp simd
-      for (int jj = pad; jj < nx - pad; ++jj) {
+    RAJA::forall<exec_policy>(RAJA::RangeSegment(0, nx*(ny+1)), [=] RAJA_DEVICE (int i) {
+      const int ii = i / nx; 
+      const int jj = i % nx;
+      if(ii >= pad && ii < (ny+1)-pad && jj >= pad && jj < nx-pad) {
         momentum_y[(ii * nx + jj)] -= dt_h *
                                       (momentum_y_flux_y[(ii * nx + jj)] -
                                        momentum_y_flux_y[(ii * nx + jj) - nx]) /
@@ -668,10 +676,11 @@ void advect_momentum(const int nx, const int ny, const int tt, Mesh* mesh,
                        PACK);
 
     START_PROFILING(&compute_profile);
-// Calculate the axial momentum
-  RAJA::forall<exec_policy>(RAJA::RangeSegment(pad, ny-pad), [=] RAJA_DEVICE (int ii) {
-#pragma omp simd
-      for (int jj = pad; jj < (nx + 1) - pad; ++jj) {
+    // Calculate the axial momentum
+    RAJA::forall<exec_policy>(RAJA::RangeSegment(0, (nx+1)*ny), [=] RAJA_DEVICE (int i) {
+      const int ii = i / (nx+1); 
+      const int jj = i % (nx+1);
+      if(ii >= pad && ii < ny-pad && jj >= pad && jj < (nx+1)-pad) {
         momentum_x[(ii * (nx + 1) + jj)] -=
             dt_h * (momentum_x_flux_y[(ii * (nx + 1) + jj) + (nx + 1)] -
                     momentum_x_flux_y[(ii * (nx + 1) + jj)]) /

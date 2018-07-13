@@ -26,19 +26,13 @@ CFLAGS_CLANG			 = -std=gnu99 -fopenmp=libiomp5 -march=native -Wall
 CFLAGS_PGI_NV			 = -fast -acc -ta=tesla:cc60 -Minfo=acc
 CFLAGS_PGI_MC			 = -ta=multicore -fast 
 CFLAGS_INTEL_RAJA  = -O3 -qopenmp -std=c++11 -DINTEL -Wall
+CFLAGS_NVCC_RAJA   = -O3 -arch=sm_60 -x cu -std=c++11 --expt-extended-lambda -DRAJA_USE_CUDA
 
 ifeq ($(KERNELS), cuda)
   CHECK_CUDA_ROOT = yes
 endif
 ifeq ($(COMPILER), CLANG_OMP4)
   CHECK_CUDA_ROOT = yes
-endif
-
-ifeq ($(KERNELS), raja)
-ifeq ("${RAJA_PATH}", "")
-$(error "$$RAJA_PATH is not set, please set this to the root of your RAJA install.")
-endif
-  OPTIONS += -I$(RAJA_PATH)/include/
 endif
 
 ifeq ($(CHECK_CUDA_ROOT), yes)
@@ -71,6 +65,14 @@ ARCH_FLAGS     			= $(CFLAGS_$(COMPILER))
 ARCH_LDFLAGS   			= $(ARCH_FLAGS) -lm
 ARCH_BUILD_DIR 			= ../obj/flow/
 ARCH_DIR       			= ..
+
+ifeq ($(KERNELS), raja)
+ifeq ("${RAJA_PATH}", "")
+$(error "$$RAJA_PATH is not set, please set this to the root of your RAJA install.")
+endif
+  OPTIONS += -I$(RAJA_PATH)/include/
+  ARCH_LDFLAGS = -arch=sm_60 -Xcompiler "-fopenmp" -lRAJA -L$(RAJA_PATH)/lib
+endif
 
 ifeq ($(KERNELS), cuda)
 include Makefile.cuda
